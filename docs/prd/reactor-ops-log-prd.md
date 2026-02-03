@@ -135,7 +135,6 @@ stateDiagram-v2
     Supplemented --> Archived: Automatic
     
     note right of Supplemented: Original entry immutable\nSupplement linked
-    linkStyle default stroke:#777777,stroke-width:3px
 ```
 
 ### Compliance Flow
@@ -608,6 +607,323 @@ linkStyle default stroke:#777777,stroke-width:3px
 
 ---
 
+## Operational Procedures and Continuity
+
+All operational requirements are defined system-wide in the master technical specification. This section provides Ops Log-specific clarifications and applies those cross-cutting requirements to reactor operations logging.
+
+**See:** [Master Tech Spec § 9: Operational Requirements & Continuity](../specs/neutron-os-master-tech-spec.md#9-operational-requirements--continuity)
+
+This includes:
+- **Day-End Close-Out** (§9.1): Entry immutability, supplement allowance, shift boundaries
+- **Backup & Archive** (§9.2): Cloud, local drive, printed archives, retention policy
+- **Multi-Facility Configuration** (§9.3): Customizable forms, facility-specific dropdowns
+- **Deployment Topology** (§9.4): Phased control room deployment, network architecture
+- **Testing Phase & Operator Confidence** (§9.5): Dual-logging procedures, transition plan
+- **System Resilience & Downtime** (§9.6): Offline-first, local cache, hand-log fallbacks
+
+---
+
+### Day-End Close-Out (Ops Log Clarifications)
+
+> **Requirement:** Operators want the log to be "closed out" at the end of the day.
+
+**Clarification Needed:** Define "closed out" and its implications:
+
+| Concept | Status | Definition |
+|---------|--------|-----------|
+| **Read-Only Period** | Proposed | After shift ends, entries from that shift become read-only (no further edits allowed) |
+| **Supplements Still Allowed** | Proposed | Supplements can be added even to closed shifts (for corrections discovered later) |
+| **Immutability Boundary** | To Define | When does the log become permanently immutable? 24 hours? 1 week? Per regulatory requirement? |
+| **Shift Manager Sign-Off** | To Define | Does a shift manager need to formally "close" the log, or is it automatic at end-of-shift time? |
+
+**Design Options:**
+
+1. **Automatic Close (Recommended)**: Log entries automatically become read-only at end-of-shift timestamp (e.g., 16:00 for day shift). Supplements still allowed.
+2. **Manual Close**: SRO/Shift Manager explicitly clicks "Close Shift" button; log becomes read-only.
+3. **Time-Locked Close**: Entries older than 24 hours become read-only; recent entries remain editable.
+
+**Implementation Consideration:** Supplement-only model (no deletes, no edits) already enforces immutability if we lock the entry itself post-close.
+
+### Backup and Archive Requirements
+
+> **Requirement:** Operators want one or more hard and soft backups for the elog. Initially, this could be printing out hard copies (weekly, monthly) or a hard-drive backup.
+
+**Backup Strategy:**
+
+| Backup Type | Frequency | Storage | Purpose |
+|-------------|-----------|---------|---------|
+| **Automated Cloud Backup** | Continuous | Off-site storage (AWS/GCP) | Primary disaster recovery |
+| **Encrypted Local Backup** | Daily | Facility network drive | Fast recovery, no internet dependency |
+| **Printed Hard Copy Archives** | Weekly/Monthly | Physical filing cabinet | Regulatory audit trail, offline reference |
+| **Portable Hard Drive** | Monthly | Lockable storage | Secure offline archive, facility-controlled |
+| **Plain-Text Archive Export** | Weekly | Multiple media | Future-proof (readable without software) |
+
+**Operator Interaction:**
+- Weekly manual export to PDF + plain text for facility records (operators print/file)
+- System automatically syncs to encrypted local drive
+- Cloud backup is transparent (automatic daily)
+- Operators can request on-demand export anytime
+
+**Retention Policy (to be finalized):**
+- Live system: 2 years (NRC inspection window)
+- Offline archive: 7+ years (regulatory requirement, facility-specific)
+
+### Data Entry Forms and Customization
+
+> **Requirement:** Operators want to enter data in the format they are accustomed to. They need specific data forms.
+
+**Current Facility-Specific Forms:**
+
+| Entry Type | Current Format | Data Fields | Customization |
+|------------|-------|---|---|
+| **CONSOLE_CHECK** | Handwritten checklist | Time, power, pool temp, rod position, channels A/B, operator initials | Fixed (federally required) |
+| **STARTUP** | Startup checklist | Procedure steps, authorization, sign-offs | Facility-configurable |
+| **SHUTDOWN** | Shutdown log | Reason (planned/emergency), steps completed | Facility-configurable |
+| **EXPERIMENT_LOG** | Experiment notebook | Sample ID, irradiation params, dose rate, handler notes | Researcher-driven; facility templates available |
+
+**Design Approach:**
+- Core console check form is standardized (meets NRC requirements)
+- Other entry types allow facility-specific fields via configuration
+- Dropdown menus for common values (experiment types, shutdown reasons)
+- Pre-fill templates for routine entries
+- Ability to save custom templates for "standard NAA irradiation," "standard INAA," etc.
+
+### Server Location (Control Room Deployment)
+
+> **Requirement:** Operators need the elog server to be (eventually) located in the control room.
+
+**Phased Deployment:**
+
+| Phase | Location | Network | Redundancy | Target |
+|-------|----------|---------|------------|--------|
+| **Phase 1 (MVP)** | Off-site (TACC/Cloud) | Fiber to facility | Internet-dependent | Q2 2026 |
+| **Phase 1.5** | Facility network (back office) | Fiber from control room | Local failover ready | Q3 2026 |
+| **Phase 2** | Control room console | Direct network | Mirrored local + cloud | 2027 |
+
+**Control Room Deployment Considerations:**
+- **Environment**: Control room has strict physical security, temperature control, limited physical space
+- **Network**: Must tie into facility network without compromising reactor control systems
+- **Redundancy**: Dual network paths (primary + backup) to prevent single-point-of-failure
+- **UPS/Power**: Must survive facility power loss for ≥15 minutes (allow graceful shutdown or hand-off to backup system)
+- **Operator Interface**: Console-accessible display (monitor arm, touchscreen, or hardened tablet)
+
+**Interim Solution (Phase 1):** Cloud-based system with local fiber connection to control room. Operators access via facility workstation in control room annex (5 feet from console).
+
+### Testing Phase Procedures
+
+> **Requirement:** Operators need to define their procedures for logging while the elog is in testing phase. Initially, they will likely perform double duty during testing, recording both a hand-log and an electronic log. Once they gain confidence in the elog, they will rely on the elog exclusively.
+
+**Testing Phase Plan:**
+
+| Phase | Duration | Logging Method | Operator Role | Success Metrics |
+|-------|----------|---|---|---|
+| **Phase 0: Dry Run** | 1-2 weeks | Hand-log only + Parallel training | Ops staff learn system off-shift | No errors in system familiarization |
+| **Phase 1: Parallel (Dual Logging)** | 4-6 weeks | Hand-log + Electronic log | Both logged each shift; hand-log is "source of truth" | >95% data consistency between logs |
+| **Phase 2: Trust-Building** | 4 weeks | Hand-log + Electronic log (reduced) | Electronic log primary; hand-log for cross-check | Operators gain confidence; >99% agreement |
+| **Phase 3: Cutover** | Ongoing | Electronic log only | Full reliance; hand-log only for emergency | NRC-approved transition; no data loss |
+
+**Dual-Logging Workflow (Phase 1):**
+- Operators make entry in hand-log (as usual)
+- Same operators (or cross-shift buddy) enter data into electronic log within 1 hour
+- Daily reconciliation: Compare hand-log and electronic log entries for gaps/discrepancies
+- Facility manager reviews reconciliation report
+- Any discrepancies resolved before shift closes
+
+**Confidence Checkpoints:**
+- Week 2: No missed entries between logs
+- Week 4: Operators comfortable with system (no support needed)
+- Week 8: Formal sign-off by facility manager and ops staff to proceed with Phase 3
+
+**Training Requirements:**
+- System orientation (1 hour on-shift)
+- Hands-on practice (1 shift of parallel logging with support staff present)
+- Q&A session post-training
+- Written acknowledgment that operator understands system
+
+### System Unavailability / Downtime Procedures
+
+> **Requirement:** Operators need to define their procedure for what to do when the elog is inaccessible (revert to hand logs? Send a time-stamped email to somewhere? Have a local elog instance capture the data?).
+
+**Availability Tiers and Fallback:**
+
+| Scenario | Duration | Fallback Method | Data Recovery |
+|----------|----------|---|---|
+| **Network Latency** | <5 seconds | Queue entries locally; sync when restored | Automatic sync, no data loss |
+| **Temporary Outage** | 5 min – 1 hour | Use local cache; hand-log backup entries | Sync on reconnect + manual reconciliation |
+| **Extended Outage** | 1 hour – shift | Switch to hand-log; email entries to ops email | Manual re-entry post-recovery |
+| **Complete System Failure** | Shift+ | Full hand-log; timestamp each entry; print/archive | Scheduled re-entry during next business day |
+
+**Detailed Fallback Procedures:**
+
+1. **Latency/Brief Outage (Local Cache Mode)**
+   - System detects network issue
+   - Operator receives on-screen notification: "Network latency detected. Entries are queuing locally and will sync when connection restored."
+   - Operators continue logging normally (UI is responsive, data is cached)
+   - No action required; automatic sync happens
+
+2. **Extended Outage (Hand-Log Fallback)**
+   - System unavailable for >1 hour
+   - Operator reverts to **printed hand-log form** (stored at console)
+   - Each entry includes: Time, operator initials, entry type, content
+   - At end of shift, operator takes photos/scans of hand-log pages
+   - Email scans to: **elog-backup@facility.edu** with subject: "Backup Entries [Shift Date]"
+   - Include filename: `elog-backup-2026-01-21-dayshift.pdf`
+
+3. **Data Recovery Post-Outage**
+   - Facility IT restores system from backup
+   - Facility manager (or designee) manually re-enters hand-log entries into system
+   - Timestamp used: Original entry time (from hand-log)
+   - Note added to each entry: "Re-entered from hand-log backup due to [outage date/reason]"
+   - Appendix added to shift summary: "XXX entries re-entered from backup on [date]"
+
+**Local elog Instance (Future Option)**
+> "Have a local elog instance capture the data?"
+
+Design consideration for Phase 2:
+- Ruggedized local server in facility server room (redundant to cloud)
+- Runs on facility network only; syncs to cloud when connectivity restored
+- Adds complexity and cost; defer to Phase 2 if needed
+
+**Preferred: Hybrid Approach (Recommended)**
+- Hand-log forms + email capture (low cost, reliable, operator-familiar)
+- Local network backup drive for sync (added security; no cloud dependency during outage)
+- Invest in local elog server only if hand-log procedure proves insufficient
+
+### Hand-Log Form Design
+
+> **Goal:** Design a printed form that operators fill during outages, then rapidly OCR + import back into the system post-recovery.
+
+**Design Principles for OCR Readiness:**
+
+1. **High contrast**: Black text/checkboxes on white background; avoid grays or light colors
+2. **Structured layout**: Fixed field positions (same location on every form for machine recognition)
+3. **Clear boundaries**: Visible boxes/lines defining each field
+4. **Block letter encouragement**: Printed text is more OCR-friendly than cursive
+5. **Avoid free-form**: Use dropdowns, checkboxes, and fill-in-blanks instead of open narrative where possible
+6. **Sequential numbering**: Entry number printed for tracking and verification
+7. **Barcode/QR**: Optional metadata (date, shift, page number) for fast sorting post-scan
+
+**Hand-Log Form Layout:**
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                     NETL REACTOR OPS LOG                             │
+│                   EMERGENCY BACKUP ENTRY FORM                        │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ENTRY #: __________    DATE: __/__/____  SHIFT: □ Day □ Night     │
+│                                                 □ Owl                │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ TIME:  __:__ AM/PM   OPERATOR NAME: _____________________    │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ ENTRY TYPE (CHECK ONE):                                      │   │
+│  │ □ Console Check     □ Startup      □ Shutdown              │   │
+│  │ □ Experiment Log    □ Scram        □ General Note           │   │
+│  │ □ Maintenance       □ Radiation Survey    □ Other: ____    │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ REACTOR STATUS:                                              │   │
+│  │ Power: __________ kW    Mode: □ Shutdown  □ Operating      │   │
+│  │ Pool Temp: __________ °F    Coolant Temp: __________ °F   │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ ENTRY DETAILS:                                               │   │
+│  │ ________________________________________________________________ │   │
+│  │ ________________________________________________________________ │   │
+│  │ ________________________________________________________________ │   │
+│  │ ________________________________________________________________ │   │
+│  │ ________________________________________________________________ │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ TAGS (IF APPLICABLE):                                        │   │
+│  │ □ pnt-sample    □ dose-rate     □ excess-reactivity        │   │
+│  │ □ maintenance   □ startup       □ shutdown                  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ SIGNATURE SECTION:                                           │   │
+│  │ Co-Signature Required? □ Yes  □ No                          │   │
+│  │ Operator Initials: ___   Signature: __________________      │   │
+│  │ SRO Name (if req'd): _________________ Signature: _______  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Form Specifications for OCR:**
+
+| Field | Type | OCR Optimization | Notes |
+|-------|------|------------------|-------|
+| **ENTRY #** | Text | Printed sequential number | System-assigned post-recovery |
+| **DATE** | Date field | MM/DD/YYYY format; fixed boxes | Machine-readable date |
+| **SHIFT** | Checkbox | Clear, large boxes | □ preferred over other symbols |
+| **TIME** | Time field | HH:MM with AM/PM boxes | 24-hr time; fixed field width |
+| **OPERATOR NAME** | Handwritten | Printed block letters encouraged | Post-OCR validation required |
+| **ENTRY TYPE** | Checkbox | Clear boxes; one selected | OCR recognizes checked state |
+| **POWER/TEMP fields** | Numeric | Right-aligned, fixed width | OCR handles numeric well |
+| **ENTRY DETAILS** | Handwritten | Large box; line-spaced | OCR will flag for manual review |
+| **TAGS** | Checkbox | Predefined checkboxes only | No free-form tags on paper |
+| **SIGNATURES** | Handwritten | Signature boxes; space for initials | Initials more OCR-friendly |
+
+**OCR Workflow (Post-Outage Recovery):**
+
+```
+1. SCAN
+   └─ Operator scans hand-log pages at end of shift
+      (High-res B&W scan, 300 dpi minimum)
+
+2. OCR CONVERSION
+   └─ Batch process forms through OCR engine (e.g., Tesseract, AWS Textract)
+      Result: Structured data (JSON/CSV)
+
+3. VALIDATION
+   └─ Facility manager (or operator) reviews OCR output
+      Checks:
+      - Handwritten fields flagged for manual correction
+      - Numeric fields verified (power, temperature)
+      - Checkboxes correctly interpreted
+      - Operator names matched to facility directory
+
+4. IMPORT
+   └─ Validated data → System import script
+      Generates entries with:
+      - timestamp = original entry time from hand-log
+      - source = "hand-log-backup (outage 2026-01-21)"
+      - status = "verified" or "requires_review"
+
+5. AUDIT
+   └─ Facility manager spot-checks 10% of imported entries
+      Compares hand-log original vs. system entry
+      Flags any discrepancies for manual correction
+```
+
+**Quality Assurance for OCR:**
+
+| Field Type | Confidence Level | Action if < Threshold |
+|------------|------------------|----------------------|
+| **Structured fields** (date, time, power) | >95% | Reject, require manual re-entry |
+| **Checkboxes** (entry type, tags) | >90% | Reject if ambiguous |
+| **Handwritten names** | >75% | Flag for manual verification |
+| **Free-form text** (entry details) | >80% | Flag for human review before import |
+
+**Estimated Re-Entry Time (with OCR):**
+
+| Method | Processing Time | Accuracy | Notes |
+|--------|-----------------|----------|-------|
+| **Manual re-entry** | 3-5 min per entry | 99% | Operator reads hand-log, types into system |
+| **OCR + validation** | 1-2 min per entry (scanned batch) | 95-98% | Scan → OCR → spot-check |
+| **OCR + minimal review** | 30 sec per entry | 90-95% | Fast but higher error rate; use for lower-priority entries |
+
+**Recommended Approach:** Use OCR for high-volume catch-up (100+ entries) with sampled manual validation. Operators can review OCR results while facility manager imports validated batches.
+
+---
+
 ## MVP Scope (Phase 1)
 
 ### In Scope
@@ -683,6 +999,61 @@ The Operations Log must satisfy NRC requirements for:
 4. **Authenticity**: Can verify entries were made by authorized personnel at stated times
 
 The supplement-based correction model and cryptographic chaining specifically address the "no modification without trace" requirement.
+
+---
+
+## NEUP Research Addendum
+
+### NEUP Proposal: Semi-Autonomous Controls
+
+**Proposal:** Developing semi-autonomous reactor control systems with human oversight.
+
+**Supporting PRD Sections:**
+- Entry type schema (extensible to new event types)
+- Audit trail infrastructure
+- SRO signature requirements
+
+**Gap Addressed:** Current PRD assumes fully manual operations; no specification for autonomy modes or automated actions.
+
+#### Autonomy Level Specification
+
+| Level | Name | Description | Human Role | Ops Log Requirement |
+|-------|------|-------------|------------|---------------------|
+| 0 | Manual | DT provides information only | Full control | Standard entries |
+| 1 | Advisory | DT suggests actions | Approval required | Log recommendations |
+| 2 | Semi-Auto (Bounded) | DT executes within pre-approved envelope | Monitoring + override | Log autonomous actions |
+| 3 | Semi-Auto (Extended) | DT handles routine operations | Exception handling | Continuous audit |
+
+#### New Entry Types for Autonomy
+
+| Entry Type | Description | Signature Required |
+|------------|-------------|-------------------|
+| `AUTONOMY_MODE_CHANGE` | Transition between autonomy levels | SRO |
+| `AUTONOMOUS_ACTION` | Action taken by DT without human initiation | System + SRO review |
+| `OPERATOR_OVERRIDE` | Human overrode DT recommendation | Operator |
+| `AUTONOMY_FAULT` | System reverted to lower autonomy level | System + SRO review |
+
+---
+
+### NEUP Proposal: Operator LLM Safety
+
+**Proposal:** Safety constraints for LLM interactions with reactor operators.
+
+**Supporting PRD Sections:**
+- Audit trail (captures all system interactions)
+- User role distinctions (SRO vs Operator permissions)
+
+**Gap Addressed:** Future AI integration needs ops log entries for LLM interactions.
+
+#### New Entry Types for LLM Interactions
+
+| Entry Type | Description | Fields |
+|------------|-------------|--------|
+| `LLM_QUERY` | Operator asked LLM a question | query_text, context |
+| `LLM_RESPONSE` | System response to operator | response_text, sources_cited, confidence |
+| `LLM_ACTION_DECLINED` | LLM refused to provide operational recommendation | query_text, decline_reason |
+
+*These entry types enable audit trail for AI-assisted operations while maintaining regulatory compliance.*
 
 ---
 

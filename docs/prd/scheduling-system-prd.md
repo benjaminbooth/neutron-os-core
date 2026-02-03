@@ -354,8 +354,16 @@ gantt
 
 - 99.9% uptime for viewing schedules
 - Graceful degradation if external calendars unavailable
-- Offline mode for read-only schedule access
+- Offline-first design for read-only schedule access
 - Audit trail of all schedule changes
+
+**See also:** [Master Tech Spec § 9.4: Phased Deployment Topology](../specs/neutron-os-master-tech-spec.md#94-phased-deployment-topology) and [§ 9.6: System Resilience & Offline-First Pattern](../specs/neutron-os-master-tech-spec.md#96-system-resilience--offline-first-pattern)
+
+The Scheduling System implements offline-first patterns to support facility operations during cloud outages:
+- **Local cache**: SQLite replica of schedules synced daily at minimum
+- **Outage behavior**: Serves read-only schedules from local cache; changes queued for sync when online
+- **Facility displays**: Independent local data sources prevent single point of failure
+- **Phased deployment**: Control room displays work even if facility server is offline; facility server works even if cloud is offline
 
 ### Security
 

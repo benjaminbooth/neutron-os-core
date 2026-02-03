@@ -21,142 +21,103 @@ Both share technical backend (scheduling, tracking, reactor integration) but ser
 
 ---
 
+## NEUP Alignment
+
+| Proposal | Reference | POCs |
+|----------|-----------|------|
+| **Medical Isotopes DT** | `docs/NEUP_2026/MedicalIsotopes.docx` | PI: Benjamin Collins (UT); Collaborators: Soha Aslam (UT), William Charlton (UT) |
+
+**Research Integration:** This PRD aligns with the NEUP Medical Isotopes proposal, which develops DT-driven semi-autonomous operations capability for the UT NETL TRIGA reactor, including operator-facing DT validity and confidence communication for medical isotope production workflows.
+
+---
+
 ## User Journey Map
 
 ### Hospital Customer: Order to Delivery
 
 ```mermaid
 flowchart LR
-    subgraph ORDER["🛍️ ORDERING"]
-        direction TB
-        O1[Log in to portal]
-        O2[Select isotope from catalog]
-        O3[Set quantity & calibration date]
-        O4[Submit order]
-        O5[Receive confirmation email]
-        O1 --> O2 --> O3 --> O4 --> O5
-    end
+    O1["🛍️ Login"] --> O2[Select isotope] --> O3[Submit order]
+    O3 --> W1["⏳ Check status"] --> W2[Production notice] --> W3[QA notice]
+    W3 --> D1["📦 Ship notice"] --> D2[Track] --> D3[Confirm receipt]
     
-    subgraph WAIT["⏳ WAITING"]
-        direction TB
-        W1[Check order status]
-        W2[Receive 'in production' notification]
-        W3[Receive 'QA passed' notification]
-        W1 --> W2 --> W3
-    end
-    
-    subgraph DELIVER["📦 DELIVERY"]
-        direction TB
-        D1[Receive shipping notification]
-        D2[Track package]
-        D3[Sign for delivery]
-        D4[Confirm receipt in portal]
-        D1 --> D2 --> D3 --> D4
-    end
-    
-    ORDER --> WAIT --> DELIVER
-    
-    style ORDER fill:#e3f2fd,stroke:#1976d2,color:#000000
-    style WAIT fill:#fff3e0,stroke:#f57c00,color:#000000
-    style DELIVER fill:#e8f5e9,stroke:#388e3c,color:#000000
-linkStyle default stroke:#777777,stroke-width:3px
+    style O1 fill:#e3f2fd,stroke:#1976d2,color:#000
+    style O2 fill:#e3f2fd,stroke:#1976d2,color:#000
+    style O3 fill:#e3f2fd,stroke:#1976d2,color:#000
+    style W1 fill:#fff3e0,stroke:#f57c00,color:#000
+    style W2 fill:#fff3e0,stroke:#f57c00,color:#000
+    style W3 fill:#fff3e0,stroke:#f57c00,color:#000
+    style D1 fill:#e8f5e9,stroke:#388e3c,color:#000
+    style D2 fill:#e8f5e9,stroke:#388e3c,color:#000
+    style D3 fill:#e8f5e9,stroke:#388e3c,color:#000
+    linkStyle default stroke:#777777,stroke-width:3px
 ```
 
 ### Production Manager: Weekly Batch
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph THU["📅 THURSDAY (Cutoff)"]
-        direction TB
-        T1[Review pending orders]
-        T2[Check production capacity]
-        T3[Batch orders by isotope]
-        T4[Finalize Monday schedule]
-        T1 --> T2 --> T3 --> T4
+        direction LR
+        T1[Review orders] --> T2[Check capacity]
+        T2 --> T3[Batch by isotope] --> T4[Finalize schedule]
     end
     
     subgraph MON["🏭 MONDAY (Production)"]
-        direction TB
-        M1[Brief operators on batch]
-        M2[Monitor irradiation progress]
-        M3[Review QA/QC results]
-        M4[Approve COA generation]
-        M5[Confirm courier pickup]
-        M1 --> M2 --> M3 --> M4 --> M5
+        direction LR
+        M1[Brief operators] --> M2[Monitor irradiation] --> M3[Review QA/QC]
+        M3 --> M4[Approve COA] --> M5[Confirm pickup]
     end
     
     THU --> MON
     
     style THU fill:#f3e5f5,stroke:#7b1fa2,color:#000000
     style MON fill:#fff3e0,stroke:#f57c00,color:#000000
-linkStyle default stroke:#777777,stroke-width:3px
+    linkStyle default stroke:#777777,stroke-width:3px
 ```
 
 ### Order State Machine
 
 ```mermaid
 stateDiagram-v2
+    direction LR
+    
     [*] --> Ordered: Customer submits
-    Ordered --> Scheduled: PM assigns to batch
+    Ordered --> Scheduled: PM assigns batch
     Scheduled --> Producing: Irradiation starts
-    Producing --> QA_Pending: Irradiation complete
+    Producing --> QA_Pending: Complete
     
-    QA_Pending --> Passed: All tests pass
-    QA_Pending --> Rejected: Any test fails
+    QA_Pending --> Passed: Tests pass
+    QA_Pending --> Rejected: Tests fail
     
-    Passed --> Packaged: Shipping prep
+    Passed --> Packaged: DOT prep
     Packaged --> Shipped: Courier pickup
-    Shipped --> Delivered: Customer confirms
+    Shipped --> Delivered: Confirmed
     Delivered --> [*]
     
-    Rejected --> Reordered: Customer notified
-    Reordered --> Scheduled: Next batch
-    linkStyle default stroke:#777777,stroke-width:3px
+    Rejected --> Scheduled: Reorder
 ```
 
 ### System Integration
 
 ```mermaid
-flowchart TB
-    subgraph Customer["Customer Portal"]
-        Order[Place Order]
-        Track[Track Status]
-    end
+flowchart LR
+    Order["🖥️ Place Order"] --> Sched["⚛️ Scheduler"] --> Batch["🏭 Batch"] --> QA[QA/QC] --> COA[COA]
+    COA --> Courier["🚚 Courier"] --> Track["🖥️ Track Status"]
+    COA --> Billing["💳 Billing"]
+    Sched -.-> Notify["🔔 Notify"]
+    QA -.-> Notify
+    Courier -.-> Notify
     
-    subgraph Core["Neutron OS Core"]
-        Sched[Scheduler]
-        Reactor[Reactor Integration]
-        Notify[Notifications]
-    end
-    
-    subgraph Production["Production"]
-        Batch[Batch Planning]
-        QA[QA/QC]
-        COA[COA Generator]
-    end
-    
-    subgraph External["External"]
-        Courier[Courier API]
-        Billing[Invoicing]
-    end
-    
-    Order --> Sched
-    Sched --> Batch
-    Batch --> Reactor
-    Reactor --> QA
-    QA --> COA
-    COA --> Courier
-    Courier --> Track
-    COA --> Billing
-    
-    Sched --> Notify
-    QA --> Notify
-    Courier --> Notify
-    
-    style Customer fill:#1565c0,color:#fff
-    style Core fill:#2e7d32,color:#fff
-    style Production fill:#e65100,color:#fff
-    style External fill:#424242,color:#fff
+    style Order fill:#1565c0,color:#fff
+    style Track fill:#1565c0,color:#fff
+    style Sched fill:#2e7d32,color:#fff
+    style Notify fill:#2e7d32,color:#fff
+    style Batch fill:#e65100,color:#fff
+    style QA fill:#e65100,color:#fff
+    style COA fill:#e65100,color:#fff
+    style Courier fill:#424242,color:#fff
+    style Billing fill:#424242,color:#fff
     linkStyle default stroke:#777777,stroke-width:3px
 ```
 
@@ -274,28 +235,35 @@ Example products for a TRIGA facility (actual catalog varies):
 
 ```mermaid
 flowchart LR
-    subgraph ROW1[" "]
-        direction LR
-        ORDERED["**ORDERED** Customer submits"]
-        SCHEDULED["📅 **SCHEDULED** Batched for production"]
-        PRODUCING["⚛️ **PRODUCING** In reactor or lab"]
-        QAQC["🔬 **QA/QC** Activity, purity test"]
+    subgraph COL1["📥 INTAKE"]
+        direction TB
+        ORDERED["📝 ORDERED"]
+        SCHEDULED["📅 SCHEDULED"]
+        ORDERED --> SCHEDULED
     end
-
-    subgraph ROW2[" "]
-        direction LR
-        PASSED["✅ **PASSED** COA issued"]
-        PACKAGED["📦 **PACKAGED** DOT ready for pickup"]
-        SHIPPED["🚚 **SHIPPED** In transit"]
-        DELIVERED["🎯 **DELIVERED** Confirmed receipt"]
+    
+    subgraph COL2["⚛️ PRODUCTION"]
+        direction TB
+        PRODUCING["🔬 PRODUCING"]
+        QAQC["✅ QA/QC"]
+        PRODUCING --> QAQC
+        QAQC -->|fail| REJECTED["❌ REJECTED"]
     end
-
-    REJECTED["❌ **REJECTED** Customer notified"]
-
-    ORDERED --> SCHEDULED --> PRODUCING --> QAQC
+    
+    subgraph COL3["📦 SHIP"]
+        direction TB
+        PASSED["✓ PASSED"]
+        PACKAGED["📦 PACKAGED"]
+        SHIPPED["🚚 SHIPPED"]
+        DELIVERED["🎯 DELIVERED"]
+        PASSED --> PACKAGED
+        PACKAGED --> SHIPPED
+        SHIPPED --> DELIVERED
+    end
+    
+    SCHEDULED --> PRODUCING
     QAQC --> PASSED
-    QAQC -->|"if failed"| REJECTED
-    PASSED --> PACKAGED --> SHIPPED --> DELIVERED
+    REJECTED -.->|retry| SCHEDULED
 
     style ORDERED fill:#1565c0,color:#fff
     style SCHEDULED fill:#1565c0,color:#fff
@@ -306,9 +274,9 @@ flowchart LR
     style SHIPPED fill:#2e7d32,color:#fff
     style DELIVERED fill:#2e7d32,color:#fff
     style REJECTED fill:#c62828,color:#fff
-    style ROW1 fill:none,stroke:none
-    style ROW2 fill:none,stroke:none
-    linkStyle default stroke:#777777,stroke-width:3px
+    style COL1 fill:#e3f2fd,stroke:#1976d2,color:#000
+    style COL2 fill:#fff3e0,stroke:#f57c00,color:#000
+    style COL3 fill:#e8f5e9,stroke:#388e3c,color:#000
 ```
 
 ### Stage Transitions
@@ -547,6 +515,21 @@ flowchart LR
 
 ---
 
+## Operational Requirements
+
+Medical Isotope Production operates within the broader Neutron OS operational framework. Key operational requirements are defined at the system level to ensure consistency and regulatory compliance.
+
+**See also:**
+- [Master Tech Spec § 9: Operational Requirements & Continuity](../specs/neutron-os-master-tech-spec.md#9-operational-requirements--continuity)
+
+| Operational Concern | Applies to Medical Isotope | Reference |
+|---------------------|---------------------------|-----------|
+| **Facility-specific configuration** | Isotope catalog, pricing, production schedules | [Master § 9.3](../specs/neutron-os-master-tech-spec.md#93-multi-facility-configuration) |
+| **Data retention & compliance** | Production records, customer orders, QC data | [Data Architecture § 9](../specs/data-architecture-spec.md#9-backup--retention-policy) |
+| **Phased deployment** | Roll-out from cloud to facility to control room | [Master § 9.4](../specs/neutron-os-master-tech-spec.md#94-phased-deployment-topology) |
+
+---
+
 ## Configurability
 
 | Aspect | Configurable | Notes |
@@ -602,46 +585,97 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph NEUTRONOS["⚛️ NEUTRON OS"]
-        subgraph SHARED["🔧 SHARED BACKEND"]
-            direction TB
-            RS["Reactor Schedule"]
-            FC["Facility Config"]
-            TS["Time- Series"]
-            NE["Notif. Engine"]
-            EI["Elog Integr."]
-            UA["User Auth"]
-            AT["Audit Trail"]
-            RE["Reports Engine"]
-        end
-        
-        SHARED --> EXPMGR & ISOTOPE
-        
-        subgraph EXPMGR["🧪 EXPERIMENT MANAGER"]
-            E1["• Sample CRUD"]
-            E2["• Researcher workflow"]
-            E3["• PI reports"]
-        end
-        
-        subgraph ISOTOPE["☢️ MEDICAL ISOTOPE PRODUCTION"]
-            I1["• Order mgmt"]
-            I2["• Customer DB"]
-            I3["• QA/QC"]
-            I4["• Billing"]
-            I5["• Shipping"]
-        end
+    subgraph SHARED["🔧 SHARED BACKEND"]
+        direction TB
+        RS[Reactor Schedule]
+        FC[Facility Config]
+        TS[Time Series]
+        NE[Notifications]
     end
     
-    NOTE["💡 Module can be disabled per facility"]
+    SHARED --> EXPMGR
+    SHARED --> ISOTOPE
+    
+    subgraph EXPMGR["🧪 EXPERIMENT MANAGER"]
+        direction TB
+        E1[Sample CRUD]
+        E2[Researcher Workflow]
+        E3[PI Reports]
+    end
+    
+    subgraph ISOTOPE["☢️ MEDICAL ISOTOPE"]
+        direction TB
+        I1[Order Management]
+        I2[QA/QC Testing]
+        I3[Shipping & Billing]
+    end
 
-    style NEUTRONOS fill:#424242,color:#fff
     style SHARED fill:#1565c0,color:#fff
     style EXPMGR fill:#2e7d32,color:#fff
     style ISOTOPE fill:#e65100,color:#fff
-    linkStyle default stroke:#777777,stroke-width:3px
 ```
 
 **Shared code estimate:** ~60% of backend logic is reusable between modules.
+
+---
+
+## NEUP Research Addendum
+
+### NEUP Proposal: Medical Isotope Production Optimization
+
+**Proposal:** AI-driven optimization of medical isotope production scheduling and yield prediction.
+
+**Supporting PRD Sections:**
+- Section "Production Batch Schema" (target_quantity, actual_quantity, yield_percentage)
+- User stories around production scheduling
+- Integration with Scheduling System PRD
+
+**Gap Addressed:** Current PRD relies on manual batch planning by production manager; no optimization or yield prediction.
+
+#### Optimization Objectives
+
+| Objective | Weight | Description |
+|-----------|--------|-------------|
+| Maximize yield | 40% | Minimize decay losses between production and calibration |
+| Meet deadlines | 35% | Ensure all orders ship on time |
+| Reactor efficiency | 15% | Optimize reactor time utilization |
+| Balance portfolio | 10% | Distribute production across isotope types |
+
+#### New Requirements
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| MI-020 | Yield prediction model based on historical data and reactor conditions | P1 |
+| MI-021 | AI-recommended production schedules minimizing decay losses | P1 |
+| MI-022 | Alternative schedule generation when constraints conflict | P2 |
+| MI-023 | Integration with DT power predictions for flux estimation | P2 |
+
+#### New User Stories
+
+20. **As a production manager**, I want AI-recommended production schedules that minimize decay losses while meeting all customer deadlines.
+
+21. **As a production manager**, I want yield predictions with confidence intervals before committing to a production batch.
+
+22. **As a production manager**, I want to see the impact of reactor schedule changes on all pending isotope orders.
+
+#### Digital Twin Integration
+
+| DT Capability | Isotope Production Use |
+|---------------|----------------------|
+| Power predictions | Estimate flux during planned irradiation window |
+| Burnup tracking | Adjust activation estimates for target position |
+| Schedule integration | Coordinate with other facility activities |
+
+*This addendum should be reviewed with medical isotope program leadership when NEUP results are announced.*
+
+---
+
+## Potential Future Partners
+
+| Organization | Interest | Alignment |
+|--------------|----------|-----------|
+| **Idaho National Laboratory (INL)** | Advanced reactor fuel qualification, accident tolerant materials | Isotope production for material testing, reactor digital twin shared infrastructure |
+| **Oregon State University** | TRIGA reactor operations, medical isotope research | Peer institution for validation, shared best practices for university reactor operations |
 
 ---
 

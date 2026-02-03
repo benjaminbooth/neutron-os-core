@@ -81,7 +81,7 @@ These can be rendered by:
 
 PRDs incorporate feedback from:
 - **Khiloni Shah** — Experiment workflow, sample metadata
-- **Jim (TJ)** — Elog requirements, compliance
+- **Jim (TJ)** — Ops Log requirements, compliance
 - **Nick Luciano** — Time-series data, security, dashboards
 
 ## Archive

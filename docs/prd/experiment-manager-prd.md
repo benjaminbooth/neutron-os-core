@@ -461,9 +461,9 @@ Automatically correlate sample irradiation windows with:
 
 This enables post-hoc analysis: "What were the actual reactor conditions during my irradiation?"
 
-### Operations Log (Elog)
+### Operations Log
 
-Cross-reference elog entries with experiment IDs for complete audit trail.
+Cross-reference Ops Log entries with experiment IDs for complete audit trail.
 
 ---
 
@@ -598,7 +598,7 @@ flowchart TB
 - Automated dose calculations (with model integration)
 - AI-assisted sample entry (see Forward-Thinking Design)
 
-### Out of Scope (Indefinitely)
+### Out of Scope (For Now)
 - Spectrum analysis tools (use existing software)
 - Web calculators for all detector types (too much scope; Khiloni's concern valid)
 
@@ -717,6 +717,29 @@ User can accept suggestion with one click, or ignore and keep their selection.
 - Faster response times (smaller model)
 - Tuned for nuclear vocabulary and facility-specific jargon
 - RAG keeps it current without retraining
+
+---
+
+## Operational Requirements Integration
+
+Experiment Manager operates within the broader Neutron OS operational framework. Critical operational requirements are defined at the system level rather than per-module to ensure consistency across all systems.
+
+**See also:** [Master Tech Spec § 9: Operational Requirements & Continuity](../specs/neutron-os-master-tech-spec.md#9-operational-requirements--continuity)
+
+### Relevant Operational Concerns
+
+| Operational Area | Applies to Experiment Manager | Reference |
+|------------------|-------------------------------|-----------|
+| **Multi-Facility Configuration** | Sample tracking, facility-specific workflows, approval routing | [Master § 9.3](../specs/neutron-os-master-tech-spec.md#93-multi-facility-configuration) |
+| **Testing Phase Procedures** | Dual logging during initial deployment, daily reconciliation | [Master § 9.5](../specs/neutron-os-master-tech-spec.md#95-testing-phase-procedures) |
+| **Offline-First Capability** | Local access to experiment records during cloud outages | [Master § 9.6](../specs/neutron-os-master-tech-spec.md#96-system-resilience--offline-first-pattern) |
+| **Data Retention** | Sample records retained per regulatory requirements | [Master § 9.2 & Data Architecture § 9](../specs/data-architecture-spec.md#9-backup--retention-policy) |
+
+**Key Integration Points:**
+- **Facility configuration** is centrally managed; Experiment Manager queries facility master data for dropdowns and workflows
+- **Testing procedures** include running parallel experiments (hand-logged + electronic) with daily reconciliation
+- **Offline-first design** ensures researchers can query experiment records and create new entries even during cloud outages
+- **Data retention** is enforced at the data layer; Experiment Manager submits records to the backup/retention system
 
 ---
 

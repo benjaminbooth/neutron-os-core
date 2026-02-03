@@ -38,7 +38,7 @@ blockchain/
 ├── chaincode/
 │   ├── audit/                  # Audit trail chaincode
 │   │   └── go/
-│   └── elog/                   # Elog-specific chaincode
+│   └── log/                    # Log entry chaincode
 │       └── go/
 │
 └── sdk/
@@ -53,7 +53,7 @@ blockchain/
 - Verify inclusion proofs
 - Generate evidence manifests
 
-### Elog Chaincode
+### Log Chaincode
 - Immutable operator log entries
 - Entry amendments (append-only)
 - Signature verification

@@ -62,7 +62,7 @@ This prompt guides configuring Apache Superset to query Neutron OS data and buil
 Deploy Superset connected to the Neutron OS lakehouse and build five core dashboards:
 
 1. **Reactor Operations** - Real-time power, temperatures, status
-2. **Operations Log Compliance** - Elog gaps, mandatory check tracking (NEW)
+2. **Operations Log Compliance** - Ops Log gaps, mandatory check tracking (NEW)
 3. **Fuel Burnup Heatmap** - Per-element burnup visualization (NEW)
 4. **Data Quality** - Ingestion health, validation metrics
 5. **Digital Twin Performance** - Prediction vs. actual comparisons

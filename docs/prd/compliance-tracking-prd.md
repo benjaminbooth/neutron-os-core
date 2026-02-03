@@ -421,10 +421,23 @@ rule:
 
 ### Data Retention
 
-- **Operational data**: 2 years minimum per NRC
-- **Training records**: 5 years for initial qual, 3 years for requal
-- **Audit trails**: 7 years for compliance actions
-- **Inspection packages**: Permanent archive
+Data retention policies are defined at the system level in the master specification. This module implements compliance-specific retention tracking:
+
+**See also:** 
+- [Master Tech Spec § 9.2: Backup & Archive Strategy](../specs/neutron-os-master-tech-spec.md#92-backup--archive-strategy)
+- [Data Architecture § 9: Backup & Retention Policy](../specs/data-architecture-spec.md#9-backup--retention-policy)
+
+**Compliance-Specific Retention Windows:**
+- **Operational data**: 2 years minimum per NRC inspection window
+- **Training records**: 5 years for initial qualifications, 3 years for recurring
+- **Audit trails**: 7 years for all compliance actions (exceeds NRC minimum for defensibility)
+- **Inspection packages**: Permanent archive in facility-controlled storage
+
+**Integration with System Backup Strategy:**
+- All compliance records are included in the daily backup cycle
+- Inspection packages are automatically archived to Glacier-tier storage
+- Training records are encrypted and retained per facility policy
+- All retention is enforced at the data layer, not just in application logic
 
 ### Access Control
 

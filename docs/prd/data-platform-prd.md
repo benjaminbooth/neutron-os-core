@@ -67,13 +67,13 @@ flowchart TB
     
     subgraph Bronze["Bronze Layer (Raw)"]
         B1[(reactor_timeseries_raw)]
-        B2[(elog_entries_raw)]
+        B2[(log_entries_raw)]
         B3[(simulation_outputs_raw)]
     end
     
     subgraph Silver["Silver Layer (Cleaned)"]
         S1[(reactor_readings)]
-        S2[(elog_entries_validated)]
+        S2[(log_entries_validated)]
         S3[(xenon_dynamics)]
     end
     
@@ -169,6 +169,23 @@ mindmap
 - Self-service analytics (Superset)
 - Automated pipelines (Dagster + dbt)
 - Immutable audit trail for all data changes
+
+---
+
+## Data Architecture & Operational Requirements
+
+The Data Platform implements the system-wide data architecture and operational requirements defined in technical specifications. Key policies are centralized to ensure consistency:
+
+**See also:**
+- [Data Architecture Specification § 9: Backup & Retention Policy](../specs/data-architecture-spec.md#9-backup--retention-policy)
+- [Master Tech Spec § 9.2: Backup & Archive Strategy](../specs/neutron-os-master-tech-spec.md#92-backup--archive-strategy)
+
+**Key Operational Policies:**
+- **2-year live retention**: Data actively queried and in use via lakehouse
+- **7-year archive retention**: Data retained in Glacier-tier storage for regulatory compliance
+- **Multi-tier backup strategy**: Cloud replication (continuous), local daily, monthly Glacier archive, encrypted portable backup
+- **Disaster recovery**: RPO <1 minute (regional), <24 hours (data corruption)
+- **Immutability enforcement**: Iceberg table snapshots are immutable; all modifications tracked in transaction log
 
 ---
 
@@ -269,7 +286,7 @@ See: [Superset Scenarios](../specs/superset-scenarios/)
 | Core configurations | `static/core/*.csv` | CSV | Event-driven |
 | Xenon dynamics | `Xe_burnup_2025.csv` | CSV | Simulation |
 | Rod calibration | `CRH_*.csv`, `rho_vs_T.csv` | CSV | Event-driven |
-| Elog entries | Elog service | JSON/API | Real-time |
+| Log entries | Log service | JSON/API | Real-time |
 
 ---
 
@@ -291,3 +308,110 @@ See: [Superset Scenarios](../specs/superset-scenarios/)
 2. What time resolution for Gold tables? (hourly, daily)
 3. How much historical data to backfill?
 4. Should MPACT shadow predictions be included in dashboards?
+
+---
+
+## NEUP Research Addendum
+
+This section identifies NEUP 2026 proposals that directly support, extend, or depend on the Data Platform capabilities.
+
+### Supporting PRD Sections for NEUP Initiatives
+
+| NEUP Proposal | Supporting Requirement | How It Helps |
+|---------------|----------------------|--------------|
+| All DT proposals | DL-001, LH-001 | Bronze/Silver/Gold tiers provide training data for ML models |
+| All DT proposals | LH-002 (Time-travel) | Enables reproducible experiments on historical data states |
+| Cherenkov Power Monitoring | TR-001, TR-002 | Transform pipeline ready for new sensor types |
+| Resolving Sensor Data Conflicts | TR-003 (dbt tests) | Quality tests can validate reconciliation logic |
+| KANs/PINNs/ML Neutronics | AN-001, AN-002 | Superset dashboards visualize model predictions |
+
+### NEUP Proposal: Resolving Sensor Data Conflicts
+
+**Proposal:** Methods for reconciling conflicting readings from redundant sensors in nuclear facilities.
+
+**Gap Addressed:** Current PRD assumes sensor data arrives clean; no specification for multi-sensor fusion or conflict detection.
+
+#### New Requirements: Sensor Data Reconciliation
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| TR-006 | Sensor conflict detection when redundant sensors disagree beyond threshold | P1 |
+| TR-007 | Configurable reconciliation algorithms (weighted average, voting, Kalman filter) | P1 |
+| TR-008 | Reconciliation metadata preserved in Silver layer | P1 |
+
+#### New Silver Layer Transform: Sensor Fusion
+
+```yaml
+reconciliation_config:
+  strategy: "weighted_average" | "voting" | "kalman_filter" | "ml_fusion"
+  disagreement_threshold_pct: 5.0
+  minimum_sensors_required: 2
+
+output_fields:
+  - reconciled_value: float
+  - confidence_score: float
+  - contributing_sensors: array<string>
+  - quality_flag: "GOOD" | "CONFLICT" | "DEGRADED"
+```
+
+#### New Dashboard: Sensor Conflict Monitoring
+
+| Metric | Visualization |
+|--------|---------------|
+| Active conflicts by sensor group | Real-time alert panel |
+| Historical conflict frequency | Time-series chart |
+| Sensor agreement matrix | Heatmap |
+| Root cause patterns | Anomaly clustering |
+
+---
+
+### NEUP Proposal: Cherenkov Power Monitoring
+
+**Proposal:** Using Cherenkov radiation camera images to provide independent power measurements.
+
+**Gap Addressed:** Current PRD only handles structured sensor data (CSV, JSON); no image/video ingestion pipeline.
+
+#### New Data Source
+
+| Source | Location | Format | Refresh |
+|--------|----------|--------|----------|
+| **Cherenkov camera** | Pool camera system | Video stream / JPEG frames | Real-time |
+
+#### New Requirements: Image/Video Ingestion
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| DL-006 | Ingest video frames with timestamps to Bronze tier | P2 |
+| TR-009 | Image processing transform for Cherenkov intensity extraction | P2 |
+| TR-010 | Cross-calibration with ion chamber readings in Silver layer | P2 |
+
+#### Bronze → Silver Pipeline (Cherenkov)
+
+```
+Video Source → Frame Extraction → Bronze (raw frames)
+                                      ↓
+                              Blue Channel Intensity
+                                      ↓
+                              Calibration Curve
+                                      ↓
+                              Silver (power_cherenkov_derived)
+                                      ↓
+                              Gold (power_comparison_metrics)
+```
+
+**Integration Point:** Cherenkov-derived power serves as:
+- Independent validation of detector readings
+- Backup power estimate during detector maintenance
+- Additional data source for DT prediction validation
+
+---
+
+### Research Contact Points
+
+| Proposal | Data Platform Integration | Primary Concern |
+|----------|--------------------------|------------------|
+| Sensor Data Conflicts | Bronze→Silver transforms | Reconciliation algorithm selection |
+| Cherenkov Monitoring | New ingestion pipeline | Video storage and processing infrastructure |
+| All ML/DT proposals | Training data access | Data versioning, reproducibility |
+
+*This addendum should be reviewed when NEUP proposal decisions are announced.*

@@ -24,7 +24,7 @@ React + Vite + TypeScript web application for Neutron OS.
 |--------|-------------|
 | Dashboard | Reactor overview, status |
 | Simulator | Interactive reactor simulation |
-| Elog | Operations log viewer/editor |
+| Ops Log | Operations log viewer/editor |
 | Experiments | Experiment tracking |
 | Analytics | Self-service data exploration |
 | Audit | Audit trail viewer, evidence export |
@@ -44,7 +44,7 @@ frontend/
 │   ├── features/          # Feature modules
 │   │   ├── dashboard/
 │   │   ├── simulator/
-│   │   ├── elog/
+│   │   ├── ops-log/
 │   │   ├── experiments/
 │   │   ├── analytics/
 │   │   └── audit/

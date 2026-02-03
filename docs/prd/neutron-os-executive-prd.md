@@ -673,4 +673,109 @@ This PRD incorporates feedback from:
 
 ---
 
+## NEUP Research Addendum
+
+This section maps NEUP 2026 proposals to Neutron OS modules and identifies platform enhancements driven by research needs.
+
+### Research-Platform Alignment Matrix
+
+| NEUP Proposal | Primary Module | Integration Type |
+|---------------|----------------|------------------|
+| DT Framework IRP | Core Platform | Architecture validation |
+| Operator LLM Safety | Search/AI (future) | Safety requirements |
+| Cyber-Nuclear Security | All modules | Cross-cutting security |
+| Virtual Systems Engineer | Search/AI (future) | Agent capabilities |
+| Semi-Autonomous Controls | Reactor Ops Log | Autonomy specification |
+| KANs / PINNs / ML Neutronics | Analytics (DT) | Surrogate model options |
+| Medical Isotope Optimization | Medical Isotope | Production planning AI |
+| Resolving Sensor Data Conflicts | Data Platform | Data quality layer |
+| Cherenkov Power Monitoring | Data Platform | New sensor modality |
+
+### NEUP Proposal: Operator LLM Safety
+
+**Proposal:** Establishing safety guardrails for LLM use in nuclear operations.
+
+**Gap Addressed:** Future "Search/AI" module lacks safety specifications for operational contexts.
+
+#### LLM Safety Framework
+
+| Interaction Type | Safety Level | Requirements |
+|-----------------|--------------|-------------|
+| Information lookup | Low | Standard RAG with source citation |
+| Procedure assistance | Medium | Cross-reference approved procedures; human confirmation |
+| Operational recommendation | High | Multi-model consensus; physics validation; SRO approval |
+| Control action suggestion | **Prohibited** | LLM cannot suggest direct control actions |
+
+#### New Requirements for Search/AI Module
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| AI-001 | All LLM responses logged with query, response, sources cited | P0 |
+| AI-002 | Confidence scores required for operational queries | P0 |
+| AI-003 | Human-in-the-loop mandatory for action-oriented responses | P0 |
+| AI-004 | Prompt injection prevention via input sanitization | P1 |
+
+---
+
+### NEUP Proposal: Cyber-Nuclear Security (Topic 11)
+
+**Proposal:** Cybersecurity frameworks specifically for nuclear digital twins.
+
+**Gap Addressed:** Security architecture focuses on auth/authz; lacks cyber-physical threat modeling.
+
+#### Cyber-Physical Security Layer
+
+| Security Domain | Current State | Needed Enhancement |
+|-----------------|---------------|-------------------|
+| Authentication | ✅ Defined | — |
+| Authorization | ✅ Defined | — |
+| Sensor integrity | ❌ Not specified | Signed readings, spoofing detection |
+| Model tampering | ❌ Not specified | Secure model deployment, validation |
+| Air-gap deployment | ❌ Not specified | Network isolation option |
+
+---
+
+### NEUP Proposal: Digital Twin Framework IRP
+
+**Proposal:** Industry-wide standards for nuclear digital twin architectures.
+
+**Supporting PRD Element:** Modular architecture already uses factory/provider pattern enabling multi-facility deployment.
+
+**Recommended Enhancement:** Publish `ReactorProvider` interface as open standard for industry adoption.
+
+---
+
+### Research Collaboration Priorities
+
+| Priority | Proposal | POCs | Contact Reason |
+|----------|----------|------|----------------|
+| 🔴 Critical | DT Framework IRP | PI TBD; Collab: Ryan Stewart (INL), U Utah | Align Neutron OS architecture with emerging standards |
+| 🔴 Critical | Operator LLM Safety | PI TBD; Collab: Ron Boring (INL) | Define safety constraints before AI deployment |
+| 🔴 Critical | DT Safety (Cyber-Nuclear) | PI W. Charlton (UT); Collab: C. Gentry (UT), A. Williams (SNL) | Fill security documentation gap |
+| 🟡 High | Medical Isotope Optimization | PI B. Collins (UT); Collab: S. Aslam (UT), W. Charlton (UT) | Revenue-generating module enhancement |
+| 🟡 High | Semi-Autonomous Controls | PI B. Collins (UT); Collab: S. Aslam (UT), J. Ross (Natural Resources) | Future roadmap acceleration |
+| 🟡 High | Resolving Sensor Data Conflicts | PI TBD; Collab: K. Clarno (UT) | Data quality foundation |
+
+**Additional NEUP POCs for Related Proposals:**
+- **KANs Reactor Modeling:** PI Majdi Radaideh (U Michigan); Collab: Jeongwon Seo (UT), Cole Gentry (UT)
+- **PINNs Self-Shielding:** PI Cole Gentry (UT); Collab: Nicholas Luciano (UT), Yaqi Wang (INL)
+- **AI XS Library Tuning:** PI Cole Gentry (UT); Collab: Yaqi Wang (INL), Jesse Brown (ORNL)
+- **ML Neutronics Acceleration:** PI Cole Gentry (UT); Collab: Cody Permann (INL)
+- **Nuclear LLM Bench:** PI Kevin Clarno (UT); Collab: Derek Booth (UT), Ondrej Chvala (UT)
+- **Virtual Systems Engineer:** PI TBD; Collab: Ron Boring (INL)
+- **Cherenkov Power Monitoring:** PI W. Charlton (UT); Collab: J. Seo (UT), R. Steward (INL)
+
+*This addendum establishes the research integration framework for Neutron OS evolution.*
+
+---
+
+## Potential Future Partners
+
+| Organization | Capability | Alignment |
+|--------------|-----------|-----------|
+| **Idaho National Laboratory (INL)** | Advanced reactor design, fuel qualification, material testing | Digital twin for next-generation reactors, isotope production for materials research |
+| **Oregon State University** | TRIGA reactor operations, university reactor community network | Peer validation, shared best practices for university digital twin deployment |
+
+---
+
 *Document Status: Active — Updated with stakeholder feedback January 2026*

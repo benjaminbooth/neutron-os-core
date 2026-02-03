@@ -1,0 +1,131 @@
+/// Surrogate Model Interface for Neutron OS
+/// 
+/// This interface defines the contract between the WASM host runtime
+/// and surrogate model implementations. Models export this interface
+/// to provide predictions, validation, and metadata.
+///
+/// Design principles:
+/// - Deterministic: Same inputs must produce same outputs
+/// - Auditable: All calls can be logged and replayed
+/// - Safe: Bounded resource usage, no ambient authority
+
+package neutron:surrogate@0.1.0;
+
+/// Core model interface that all surrogates must implement
+interface model {
+    /// Input record for predictions
+    record input {
+        /// Feature vector (model-specific interpretation)
+        features: list<float64>,
+        
+        /// Optional timestamp for time-series models (unix micros)
+        timestamp: option<u64>,
+        
+        /// Optional request ID for tracing
+        request-id: option<string>,
+    }
+    
+    /// Output record from predictions
+    record output {
+        /// Prediction vector (model-specific interpretation)
+        prediction: list<float64>,
+        
+        /// Optional uncertainty estimates (same length as prediction)
+        uncertainty: option<list<float64>>,
+        
+        /// Computation time in microseconds
+        computation-time-us: u64,
+    }
+    
+    /// Model metadata for provenance tracking
+    record metadata {
+        /// Unique model identifier
+        model-id: string,
+        
+        /// Semantic version
+        version: string,
+        
+        /// Hash of training data/configuration
+        training-hash: string,
+        
+        /// Expected input dimension
+        input-dim: u32,
+        
+        /// Expected output dimension
+        output-dim: u32,
+        
+        /// Valid input ranges [(min, max), ...] for each feature
+        valid-ranges: list<tuple<float64, float64>>,
+        
+        /// Human-readable description
+        description: string,
+    }
+    
+    /// Validation status
+    record validation-result {
+        /// Whether model passed validation
+        valid: bool,
+        
+        /// Optional message explaining validation result
+        message: option<string>,
+    }
+    
+    /// Make a prediction from input features
+    /// 
+    /// Returns an error if:
+    /// - Input dimension doesn't match model expectation
+    /// - Input values are outside valid ranges
+    /// - Model encounters internal error
+    predict: func(input: input) -> result<output, string>;
+    
+    /// Validate that the model is ready for predictions
+    /// 
+    /// Implementations should check:
+    /// - Model weights are loaded
+    /// - Internal state is consistent
+    /// - Dependencies are available
+    validate: func() -> result<validation-result, string>;
+    
+    /// Get model metadata
+    /// 
+    /// Metadata should be constant for a given model binary
+    get-metadata: func() -> metadata;
+}
+
+/// Optional interface for models that support batch predictions
+interface batch-model {
+    use model.{input, output};
+    
+    /// Predict on multiple inputs at once
+    /// 
+    /// More efficient than repeated single predictions
+    /// for models that can vectorize operations
+    predict-batch: func(inputs: list<input>) -> result<list<output>, string>;
+}
+
+/// Optional interface for models that support uncertainty quantification
+interface uq-model {
+    use model.{input};
+    
+    /// Sample from the posterior predictive distribution
+    /// 
+    /// Returns `n-samples` draws from the model's uncertainty distribution
+    sample: func(input: input, n-samples: u32) -> result<list<list<float64>>, string>;
+    
+    /// Get prediction intervals
+    /// 
+    /// Returns (lower, upper) bounds for given confidence level (0-1)
+    prediction-interval: func(input: input, confidence: float64) -> result<tuple<list<float64>, list<float64>>, string>;
+}
+
+/// The world that surrogate models must implement
+world surrogate {
+    /// Required: core model interface
+    export model;
+    
+    /// Optional: batch prediction support
+    // export batch-model;
+    
+    /// Optional: uncertainty quantification
+    // export uq-model;
+}

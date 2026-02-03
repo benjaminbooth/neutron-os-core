@@ -1,3 +1,6 @@
+# Personal learning space (not shared)
+ben-learning/
+
 # Bazel
 bazel-*
 .bazelrc.user
@@ -96,3 +99,8 @@ superset_home/
 # Meeting intake
 meeting_recordings/
 transcripts/
+
+# Generated documentation
+docs/_tools/generated/
+docs/**/*.docx
+!docs/NEUP_2026/**/*.docx

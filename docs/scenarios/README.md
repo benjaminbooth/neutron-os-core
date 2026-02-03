@@ -41,7 +41,7 @@ Scenarios for Apache Superset dashboards. Each scenario includes:
 |----------|----------|--------|
 | Reactor Operations Dashboard | P0 | Designed |
 | Reactor Performance Analytics | P0 | Designed |
-| Elog Activity Summary | P1 | Placeholder |
+| Ops Log Activity Summary | P1 | Placeholder |
 | Experiment Tracking | P2 | Placeholder |
 | Audit Readiness | P1 | Placeholder |
 

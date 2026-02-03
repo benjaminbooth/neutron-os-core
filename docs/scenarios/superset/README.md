@@ -52,7 +52,7 @@ As a {role}, I want to {action} so that {benefit}.
 |---|----------|--------|-------|
 | 1 | [Reactor Performance Analytics](./reactor-performance-analytics/) | Draft | Pending Nick input |
 | 2 | Reactor Operations Dashboard | Pending | Nick Luciano |
-| 3 | Elog Activity Summary | Pending | TBD |
+| 3 | Ops Log Activity Summary | Pending | TBD |
 | 4 | Experiment Tracking | Pending | TBD |
 | 5 | Audit Readiness | Pending | TBD |
 

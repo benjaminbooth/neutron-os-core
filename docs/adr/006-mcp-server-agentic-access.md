@@ -27,11 +27,11 @@ We will implement a **Python MCP server** exposing Neutron OS data and operation
 
 | Category | Tools | Purpose |
 |----------|-------|---------|
-| **Query** | `query_reactor_timeseries`, `query_simulation_outputs`, `search_elog_entries` | Read data from lakehouse |
+| **Query** | `query_reactor_timeseries`, `query_simulation_outputs`, `search_log_entries` | Read data from lakehouse |
 | **Semantic** | `semantic_search_meetings`, `find_similar_scenarios` | Vector search via pgvector |
 | **Metadata** | `list_projects`, `get_schema`, `list_tables` | Discovery and schema info |
 | **Predict** | `get_dt_prediction`, `compare_prediction_actual` | Digital twin outputs |
-| **Write** | `create_elog_entry`, `log_meeting_action_item` | Controlled data creation |
+| **Write** | `create_log_entry`, `log_meeting_action_item` | Controlled data creation |
 
 ### Architecture
 
@@ -116,21 +116,23 @@ async def query_reactor_timeseries(
     return [TextContent(type="text", text=result.to_markdown())]
 
 @server.tool()
-async def search_elog_entries(
+async def search_log_entries(
     query: str,
     facility: str | None = None,
+    entry_type: str | None = None,  # 'ops' or 'dt'
     limit: int = 10
 ) -> list[TextContent]:
     """
-    Semantic search over elog entries using pgvector embeddings.
+    Semantic search over unified log entries using pgvector embeddings.
     
     Args:
         query: Natural language search query
         facility: Optional facility filter
+        entry_type: Optional filter for 'ops' or 'dt' entries
         limit: Max results
     
     Returns:
-        Relevant elog entries with similarity scores
+        Relevant log entries with similarity scores
     """
     # Implementation uses pgvector for semantic search
     ...

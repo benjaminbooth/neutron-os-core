@@ -12,7 +12,7 @@ Backend services for Neutron OS.
 |---------|---------|------------|
 | `neutron-api` | REST API gateway | FastAPI |
 | `neutron-gateway` | BFF for frontend | FastAPI |
-| `neutron-elog` | Elog service | FastAPI + Fabric |
+| `neutron-log` | Unified Log service | FastAPI + Fabric |
 | `neutron-auth` | Auth proxy | Keycloak adapter |
 
 ## Structure (Planned)
@@ -30,6 +30,6 @@ services/
 ├── neutron-gateway/
 │   └── ...
 │
-└── neutron-elog/
+└── neutron-log/
     └── ...
 ```

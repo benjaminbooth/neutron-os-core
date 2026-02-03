@@ -317,7 +317,7 @@ Blockchain becomes valuable when:
 ## 4. Implementation Roadmap
 
 ### Phase 1: Single Facility (CINR Scope)
-- Ledger tables for elog and reactor data
+- Ledger tables for ops log and reactor data
 - Content hashing with Merkle tree structure
 - **No blockchain yet**—prepare data structures
 
