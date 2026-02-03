@@ -435,19 +435,11 @@ def update_docx_links(docx_path: Path, link_map: Dict[str, str]) -> None:
     """
     print(f"  🔗 Updating links in {docx_path.name}...", flush=True)
     
-    doc = Document(docx_path)
+    doc = Document(str(docx_path))
     
-    # Update hyperlinks in document.xml.rels
+    # Update links in document text
     updated = False
     
-    for rel in doc.part.rels.values():
-        if rel.reltype.endswith("hyperlink"):
-            for old_url, new_url in link_map.items():
-                if old_url in rel.target_ref:
-                    rel.target_ref = new_url
-                    updated = True
-    
-    # Update links in text (fallback for links not in rels)
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:
             for old_url, new_url in link_map.items():
@@ -456,7 +448,7 @@ def update_docx_links(docx_path: Path, link_map: Dict[str, str]) -> None:
                     updated = True
     
     if updated:
-        doc.save(docx_path)
+        doc.save(str(docx_path))
         print(f"  ✅ Links updated", flush=True)
     else:
         print(f"  ℹ️ No links to update", flush=True)
@@ -724,7 +716,7 @@ def prompt_for_conflict_resolution(source_md: Path, existing: Dict) -> str:
             print("  ❌ Invalid choice")
 
 
-def save_link_manifest(link_map: Dict[str, str], manifest_path: Path = None) -> None:
+def save_link_manifest(link_map: Dict[str, str], manifest_path: Optional[Path] = None) -> None:
     """
     Save link mapping to manifest file for future reference
     
