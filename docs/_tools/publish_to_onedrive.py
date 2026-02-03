@@ -167,7 +167,7 @@ class GraphClient:
 # FILE DISCOVERY & SELECTION
 # =============================================================================
 
-def discover_markdown_files(base_path: Optional[Path] = None, recursive: bool = True) -> List[Tuple[Path, str]]:
+def discover_markdown_files(base_path: Optional[Path] = None, recursive: bool = True) -> List[Tuple[Path, Path]]:
     """
     Discover all markdown files in docs/ or specified path.
     
