@@ -102,5 +102,6 @@ transcripts/
 
 # Generated documentation
 docs/_tools/generated/
+docs/_tools/test/
 docs/**/*.docx
 !docs/NEUP_2026/**/*.docx
