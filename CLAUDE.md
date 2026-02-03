@@ -1,5 +1,21 @@
 # Neutron OS - Project Memory
 
+## Git & Repository Standards
+
+### .gitignore Philosophy
+- **Automate exclusions** for all generated/environment files
+- **Never commit** build artifacts, dependencies, secrets, or data files
+- **Update .gitignore** when adding new tools/languages (separate commit)
+- Base patterns on [GitHub's Python template](https://github.com/github/gitignore/blob/main/Python.gitignore)
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for maintenance workflow
+
+### Why This Matters
+Large binary files, data, and build artifacts bloat git history and slow cloning. Consistent .gitignore standards across all 6 digital twin projects ensure:
+- Clean repository history
+- Fast clone/pull operations  
+- No accidental secrets in commits
+- Consistent developer experience
+
 ## Documentation Conventions
 
 ### Generated Files

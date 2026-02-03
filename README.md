@@ -58,6 +58,10 @@ cd infra/k3d && k3d cluster create --config cluster-config.yaml
 bazel test //...
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, git practices, and .gitignore conventions.
+
 ## Related Repositories
 
 - [TRIGA_Digital_Twin](../TRIGA_Digital_Twin) - NETL reactor portal and simulations
