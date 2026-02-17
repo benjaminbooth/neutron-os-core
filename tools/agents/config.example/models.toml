@@ -1,0 +1,33 @@
+# LLM Provider Configuration
+# Copy to tools/agents/config/models.toml and fill in your keys.
+#
+# The gateway tries providers in priority order with automatic fallback.
+# All providers must speak the OpenAI chat completions format.
+
+[gateway]
+format = "openai"
+
+# Uncomment and configure providers you have access to:
+
+# [[gateway.providers]]
+# name = "anthropic"
+# endpoint = "https://api.anthropic.com/v1"
+# model = "claude-sonnet-4-20250514"
+# api_key_env = "ANTHROPIC_API_KEY"    # reads from environment variable
+# priority = 1
+# use_for = ["extraction", "synthesis", "correlation"]
+
+# [[gateway.providers]]
+# name = "qwen-local"
+# endpoint = "http://localhost:8000/v1"
+# model = "qwen2.5-32b-instruct"
+# priority = 2
+# use_for = ["extraction", "synthesis"]
+
+# [[gateway.providers]]
+# name = "openai"
+# endpoint = "https://api.openai.com/v1"
+# model = "gpt-4o"
+# api_key_env = "OPENAI_API_KEY"
+# priority = 3
+# use_for = ["multimodal", "fallback"]

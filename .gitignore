@@ -100,8 +100,39 @@ superset_home/
 meeting_recordings/
 transcripts/
 
+# GitLab tracker exports
+gitlab_export_*.json
+tools/exports/*
+!tools/exports/.gitkeep
+tools/.env
+
 # Generated documentation
 docs/_tools/generated/
 docs/_tools/test/
 docs/**/*.docx
 !docs/NEUP_2026/**/*.docx
+
+# Personal AI assistant context (contributor-specific)
+.claude/
+
+# Agent instance config (facility-specific, contains people/keys)
+tools/agents/config/
+!tools/agents/config.example/
+
+# Agent runtime data (inbox, drafts, approvals)
+tools/agents/inbox/
+!tools/agents/inbox/.gitkeep
+tools/agents/drafts/
+tools/agents/approved/
+
+# Voice memo and meeting recording files
+*.m4a
+*.mp4
+*.webm
+*.wav
+
+# Transcription outputs
+tools/agents/inbox/processed/
+
+# Speaker profiles (voice identification data)
+speaker_profiles.json
