@@ -1,0 +1,89 @@
+"""Unit tests for DocFlowFactory — provider registration and instantiation."""
+
+import pytest
+from tools.docflow.factory import DocFlowFactory
+from tools.docflow.providers.base import StorageProvider, GenerationProvider
+
+
+class TestFactoryRegistration:
+    """Test the factory registration mechanism."""
+
+    def test_register_and_create(self):
+        """Providers can be registered and instantiated."""
+        # The built-in providers are already registered via auto-import
+        import tools.docflow.providers  # noqa: F401
+
+        provider = DocFlowFactory.create("storage", "local", {"base_dir": "/tmp/test"})
+        assert provider is not None
+        assert isinstance(provider, StorageProvider)
+
+    def test_unknown_provider_raises(self):
+        with pytest.raises(ValueError, match="Unknown storage provider"):
+            DocFlowFactory.create("storage", "nonexistent-provider")
+
+    def test_unknown_category_raises(self):
+        class FakeProvider:
+            pass
+
+        with pytest.raises(ValueError, match="Unknown provider category"):
+            DocFlowFactory.register("invalid_category", "fake", FakeProvider)
+
+    def test_available_lists_registered(self):
+        import tools.docflow.providers  # noqa: F401
+
+        available = DocFlowFactory.available("storage")
+        assert "local" in available
+        assert "onedrive" in available
+
+    def test_available_all_categories(self):
+        import tools.docflow.providers  # noqa: F401
+
+        all_available = DocFlowFactory.available()
+        assert isinstance(all_available, dict)
+        assert "generation" in all_available
+        assert "storage" in all_available
+        assert "feedback" in all_available
+        assert "notification" in all_available
+        assert "embedding" in all_available
+
+    def test_generation_providers(self):
+        import tools.docflow.providers  # noqa: F401
+
+        available = DocFlowFactory.available("generation")
+        assert "pandoc-docx" in available
+
+    def test_notification_providers(self):
+        import tools.docflow.providers  # noqa: F401
+
+        available = DocFlowFactory.available("notification")
+        assert "terminal" in available
+
+    def test_feedback_providers(self):
+        import tools.docflow.providers  # noqa: F401
+
+        available = DocFlowFactory.available("feedback")
+        assert "docx-comments" in available
+
+
+class TestFactoryInstantiation:
+    """Test that factory creates providers with correct config."""
+
+    def test_local_storage_with_config(self, tmp_path):
+        import tools.docflow.providers  # noqa: F401
+
+        provider = DocFlowFactory.create(
+            "storage", "local", {"base_dir": str(tmp_path / "output")}
+        )
+        assert provider.base_dir == tmp_path / "output"
+
+    def test_local_storage_default_config(self):
+        import tools.docflow.providers  # noqa: F401
+
+        provider = DocFlowFactory.create("storage", "local", {})
+        assert provider.base_dir.name == "generated"
+
+    def test_terminal_notification(self):
+        import tools.docflow.providers  # noqa: F401
+
+        provider = DocFlowFactory.create("notification", "terminal", {})
+        assert provider is not None

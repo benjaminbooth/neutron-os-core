@@ -136,3 +136,11 @@ tools/agents/inbox/processed/
 
 # Speaker profiles (voice identification data)
 speaker_profiles.json
+
+# DocFlow state files (repo-root, runtime)
+.doc-registry.json
+.doc-state.json
+.doc-workflow.yaml
+
+# Mermaid diagram cache
+docs/_tools/.diagram_cache.json

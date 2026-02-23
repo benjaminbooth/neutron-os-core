@@ -282,3 +282,59 @@ If .claude/context.md exists, read it for contributor-specific context.
 
 This file is plain markdown. Copy relevant sections into your tool's system
 prompt or context window as needed.
+
+---
+
+## Document Lifecycle (`neut doc` / `neut docflow`)
+
+DocFlow manages the document lifecycle: markdown source files → generated
+artifacts → published to storage → review cycles. It treats .md files as
+source code and published artifacts as deployment outputs.
+
+### Architecture
+
+DocFlow uses the same Factory/Provider pattern as the Digital Twin spec.
+Five independent Provider contracts, a central Factory, and a core engine
+that **never imports any specific provider**.
+
+| Contract | Purpose | Phase 1 Implementations |
+|----------|---------|------------------------|
+| `GenerationProvider` | md → artifact | `PandocDocxProvider` |
+| `StorageProvider` | Upload, URLs | `LocalStorageProvider`, `OneDriveStorageProvider` |
+| `FeedbackProvider` | Reviewer comments | `DocxFeedbackProvider` |
+| `NotificationProvider` | Alerts | `TerminalNotificationProvider` |
+| `EmbeddingProvider` | RAG indexing | — (Phase 2) |
+
+### Key Files
+
+- `tools/docflow/engine.py` — Core workflow engine (provider-agnostic)
+- `tools/docflow/factory.py` — DocFlowFactory with register/create/available
+- `tools/docflow/providers/base.py` — All five Provider ABCs
+- `tools/docflow/registry.py` — Link registry (.doc-registry.json)
+- `tools/docflow/state.py` — Document state persistence (.doc-state.json)
+- `tools/docflow/config.py` — Load .doc-workflow.yaml
+- `tools/docflow/cli.py` — CLI handler for `neut doc`
+
+### CLI Commands
+
+```bash
+neut doc publish docs/prd/foo.md           # Generate + publish
+neut doc publish --storage local foo.md    # Override storage provider
+neut doc generate docs/prd/foo.md          # Generate locally only
+neut doc status                            # All doc states
+neut doc check-links                       # Verify cross-doc links
+neut doc diff                              # Changed since last publish
+neut doc providers                         # List registered providers
+```
+
+### Configuration
+
+Copy `.doc-workflow.yaml.example` to `.doc-workflow.yaml` (gitignored).
+Swap providers in YAML — zero changes to engine.py.
+
+### Design Principles
+
+- **Core Knows Nothing:** `engine.py` imports only ABCs, never providers
+- **Link registry is the killer feature:** `.doc-registry.json` maps docs → URLs
+- **Factory with self-registration:** Each provider file registers on import
+- **Extracts from existing code:** Reuses logic from `publish_to_onedrive.py`
