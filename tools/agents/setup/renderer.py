@@ -9,7 +9,6 @@ from __future__ import annotations
 import getpass
 import os
 import sys
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Jargon map — single source of truth for user-facing terminology

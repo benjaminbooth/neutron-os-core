@@ -26,6 +26,7 @@ class GenerationOptions:
     reference_doc: str | None = None  # Template path
     mermaid_renderer: str = "mermaid.ink"  # or "mermaid-cli"
     metadata: dict[str, Any] = field(default_factory=dict)
+    footer_metadata: dict[str, Any] = field(default_factory=dict)  # For footer (source URL, version, date)
 
 
 @dataclass

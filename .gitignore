@@ -110,7 +110,7 @@ tools/.env
 docs/_tools/generated/
 docs/_tools/test/
 docs/**/*.docx
-!docs/NEUP_2026/**/*.docx
+!docs/proposals/NEUP_2026/**/*.docx
 
 # Personal AI assistant context (contributor-specific)
 .claude/

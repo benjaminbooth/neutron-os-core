@@ -11,11 +11,11 @@ The agent is LLM-agnostic — it uses the same Gateway as neut sense.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any, Callable, Iterator, Optional
 
 from tools.agents.orchestrator.actions import (
-    Action,
     ActionCategory,
     ActionStatus,
     create_action,
@@ -23,18 +23,14 @@ from tools.agents.orchestrator.actions import (
 from tools.agents.orchestrator.approval import ApprovalGate
 from tools.agents.orchestrator.bus import EventBus
 from tools.agents.orchestrator.session import Session
+from tools.agents.orchestrator.permissions import PermissionStore
 from tools.agents.chat.tools import (
     execute_tool,
     get_all_tools,
     get_tool_definitions,
 )
-from tools.agents.chat.renderer import (
-    render_approval_prompt,
-    render_action_result,
-    render_message,
-    stream_text,
-    render_thinking_spinner,
-)
+from tools.agents.chat.providers.base import RenderProvider
+from tools.agents.chat.usage import UsageTracker, TurnUsage
 from tools.agents.sense.gateway import (
     Gateway,
     CompletionResponse,
@@ -72,16 +68,26 @@ class ChatAgent:
         gateway: Optional[Gateway] = None,
         bus: Optional[EventBus] = None,
         session: Optional[Session] = None,
+        render: Optional[RenderProvider] = None,
+        permissions: Optional[PermissionStore] = None,
     ):
         self.gateway = gateway or Gateway()
         self.bus = bus or EventBus()
         self.gate = ApprovalGate()
         self.session = session or Session()
+        self.usage = UsageTracker()
+        self.permissions = permissions or PermissionStore()
+        self._render = render
+        # Backward-compat: bare callback for tests
         self._renderer_callback: Optional[Callable[[Iterator[StreamChunk]], str]] = None
 
     def set_renderer(self, callback: Callable[[Iterator[StreamChunk]], str]) -> None:
-        """Set a streaming renderer callback (typically stream_text from renderer)."""
+        """Set a streaming renderer callback (backward-compat)."""
         self._renderer_callback = callback
+
+    def set_render_provider(self, render: RenderProvider) -> None:
+        """Set the render provider for rich output."""
+        self._render = render
 
     def turn(self, user_input: str, stream: bool = True) -> str:
         """Process one user turn and return the assistant response.
@@ -100,12 +106,15 @@ class ChatAgent:
         tools = get_tool_definitions()
 
         for _round in range(MAX_TOOL_ROUNDS):
-            if stream and self.gateway.available and self._renderer_callback:
+            if stream and self.gateway.available and (self._render or self._renderer_callback):
                 response = self._streaming_turn(messages, system, tools)
             elif self.gateway.available:
                 response = self._non_streaming_turn(messages, system, tools)
             else:
                 response = self._legacy_turn(user_input, system)
+
+            # Record usage for this API call
+            self._record_usage(response)
 
             # If no tool calls, we're done
             if not response.tool_use:
@@ -166,6 +175,18 @@ class ChatAgent:
         self.session.add_message("assistant", fallback)
         return fallback
 
+    def _record_usage(self, response: CompletionResponse) -> None:
+        """Record usage from a completion response."""
+        model = response.model or (
+            self.gateway.active_provider.model if self.gateway.active_provider else ""
+        )
+        self.usage.record_turn(TurnUsage(
+            input_tokens=response.input_tokens,
+            output_tokens=response.output_tokens,
+            cache_read_tokens=response.cache_read_tokens,
+            model=model,
+        ))
+
     def _streaming_turn(
         self,
         messages: list[dict[str, Any]],
@@ -182,9 +203,19 @@ class ChatAgent:
         # Collect chunks into a CompletionResponse
         text_parts = []
         tool_blocks: dict[str, dict[str, str]] = {}  # tool_id -> {name, input_json}
-        rendered_text = ""
+        thinking_parts = []
+        usage_input = 0
+        usage_output = 0
+        usage_cache = 0
 
-        if self._renderer_callback:
+        # Render callback: prefer provider, fall back to bare callback
+        render_fn = None
+        if self._render:
+            render_fn = self._render.stream_text
+        elif self._renderer_callback:
+            render_fn = self._renderer_callback
+
+        if render_fn:
             # Create a tee iterator — render while collecting
             collected_chunks = []
 
@@ -193,7 +224,7 @@ class ChatAgent:
                     collected_chunks.append(c)
                     yield c
 
-            rendered_text = self._renderer_callback(tee_chunks())
+            render_fn(tee_chunks())
 
             # Reconstruct from collected chunks
             for c in collected_chunks:
@@ -207,6 +238,12 @@ class ChatAgent:
                 elif c.type == "tool_use_end":
                     if c.tool_id in tool_blocks:
                         tool_blocks[c.tool_id]["input_json"] = c.tool_input_json
+                elif c.type == "thinking_delta":
+                    thinking_parts.append(c.text)
+                elif c.type == "usage":
+                    usage_input += c.input_tokens
+                    usage_output += c.output_tokens
+                    usage_cache += c.cache_read_tokens
         else:
             for c in chunks:
                 if c.type == "text":
@@ -219,6 +256,16 @@ class ChatAgent:
                 elif c.type == "tool_use_end":
                     if c.tool_id in tool_blocks:
                         tool_blocks[c.tool_id]["input_json"] = c.tool_input_json
+                elif c.type == "thinking_delta":
+                    thinking_parts.append(c.text)
+                elif c.type == "usage":
+                    usage_input += c.input_tokens
+                    usage_output += c.output_tokens
+                    usage_cache += c.cache_read_tokens
+
+        # Render thinking block if present
+        if thinking_parts and self._render:
+            self._render.render_thinking("".join(thinking_parts))
 
         from tools.agents.sense.gateway import ToolUseBlock
         tool_use_list = []
@@ -239,6 +286,9 @@ class ChatAgent:
             provider=self.gateway.active_provider.name if self.gateway.active_provider else "stub",
             model=self.gateway.active_provider.model if self.gateway.active_provider else "",
             success=True,
+            input_tokens=usage_input,
+            output_tokens=usage_output,
+            cache_read_tokens=usage_cache,
         )
 
     def _non_streaming_turn(
@@ -328,26 +378,50 @@ class ChatAgent:
             action = create_action(tool_block.name, tool_block.input)
             self.gate.submit(action)
 
-            # If write action, get approval
+            # If write action, check permission memory first
             if action.status == ActionStatus.PENDING:
-                choice = render_approval_prompt(action)
-                if choice == "a":
+                if self.permissions.is_allowed(tool_block.name):
                     self.gate.approve(action.action_id)
                 else:
-                    self.gate.reject(action.action_id, "User rejected")
-                    render_action_result(action)
-                    results.append((
-                        tool_block.tool_id,
-                        tool_block.name,
-                        {"error": "Rejected by user"},
-                    ))
-                    continue
+                    # Get approval from user via render provider or fallback
+                    if self._render:
+                        choice = self._render.render_approval_prompt(action)
+                    else:
+                        from tools.agents.chat.renderer import render_approval_prompt
+                        choice = render_approval_prompt(action)
 
-            # Execute approved action
+                    if choice == "a":
+                        self.gate.approve(action.action_id)
+                    elif choice == "A":
+                        self.gate.approve(action.action_id)
+                        self.permissions.allow_session(tool_block.name)
+                    else:
+                        self.gate.reject(action.action_id, "User rejected")
+                        if self._render:
+                            self._render.render_action_result(action)
+                        else:
+                            from tools.agents.chat.renderer import render_action_result
+                            render_action_result(action)
+                        results.append((
+                            tool_block.tool_id,
+                            tool_block.name,
+                            {"error": "Rejected by user"},
+                        ))
+                        continue
+
+            # Execute approved action with timing
+            t0 = time.monotonic()
+            if self._render:
+                self._render.render_tool_start(tool_block.name, tool_block.input)
             try:
                 result = execute_tool(tool_block.name, tool_block.input)
+                elapsed = time.monotonic() - t0
                 action.complete(result)
-                render_action_result(action)
+                if self._render:
+                    self._render.render_tool_result(tool_block.name, result, elapsed)
+                else:
+                    from tools.agents.chat.renderer import render_action_result
+                    render_action_result(action)
 
                 self.bus.publish(
                     f"{tool_block.name.replace('_', '.')}.complete",
@@ -357,8 +431,15 @@ class ChatAgent:
 
                 results.append((tool_block.tool_id, tool_block.name, result))
             except Exception as e:
+                elapsed = time.monotonic() - t0
                 action.fail(str(e))
-                render_action_result(action)
+                if self._render:
+                    self._render.render_tool_result(
+                        tool_block.name, {"error": str(e)}, elapsed,
+                    )
+                else:
+                    from tools.agents.chat.renderer import render_action_result
+                    render_action_result(action)
                 results.append((
                     tool_block.tool_id,
                     tool_block.name,
@@ -442,6 +523,8 @@ class ChatAgent:
 
         Strategy: keep system prompt + most recent messages that fit.
         Always keep the first user message if possible.
+        Uses actual token counts from usage tracker when available,
+        falls back to character estimation.
         """
         budget = CONTEXT_TOKEN_BUDGET * CHARS_PER_TOKEN
         system_chars = len(system)

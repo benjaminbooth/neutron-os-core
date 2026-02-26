@@ -1,6 +1,7 @@
 """Tests for the chat CLI — slash commands, REPL behavior."""
 
 import pytest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from tools.agents.setup.renderer import set_color_enabled
@@ -11,7 +12,8 @@ from tools.agents.chat.commands import (
     cmd_sessions,
     cmd_resume,
     cmd_new,
-    SLASH_COMMANDS,
+    get_slash_commands,
+    CHAT_META_COMMANDS,
 )
 from tools.agents.chat.cli import _handle_slash_command
 
@@ -31,15 +33,17 @@ class TestSlashCommands:
         assert "/help" in result
         assert "/status" in result
         assert "/exit" in result
-        assert "/sense" in result
-        assert "/doc" in result
         assert "/sessions" in result
         assert "/resume" in result
         assert "/new" in result
+        # CLI commands are now dynamically loaded
+        assert "Sense" in result or "sense" in result
 
     def test_cmd_status(self):
         from tools.agents.chat.agent import ChatAgent
+        from tools.agents.chat.usage import UsageTracker
         from tools.agents.orchestrator.session import Session
+        from tools.agents.orchestrator.permissions import PermissionStore
         from tools.agents.sense.gateway import Gateway
 
         agent = MagicMock(spec=ChatAgent)
@@ -47,6 +51,8 @@ class TestSlashCommands:
         agent.session.add_message("user", "test")
         agent.gateway = MagicMock(spec=Gateway)
         agent.gateway.active_provider = None
+        agent.usage = UsageTracker()
+        agent.permissions = PermissionStore(permissions_file=Path("/tmp/_neut_test_perms.json"))
 
         result = cmd_status(agent)
         assert "Session:" in result
@@ -55,12 +61,16 @@ class TestSlashCommands:
 
     def test_cmd_status_with_provider(self):
         from tools.agents.chat.agent import ChatAgent
+        from tools.agents.chat.usage import UsageTracker
         from tools.agents.orchestrator.session import Session
+        from tools.agents.orchestrator.permissions import PermissionStore
         from tools.agents.sense.gateway import Gateway
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session()
         agent.gateway = MagicMock(spec=Gateway)
+        agent.usage = UsageTracker()
+        agent.permissions = PermissionStore(permissions_file=Path("/tmp/_neut_test_perms.json"))
         provider_mock = MagicMock()
         provider_mock.name = "anthropic"
         provider_mock.model = "claude-sonnet"
@@ -125,6 +135,7 @@ class TestSlashCommands:
 
     def test_cmd_new(self):
         from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.agents.orchestrator.permissions import PermissionStore
         from tools.agents.chat.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
@@ -133,6 +144,7 @@ class TestSlashCommands:
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session(session_id="old_id")
+        agent.permissions = PermissionStore(permissions_file=Path("/tmp/_neut_test_perms.json"))
 
         result = cmd_new(store, agent)
         assert "Saved" in result or "started" in result
@@ -143,10 +155,13 @@ class TestSlashCommandDispatch:
     """Test the dispatch table in CLI."""
 
     def test_all_commands_documented(self):
-        """All commands in SLASH_COMMANDS should exist."""
-        assert "/help" in SLASH_COMMANDS
-        assert "/status" in SLASH_COMMANDS
-        assert "/exit" in SLASH_COMMANDS
+        """All commands in get_slash_commands() should exist."""
+        all_commands = get_slash_commands()
+        assert "/help" in all_commands
+        assert "/status" in all_commands
+        assert "/exit" in all_commands
+        # CLI commands are auto-synced
+        assert any("/sense" in cmd for cmd in all_commands)
 
     def test_dispatch_help(self):
         agent = MagicMock()
@@ -183,6 +198,38 @@ class TestSlashCommandDispatch:
 
         result = _handle_slash_command("/resume test_id", agent, store)
         assert "Resumed" in result
+
+
+class TestBannerRendering:
+    """Test that the salamander banner shows when show_banner=True."""
+
+    def test_render_welcome_with_banner(self, capsys):
+        from tools.agents.chat.providers.ansi_render import AnsiRenderProvider
+        p = AnsiRenderProvider()
+        p.render_welcome(show_banner=True)
+        captured = capsys.readouterr()
+        assert "N E U T R O N  O S" in captured.out
+
+    def test_render_welcome_without_banner(self, capsys):
+        from tools.agents.chat.providers.ansi_render import AnsiRenderProvider
+        p = AnsiRenderProvider()
+        p.render_welcome(show_banner=False)
+        captured = capsys.readouterr()
+        assert "N E U T R O N  O S" not in captured.out
+        assert "neut chat" in captured.out
+
+    def test_bare_flag_in_parser(self):
+        """--bare flag exists but is suppressed from help."""
+        from tools.agents.chat.cli import get_parser
+        parser = get_parser()
+        args = parser.parse_args(["--bare"])
+        assert args.bare is True
+
+    def test_bare_flag_default_false(self):
+        from tools.agents.chat.cli import get_parser
+        parser = get_parser()
+        args = parser.parse_args([])
+        assert args.bare is False
 
 
 class TestMultiLineInput:

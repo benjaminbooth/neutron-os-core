@@ -217,7 +217,7 @@ This is exactly what NEUP proposal aims to deliver: "DT-driven semi-autonomous o
   - [New Medical Isotope Scenarios](../scenarios/superset/) — to be created based on this analysis
 
 - **Related NEUP Docs:**
-  - `docs/NEUP_2026/MedicalIsotopes.docx` — proposal chapter on DT validation for medical isotope production
+  - `docs/proposals/NEUP_2026/MedicalIsotopes.docx` — proposal chapter on DT validation for medical isotope production
 
 ---
 

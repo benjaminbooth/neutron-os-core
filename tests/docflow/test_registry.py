@@ -4,7 +4,7 @@ import json
 import pytest
 from pathlib import Path
 
-from tools.docflow.models import LinkEntry
+from tools.docflow.state import LinkEntry
 from tools.docflow.registry import LinkRegistry
 
 

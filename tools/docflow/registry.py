@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from tools.docflow.models import LinkEntry
+from tools.docflow.state import LinkEntry
 
 
 class LinkRegistry:

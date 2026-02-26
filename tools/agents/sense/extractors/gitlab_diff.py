@@ -18,8 +18,20 @@ from typing import Optional
 
 from tools.agents.sense.extractors.base import BaseExtractor
 from tools.agents.sense.models import Extraction, Signal
+from tools.agents.sense.registry import register_source, SourceType
 
 
+@register_source(
+    name="gitlab",
+    description="GitLab repository activity and issues",
+    source_type=SourceType.PULL,
+    requires_auth=True,
+    auth_env_vars=["GITLAB_TOKEN"],
+    file_patterns=["gitlab_export*.json"],
+    default_poll_interval=1800,
+    icon="🦨",
+    category="code",
+)
 class GitLabDiffExtractor(BaseExtractor):
     """Diffs two GitLab export JSONs to produce structured signals."""
 

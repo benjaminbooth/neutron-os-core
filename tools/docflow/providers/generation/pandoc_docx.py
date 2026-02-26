@@ -6,7 +6,6 @@ Uses that script as an external tool, or falls back to pandoc directly.
 
 from __future__ import annotations
 
-import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -55,11 +54,13 @@ class PandocDocxProvider(GenerationProvider):
             # Use the custom md_to_docx.py converter
             result = self._generate_with_md_to_docx(source_path, output_path, options)
             if result:
+                result = self._inject_footer(output_path, options, result)
                 return result
             warnings.append("md_to_docx.py failed, falling back to pandoc")
 
         # Fall back to pandoc
-        return self._generate_with_pandoc(source_path, output_path, options, warnings)
+        result = self._generate_with_pandoc(source_path, output_path, options, warnings)
+        return self._inject_footer(output_path, options, result)
 
     def _generate_with_md_to_docx(
         self, source: Path, output: Path, options: GenerationOptions
@@ -140,6 +141,75 @@ class PandocDocxProvider(GenerationProvider):
                 "pandoc not found. Install with: brew install pandoc (macOS) "
                 "or apt install pandoc (Linux)"
             )
+
+    def _inject_footer(
+        self, artifact_path: Path, options: GenerationOptions, result: GenerationResult
+    ) -> GenerationResult:
+        """Inject source URL, version, and publication date into document footer."""
+        if not options.footer_metadata:
+            return result
+
+        try:
+            from docx import Document
+            from docx.shared import Pt, RGBColor
+            from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+        except ImportError:
+            return result  # python-docx not available
+
+        try:
+            doc = Document(str(artifact_path))
+
+            # Access the default section's footer
+            section = doc.sections[0]
+            footer = section.footer
+
+            # Clear existing footer content if any
+            for paragraph in footer.paragraphs:
+                # Keep first paragraph, clear others
+                if paragraph != footer.paragraphs[0]:
+                    p_elem = paragraph._element
+                    p_elem.getparent().remove(p_elem)
+
+            # Use the first paragraph or create new one
+            if footer.paragraphs:
+                footer_para = footer.paragraphs[0]
+            else:
+                footer_para = footer.add_paragraph()
+
+            # Build footer text
+            footer_parts = []
+
+            if "source_url" in options.footer_metadata:
+                footer_parts.append(f"Source: {options.footer_metadata['source_url']}")
+
+            if "version" in options.footer_metadata:
+                footer_parts.append(f"Version: {options.footer_metadata['version']}")
+
+            if "published_at" in options.footer_metadata:
+                pub_date = options.footer_metadata["published_at"]
+                # Format as YYYY-MM-DD HH:MM
+                if "T" in pub_date:
+                    pub_date = pub_date.split("T")[0]
+                footer_parts.append(f"Published: {pub_date}")
+
+            footer_text = " | ".join(footer_parts)
+
+            # Clear and set footer paragraph
+            footer_para.clear()
+            if footer_text:
+                run = footer_para.add_run(footer_text)
+                run.font.size = Pt(9)
+                run.font.color.rgb = RGBColor(128, 128, 128)  # Gray
+                footer_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+            # Save document with footer
+            doc.save(str(artifact_path))
+
+        except Exception as e:
+            # Footer injection is best-effort; don't fail the whole publish
+            result.warnings.append(f"Footer injection failed: {str(e)}")
+
+        return result
 
     def rewrite_links(self, artifact_path: Path, link_map: dict[str, str]) -> None:
         """Rewrite internal links in a .docx file.

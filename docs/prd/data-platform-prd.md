@@ -63,6 +63,7 @@ flowchart TB
         JSON[JSON Logs]
         API[External APIs]
         Stream[Streaming Data]
+        Neut[Neut Agent<br/>Signal Output]
     end
     
     subgraph Bronze["Bronze Layer (Raw)"]
@@ -93,6 +94,7 @@ flowchart TB
     JSON --> B2
     API --> B3
     Stream -.-> B1
+    Neut --> B1
     
     B1 --> S1
     B2 --> S2
@@ -250,6 +252,17 @@ The Data Platform implements the system-wide data architecture and operational r
 | AU-003 | Evidence package generation | P1 |
 | AU-004 | Data access logging | P1 |
 
+### Epic: Semantic Search & Knowledge Graph
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| RAG-001 | Unified semantic search across all NeutronOS data | P1 |
+| RAG-002 | Knowledge graph linking Silver/Gold tables, signals, and external context | P1 |
+| RAG-003 | Vector search API for cross-domain queries | P2 |
+| RAG-004 | Integration with Neut signal outputs (from sensing role) | P1 |
+| RAG-005 | Query support: "What decisions were made about X?" → surfaces related signals | P2 |
+| RAG-006 | Automatic re-indexing when Gold tables change | P2 |
+
 ---
 
 ## Test-Driven Approach
@@ -287,7 +300,8 @@ See: [Superset Scenarios](../specs/superset-scenarios/)
 | Xenon dynamics | `Xe_burnup_2025.csv` | CSV | Simulation |
 | Rod calibration | `CRH_*.csv`, `rho_vs_T.csv` | CSV | Event-driven |
 | Log entries | Log service | JSON/API | Real-time |
-
+| **Neut Signal Output** | Neut agent (sensing role: Media Library, extractors) | JSON/API | Real-time |
+| **Agent State** | Agent State Management system | JSON/API | Event-driven |
 ---
 
 ## Technical Dependencies
@@ -297,8 +311,9 @@ See: [Superset Scenarios](../specs/superset-scenarios/)
 - Apache Superset (BI)
 - dbt-core (transforms)
 - Dagster (orchestration)
-- PostgreSQL + pgvector (metadata, vectors)
 - Object storage (pending hosting decision)
+- **Semantic search capability** (Vector database / embeddings infrastructure — specification TBD)
+- **Neut agent integration** (Signal extraction and Bronze ingestion via Neut's sensing role — see [Intelligence Amplification Pillar](../strategy/intelligence-amplification-pillar.md))
 
 ---
 
@@ -308,6 +323,9 @@ See: [Superset Scenarios](../specs/superset-scenarios/)
 2. What time resolution for Gold tables? (hourly, daily)
 3. How much historical data to backfill?
 4. Should MPACT shadow predictions be included in dashboards?
+5. **[RAG Integration]** How should Neut's signal outputs (from sensing role) flow into Bronze tables? (Direct ingestion, staging area, batching strategy)
+6. **[Agent State]** Should Agent State Management system outputs (state snapshots, transitions) be persisted as Bronze/Silver tables?
+7. **[Real-time Streaming]** What is the boundary between real-time Neut signal ingestion (sensing role) and batch medallion processing?
 
 ---
 

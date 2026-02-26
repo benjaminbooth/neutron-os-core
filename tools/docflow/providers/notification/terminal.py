@@ -6,7 +6,6 @@ native notification center integration, falls back to print.
 
 from __future__ import annotations
 
-import sys
 from typing import Any
 
 from tools.docflow.factory import DocFlowFactory

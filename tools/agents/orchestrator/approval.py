@@ -4,6 +4,9 @@ Classifies actions as read-only (auto-approve) or write (require human
 confirmation). For safety-adjacent nuclear facility operations, all writes
 must be explicitly approved.
 
+Optionally integrates with PermissionStore to auto-approve tools the
+user has previously allowed.
+
 Usage:
     gate = ApprovalGate()
 
@@ -16,11 +19,19 @@ Usage:
     gate.submit(action)  # action.status == PENDING
     gate.pending()       # [action]
     gate.approve(action.action_id)  # action.status == APPROVED
+
+    # With permission store → auto-approve remembered tools
+    from tools.agents.orchestrator.permissions import PermissionStore
+    perms = PermissionStore()
+    perms.allow_session("doc_publish")
+    gate = ApprovalGate(permissions=perms)
+    action = create_action("doc_publish")
+    gate.submit(action)  # action.status == APPROVED (auto via permissions)
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from tools.agents.orchestrator.actions import (
     Action,
@@ -28,22 +39,27 @@ from tools.agents.orchestrator.actions import (
     ActionStatus,
 )
 
+if TYPE_CHECKING:
+    from tools.agents.orchestrator.permissions import PermissionStore
+
 
 class ApprovalGate:
     """Manages the approval lifecycle for actions.
 
     Read-only actions are auto-approved. Write actions are held
-    for human confirmation.
+    for human confirmation unless the PermissionStore has a rule.
     """
 
-    def __init__(self):
+    def __init__(self, permissions: Optional[PermissionStore] = None):
         self._actions: dict[str, Action] = {}
+        self._permissions = permissions
 
     def submit(self, action: Action) -> Action:
         """Submit an action for approval.
 
         Read-only actions are automatically approved.
-        Write actions are placed in pending state.
+        Write actions with permission memory are auto-approved.
+        Other write actions are placed in pending state.
 
         Returns:
             The action (possibly with updated status).
@@ -51,6 +67,8 @@ class ApprovalGate:
         self._actions[action.action_id] = action
 
         if action.category == ActionCategory.READ:
+            action.approve()
+        elif self._permissions and self._permissions.is_allowed(action.name):
             action.approve()
 
         return action

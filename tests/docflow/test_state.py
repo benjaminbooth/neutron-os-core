@@ -1,7 +1,7 @@
 """Unit tests for document state persistence."""
 
 import pytest
-from tools.docflow.models import DocumentState, PublicationRecord
+from tools.docflow.state import DocumentState, PublicationRecord
 from tools.docflow.state import StateStore
 
 

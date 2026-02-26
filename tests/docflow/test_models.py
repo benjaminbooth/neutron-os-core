@@ -1,7 +1,7 @@
 """Unit tests for docflow data models."""
 
 import pytest
-from tools.docflow.models import (
+from tools.docflow.state import (
     Comment,
     LinkEntry,
     PublicationRecord,
@@ -106,7 +106,7 @@ class TestDocumentState:
 
     def test_default_state(self):
         doc = DocumentState(doc_id="test", source_path="docs/test.md")
-        assert doc.status == "local"
+        assert doc.status == "draft"
         assert doc.published is None
         assert doc.pending_comments == []
         assert doc.stakeholders == []

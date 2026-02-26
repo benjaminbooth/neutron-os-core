@@ -48,6 +48,7 @@ class SetupState:
     current_phase: str = "probe"
     completed_phases: list[str] = field(default_factory=list)
     probe_result: dict[str, Any] = field(default_factory=dict)
+    infra_configured: bool = False
     credentials_configured: dict[str, bool] = field(default_factory=dict)
     config_files_created: dict[str, bool] = field(default_factory=dict)
     test_results: dict[str, str] = field(default_factory=dict)

@@ -32,6 +32,7 @@ class GitContext:
     ahead_count: int = 0
     behind_count: int = 0
     git_available: bool = True
+    remote_url: Optional[str] = None
 
     @property
     def sync_status(self) -> SyncStatus:
@@ -50,15 +51,22 @@ def get_git_context(repo_root: Path) -> GitContext:
     """Get current git context from the repository."""
     try:
         branch = _run_git(repo_root, "rev-parse", "--abbrev-ref", "HEAD").strip()
-        sha = _run_git(repo_root, "rev-parse", "--short", "HEAD").strip()
+        sha = _run_git(repo_root, "rev-parse", "HEAD").strip()  # Full SHA
         status = _run_git(repo_root, "status", "--porcelain")
         is_dirty = bool(status.strip())
+
+        # Get remote URL
+        remote_url = None
+        try:
+            remote_url = _run_git(repo_root, "remote", "get-url", "origin").strip()
+        except (subprocess.CalledProcessError, ValueError):
+            pass
 
         ahead = 0
         behind = 0
         try:
             counts = _run_git(
-                repo_root, "rev-list", "--count", "--left-right", f"HEAD...@{{upstream}}"
+                repo_root, "rev-list", "--count", "--left-right", "HEAD...@{upstream}"
             ).strip()
             parts = counts.split("\t")
             if len(parts) == 2:
@@ -73,6 +81,7 @@ def get_git_context(repo_root: Path) -> GitContext:
             is_dirty=is_dirty,
             ahead_count=ahead,
             behind_count=behind,
+            remote_url=remote_url,
         )
 
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -146,3 +155,54 @@ def _run_git(repo_root: Path, *args: str) -> str:
         check=True,
     )
     return result.stdout
+
+
+def remote_url_to_web_url(
+    remote_url: Optional[str], file_path: Path, commit_sha: str
+) -> Optional[str]:
+    """Convert git remote URL + file path to web URL (GitHub, GitLab, etc).
+
+    Handles:
+    - git@github.com:owner/repo.git → https://github.com/owner/repo/blob/sha/file
+    - https://github.com/owner/repo.git → https://github.com/owner/repo/blob/sha/file
+    - git@gitlab.com:owner/repo.git → https://gitlab.com/owner/repo/-/blob/sha/file
+    - https://gitlab.com/owner/repo.git → https://gitlab.com/owner/repo/-/blob/sha/file
+
+    Returns None if remote_url is None or unrecognized format.
+    """
+    if not remote_url:
+        return None
+
+    original_url = remote_url
+
+    # Convert SSH to HTTPS
+    if remote_url.startswith("git@"):
+        # git@host:owner/repo.git → https://host/owner/repo.git
+        parts = remote_url.replace("git@", "").replace(".git", "", 1)  # Remove .git once
+        host, path = parts.split(":", 1)
+        remote_url = f"https://{host}/{path}"
+
+    # Strip .git suffix if present
+    if remote_url.endswith(".git"):
+        remote_url = remote_url[:-4]
+
+    # Remove any authentication tokens from the URL
+    if "@" in remote_url:
+        # https://token@host/path → https://host/path
+        remote_url = remote_url.split("@", 1)[1]
+        remote_url = "https://" + remote_url
+
+    # Determine the blob URL format based on host
+    file_str = str(file_path).replace("\\", "/")
+
+    if "github.com" in remote_url:
+        return f"{remote_url}/blob/{commit_sha}/{file_str}"
+    elif "gitlab.com" in remote_url or "gitlab" in original_url:
+        # GitLab uses /-/blob/ format
+        return f"{remote_url}/-/blob/{commit_sha}/{file_str}"
+    elif "bitbucket" in remote_url:
+        # Bitbucket uses /raw/ format
+        return f"{remote_url}/raw/{commit_sha}/{file_str}"
+
+    # Generic fallback for unknown hosts
+    return f"{remote_url}/blob/{commit_sha}/{file_str}"

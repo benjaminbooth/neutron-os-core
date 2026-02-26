@@ -1,0 +1,37 @@
+{{- if .Values.sense.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "neutron-os.fullname" . }}-sense
+  labels:
+    {{- include "neutron-os.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sense
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.sense.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "neutron-os.senseSelectorLabels" . | nindent 4 }}
+{{- end }}
+---
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "neutron-os.fullname" . }}-api
+  labels:
+    {{- include "neutron-os.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.api.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "neutron-os.apiSelectorLabels" . | nindent 4 }}
+{{- end }}

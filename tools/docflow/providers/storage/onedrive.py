@@ -7,7 +7,6 @@ Requires: requests library + Azure AD credentials via environment variables.
 from __future__ import annotations
 
 import os
-import sys
 import time
 import urllib.parse
 from pathlib import Path

@@ -1,0 +1,32 @@
+apiVersion: v2
+name: neutron-os
+description: |
+  NeutronOS - Unified digital platform for nuclear facilities.
+  Provides Sense (signal processing, RAG), DocFlow (document sync),
+  and operations management capabilities.
+
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords:
+  - nuclear
+  - operations
+  - sense
+  - rag
+  - ai
+  - research
+
+home: https://github.com/neutron-os/neutron-os
+sources:
+  - https://github.com/neutron-os/neutron-os
+
+maintainers:
+  - name: Neutron OS Team
+    email: team@neutron-os.dev
+
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: productivity
+
+dependencies: []

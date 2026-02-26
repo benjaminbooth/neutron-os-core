@@ -10,7 +10,6 @@ The registry supports hot-reloading of extension tools from tools_ext/.
 from __future__ import annotations
 
 import importlib
-import json
 import logging
 import pkgutil
 import sys

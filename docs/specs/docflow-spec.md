@@ -974,11 +974,33 @@ publish-docs:
 
 ## References
 
+### Internal Documents
+
 - [NeutronOS Digital Twin Architecture](digital-twin-architecture-spec.md) — Factory/Provider pattern precedent (§6-8)
+- [Agent State Management PRD](../prd/agent-state-management-prd.md) — Document state as part of agent state taxonomy
+- [Agent State Management Spec](agent-state-management-spec.md) — Backup/restore/encryption for `.doc-registry.json`, `.doc-state.json`
+
+### External References
+
 - [Pragmatic Programmer](https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/) — Philosophy
 - [python-docx Documentation](https://python-docx.readthedocs.io/)
 - [MS Graph API](https://learn.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0)
 - [LangGraph](https://langchain-ai.github.io/langgraph/)
+
+---
+
+## Document State & Agent State Integration
+
+Document lifecycle state files (`.doc-registry.json`, `.doc-state.json`, `.doc-workflow.yaml`)
+are included in the NeutronOS Agent State Management scope. These files are:
+
+- **Backed up** by `neut state backup` with CRITICAL priority
+- **Encrypted** when stored (at-rest encryption via age)
+- **Restorable** via `neut state restore` for device migration
+- **Exportable** via `neut state export documents`
+
+This ensures published document mappings are not lost during device failure or team transitions.
+See [Agent State Management PRD](../prd/agent-state-management-prd.md) for full requirements.
 
 ---
 

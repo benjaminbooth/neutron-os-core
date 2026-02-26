@@ -16,7 +16,6 @@ Usage:
 import argparse
 import json
 from pathlib import Path
-from typing import Optional
 
 from .data_models import StakeholderResponses, CostBreakdown
 from .cost_calculator import CostCalculator
@@ -27,7 +26,7 @@ from .reporter import CostReporter
 def load_stakeholder_responses(filepath: str) -> StakeholderResponses:
     """
     Load stakeholder responses from a JSON file.
-    
+
     Expected format:
     {
         "physics": { "mpact_states_per_run": 50, ... },
@@ -37,14 +36,14 @@ def load_stakeholder_responses(filepath: str) -> StakeholderResponses:
     """
     with open(filepath, 'r') as f:
         data = json.load(f)
-    
+
     # Deserialize into StakeholderResponses
     responses = StakeholderResponses()
-    
+
     if "physics" in data:
         responses.physics = StakeholderResponses(**data["physics"]).__dict__
     # ... (would need more sophisticated deserialization for production)
-    
+
     return responses
 
 
@@ -57,19 +56,19 @@ def main():
 Examples:
   # Calculate costs for minimal scenario (PiXie excluded)
   python main.py --scenario minimal
-  
+
   # Calculate costs for recommended scenario (PiXie Phase 1)
   python main.py --scenario recommended
-  
+
   # Calculate costs for full cloud scenario (high-availability)
   python main.py --scenario full_cloud
-  
+
   # Compare all three scenarios side-by-side
   python main.py --compare
-  
+
   # Load custom stakeholder responses and calculate costs
   python main.py --custom --input responses.json
-  
+
   # Export results as JSON
   python main.py --compare --output results.json --format json
         """
@@ -80,38 +79,38 @@ Examples:
         choices=["minimal", "recommended", "full_cloud"],
         help="Pre-defined cost scenario to calculate"
     )
-    
+
     parser.add_argument(
         "--compare",
         action="store_true",
         help="Compare all three scenarios side-by-side"
     )
-    
+
     parser.add_argument(
         "--custom",
         action="store_true",
         help="Use custom stakeholder inputs"
     )
-    
+
     parser.add_argument(
         "--input",
         type=str,
         help="Path to stakeholder responses JSON file (for --custom)"
     )
-    
+
     parser.add_argument(
         "--output",
         type=str,
         help="Path to output file (if not specified, prints to stdout)"
     )
-    
+
     parser.add_argument(
         "--format",
         choices=["markdown", "json", "csv", "text"],
         default="markdown",
         help="Output format (default: markdown)"
     )
-    
+
     parser.add_argument(
         "--detailed",
         action="store_true",
@@ -138,7 +137,7 @@ Examples:
         if not args.input:
             print("Error: --custom requires --input to specify a JSON responses file")
             return 1
-        
+
         responses = load_stakeholder_responses(args.input)
         calculator = CostCalculator(responses)
         scenario_name = Path(args.input).stem

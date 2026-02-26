@@ -27,7 +27,7 @@ import sys
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Optional
 
 try:
     import gitlab
@@ -552,7 +552,7 @@ class GitLabExporter:
         print("GITLAB TRACKER EXPORT SUMMARY")
         print("=" * 60)
 
-        print(f"\n📊 TOTALS")
+        print("\n📊 TOTALS")
         print(f"   Projects: {summary['total_projects']}")
         print(f"   Commits (last {self.days} days): {summary['total_commits']}")
         print(f"   Open Issues: {summary['total_open_issues']}")
@@ -564,12 +564,12 @@ class GitLabExporter:
             print(f"   {author}: {count} commits")
 
         if summary["stale_repos"]:
-            print(f"\n⚠️  STALE REPOS (no commits in 30 days)")
+            print("\n⚠️  STALE REPOS (no commits in 30 days)")
             for repo in summary["stale_repos"]:
                 print(f"   - {repo}")
 
         if summary["newly_discovered_projects"]:
-            print(f"\n🆕 NEWLY DISCOVERED PROJECTS")
+            print("\n🆕 NEWLY DISCOVERED PROJECTS")
             for proj in summary["newly_discovered_projects"]:
                 print(f"   {proj['flag']}: {proj['path']}")
 

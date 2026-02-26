@@ -4,6 +4,11 @@ Takes all Signal objects from all extractors, groups by initiative and
 signal_type, and produces:
 1. drafts/changelog_YYYY-MM-DD.md — tab-separated paste-ready format
 2. drafts/weekly_summary_YYYY-MM-DD.md — prose summary
+
+Signal staleness tracking:
+- Signals are hashed and tracked in signal_manifest.json
+- By default, only unreported signals are included in changelogs
+- Use include_all=True to see all signals (e.g., for full audit)
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tools.agents.sense.models import Signal, Changelog, ChangelogEntry
+from tools.agents.sense.models import Signal, Changelog, ChangelogEntry, SignalManifest, DATE_FORMAT_ISO
 
 
 # Drafts directory: tools/agents/drafts/
@@ -25,18 +30,48 @@ class Synthesizer:
 
     def __init__(self, drafts_dir: Path | None = None):
         self.drafts_dir = drafts_dir or DRAFTS_DIR
+        self.manifest = SignalManifest()
+        self._last_synthesized_signals: list[Signal] = []  # Track for marking as reported
 
-    def synthesize(self, signals: list[Signal], date: str | None = None) -> Changelog:
-        """Group signals by initiative/type and build a Changelog."""
+    def synthesize(
+        self,
+        signals: list[Signal],
+        date: str | None = None,
+        include_all: bool = False,
+    ) -> Changelog:
+        """Group signals by initiative/type and build a Changelog.
+
+        Args:
+            signals: All signals to consider.
+            date: Changelog date (default: today).
+            include_all: If True, include already-reported signals (marked with †).
+                        If False (default), only include new/unreported signals.
+
+        Returns:
+            Changelog with filtered entries.
+        """
         if date is None:
-            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date = datetime.now(timezone.utc).strftime(DATE_FORMAT_ISO)
+
+        # Filter out already-reported signals unless include_all is True
+        total_signals = len(signals)
+        if include_all:
+            filtered_signals = signals
+            skipped = 0
+        else:
+            filtered_signals = self.manifest.filter_unreported(signals)
+            skipped = total_signals - len(filtered_signals)
+
+        # Track which signals we're including so we can mark them as reported
+        self._last_synthesized_signals = filtered_signals.copy()
+        self._last_changelog_date = date
 
         # Group signals by initiative
         by_initiative: dict[str, dict[str, list[Signal]]] = defaultdict(
             lambda: defaultdict(list)
         )
 
-        for signal in signals:
+        for signal in filtered_signals:
             initiatives = signal.initiatives if signal.initiatives else ["Uncategorized"]
             for init_name in initiatives:
                 by_initiative[init_name][signal.signal_type].append(signal)
@@ -58,18 +93,48 @@ class Synthesizer:
                     ))
 
         # Build summary
-        total = len(signals)
+        new_count = len(filtered_signals)
         init_count = len(by_initiative)
         people_set = set()
-        for s in signals:
+        for s in filtered_signals:
             people_set.update(s.people)
 
-        summary = (
-            f"Week of {date}: {total} signals across {init_count} initiatives, "
-            f"involving {len(people_set)} people."
-        )
+        if skipped > 0:
+            summary = (
+                f"Week of {date}: {new_count} new signals across {init_count} initiatives, "
+                f"involving {len(people_set)} people. ({skipped} previously reported signals omitted)"
+            )
+        else:
+            summary = (
+                f"Week of {date}: {new_count} signals across {init_count} initiatives, "
+                f"involving {len(people_set)} people."
+            )
 
         return Changelog(date=date, entries=entries, summary=summary)
+
+    def mark_as_reported(self) -> int:
+        """Mark all signals from the last synthesize() as reported.
+
+        Call this after successfully writing the changelog to prevent
+        the same signals from appearing in future changelogs.
+
+        Returns:
+            Number of signals marked as reported.
+        """
+        if not self._last_synthesized_signals:
+            return 0
+
+        self.manifest.mark_batch_reported(
+            self._last_synthesized_signals,
+            self._last_changelog_date,
+        )
+        count = len(self._last_synthesized_signals)
+        self._last_synthesized_signals = []  # Clear after marking
+        return count
+
+    def get_reported_count(self) -> int:
+        """Return total number of signals that have been reported."""
+        return self.manifest.get_reported_count()
 
     def write_changelog(self, changelog: Changelog) -> Path:
         """Write changelog to drafts/ in tab-separated format."""

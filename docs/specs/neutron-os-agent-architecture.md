@@ -25,8 +25,6 @@ Neutron_OS/
     (stub) plugin-msr/
     (stub) plugin-mit-loop/
   tools/
-    meeting-intake/                 # Teams → Whisper → Extract → GitLab (LangGraph)
-    linear_sync/                    # Linear ↔ project sync
     exports/                        # Weekly GitLab JSON dumps
     tracker/                        # Program tracker build scripts
     agents/inbox/                   # Agent sensing inbox (empty, ready)
@@ -272,9 +270,6 @@ tools/
   exports/                          # EXISTING — GitLab weekly dumps
     gitlab_export_YYYY-MM-DD.json
     ...
-
-  linear_sync/                      # EXISTING — Linear sync
-    ...
 ```
 
 ---
@@ -299,7 +294,6 @@ plugin = "plugin-triga"    # links to plugins/ reactor-specific logic
 voice_memos = true
 teams_recordings = true
 gitlab_export = true
-linear_sync = true
 email_forwarding = false   # future
 
 [sense.heartbeat]
@@ -591,7 +585,6 @@ neut sense publish --target onedrive
 | OneDrive push | msgraph-sdk-python | Same SDK, same auth |
 | Excel | openpyxl | Already used in tracker/ |
 | GitLab | python-gitlab | Already used in exports/ |
-| Linear | Linear GraphQL API | Already used in linear_sync/ |
 | Notifications | pync (macOS) + ntfy.sh (remote) | Local + mobile push |
 | CLI framework | Click/Typer (Python prototype) → Rust (production) | Match neut CLI spec |
 

@@ -1,0 +1,68 @@
+# NeutronOS Helm Chart - Local Development (K3D) Values
+# Usage: helm install neut . -f values-local.yaml
+
+environment: local
+
+# Single replica for local development
+sense:
+  replicas: 1
+  
+  # Lower resource requests for local
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+  
+  # Use local image if building
+  image:
+    repository: neutron-os/sense
+    tag: local
+    pullPolicy: Never  # Use locally built image
+
+# Bundled PostgreSQL for local development
+postgresql:
+  enabled: true
+  
+  auth:
+    database: neut_db
+    username: neut
+    password: neut
+    postgresPassword: postgres
+  
+  primary:
+    persistence:
+      enabled: true
+      size: 1Gi  # Smaller for local
+      storageClass: local-path  # K3D default
+
+# Smaller persistence volumes for local
+persistence:
+  inbox:
+    enabled: true
+    size: 1Gi
+    storageClass: local-path
+  
+  media:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+
+# No ingress for local - use port-forward
+ingress:
+  enabled: false
+
+# Disable autoscaling for local
+autoscaling:
+  enabled: false
+
+# Relax security for local development
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false

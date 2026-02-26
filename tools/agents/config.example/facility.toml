@@ -11,7 +11,6 @@ plugin = "plugin-triga"        # maps to plugins/ directory
 voice_memos = true             # Watch iCloud Voice Memos directory
 teams_recordings = true        # Poll Microsoft Graph for Teams recordings
 gitlab_export = true           # Process weekly GitLab JSON exports
-linear_sync = false            # Poll Linear for issue changes
 email_forwarding = false       # Process forwarded emails (future)
 
 [sense.heartbeat]
@@ -25,7 +24,6 @@ onedrive_enabled = true
 onedrive_path = ""             # e.g., "Documents/Program_Tracker.xlsx"
 teams_webhook = ""             # Optional: post summaries to Teams channel
 gitlab_enabled = true
-linear_enabled = false
 
 [sense.transcription]
 engine = "whisper"             # whisper | teams-native | deepgram

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "neutron-os.fullname" . }}-config
+  labels:
+    {{- include "neutron-os.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.environment | quote }}
+  
+  # Sense configuration
+  SENSE_PORT: {{ .Values.sense.port | quote }}
+  
+  # LLM configuration
+  LLM_PROVIDER: {{ .Values.llm.provider | quote }}
+  LLM_MODEL: {{ .Values.llm.model | quote }}
+  {{- if .Values.llm.localEndpoint }}
+  LLM_LOCAL_ENDPOINT: {{ .Values.llm.localEndpoint | quote }}
+  {{- end }}
+  
+  # Database configuration (non-sensitive parts)
+  {{- if .Values.postgresql.enabled }}
+  DB_HOST: "{{ include "neutron-os.fullname" . }}-postgresql"
+  DB_PORT: "5432"
+  DB_NAME: {{ .Values.postgresql.auth.database | quote }}
+  DB_USER: {{ .Values.postgresql.auth.username | quote }}
+  {{- else if .Values.externalDatabase.host }}
+  DB_HOST: {{ .Values.externalDatabase.host | quote }}
+  DB_PORT: {{ .Values.externalDatabase.port | quote }}
+  DB_NAME: {{ .Values.externalDatabase.database | quote }}
+  DB_USER: {{ .Values.externalDatabase.username | quote }}
+  {{- end }}

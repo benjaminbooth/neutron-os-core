@@ -6,8 +6,6 @@ from config/people.md and config/initiatives.md.
 
 from __future__ import annotations
 
-import os
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -22,11 +20,11 @@ CONFIG_EXAMPLE_DIR = _AGENTS_DIR / "config.example"
 @dataclass
 class Person:
     name: str
+    aliases: list[str] = field(default_factory=list)  # Nicknames, phonetic variants
     gitlab: str = ""
-    linear: str = ""
     role: str = ""
     initiatives: list[str] = field(default_factory=list)
-    # Derived: lowercase first name, last name, full name for matching
+    # Derived: lowercase first name, last name, full name, aliases for matching
     _match_keys: list[str] = field(default_factory=list, repr=False)
 
     def __post_init__(self):
@@ -37,9 +35,16 @@ class Person:
             if len(parts) > 1:
                 keys.append(parts[-1].lower())  # last name
         if self.gitlab and self.gitlab != "—":
-            keys.append(self.gitlab.lower())
-        if self.linear and self.linear != "—":
-            keys.append(self.linear.lower())
+            # Handle comma-separated gitlab usernames
+            for username in self.gitlab.split(","):
+                username = username.strip()
+                if username:
+                    keys.append(username.lower())
+        # Add all aliases as match keys (critical for STT correction)
+        for alias in self.aliases:
+            alias_lower = alias.lower().strip()
+            if alias_lower and alias_lower not in keys:
+                keys.append(alias_lower)
         self._match_keys = keys
 
 
@@ -112,18 +117,22 @@ class Correlator:
                 if cells[0].lower() == "name":
                     continue
 
+            # Parse table: Name | Aliases | GitLab | Role | Initiative(s)
             name = cells[0] if len(cells) > 0 else ""
-            gitlab = cells[1] if len(cells) > 1 else ""
-            linear = cells[2] if len(cells) > 2 else ""
+            aliases_str = cells[1] if len(cells) > 1 else ""
+            gitlab = cells[2] if len(cells) > 2 else ""
             role = cells[3] if len(cells) > 3 else ""
             initiatives_str = cells[4] if len(cells) > 4 else ""
+
+            # Parse aliases (comma-separated)
+            aliases = [a.strip() for a in aliases_str.split(",") if a.strip() and a.strip() != "—"]
             initiatives = [i.strip() for i in initiatives_str.split(",") if i.strip()]
 
             if name and name != "Name":
                 people.append(Person(
                     name=name,
+                    aliases=aliases,
                     gitlab=gitlab if gitlab != "—" else "",
-                    linear=linear if linear != "—" else "",
                     role=role,
                     initiatives=initiatives,
                 ))

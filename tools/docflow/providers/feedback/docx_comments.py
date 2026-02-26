@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from tools.docflow.factory import DocFlowFactory
-from tools.docflow.models import Comment
+from tools.docflow.state import Comment
 from tools.docflow.providers.base import FeedbackProvider
 
 # Word XML namespaces

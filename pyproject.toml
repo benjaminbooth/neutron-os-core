@@ -6,17 +6,28 @@ requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "pyyaml>=6.0",
+    "argcomplete>=3.0",
 ]
 
 [project.optional-dependencies]
 docflow = ["python-docx>=1.1"]
-sense = []
+sense = [
+    "psycopg2-binary>=2.9",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "pgvector>=0.2",
+]
 serve = []
-chat = []
+chat = [
+    "rich>=13.0",
+    "prompt-toolkit>=3.0",
+    "pygments>=2.17",
+]
 mcp = ["mcp>=1.0"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.0",
+    "ruff>=0.4",
 ]
 all = [
     "neutron-os[docflow,sense,serve,chat,mcp,dev]",
@@ -33,7 +44,7 @@ build-backend = "hatchling.build"
 packages = ["tools"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "tools/agents/sense/tests"]
 pythonpath = ["."]
 markers = [
     "integration: marks tests that hit external services (deselect with '-m \"not integration\"')",
@@ -42,6 +53,7 @@ markers = [
     "teams: Teams transcript integration",
     "voice: Voice memo / sense serve integration",
     "inbox: Inbox note integration",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 
 [tool.ruff]

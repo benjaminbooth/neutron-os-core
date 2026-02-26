@@ -8,7 +8,6 @@ Each probe catches its own exceptions; total probe completes in < 3 seconds.
 from __future__ import annotations
 
 import importlib.util
-import json
 import os
 import platform
 import shutil
@@ -250,6 +249,9 @@ def _probe_dependencies(result: ProbeResult) -> None:
     tool_checks = [
         ("pandoc", ["pandoc", "--version"], True, "Generates Word documents from markdown"),
         ("git", ["git", "--version"], True, "Tracks document and code changes"),
+        ("docker", ["docker", "--version"], False, "Runs local PostgreSQL database"),
+        ("k3d", ["k3d", "version"], False, "Local Kubernetes for database"),
+        ("kubectl", ["kubectl", "version", "--client"], False, "Kubernetes CLI"),
     ]
     for name, cmd, required, purpose in tool_checks:
         found, version = _check_tool(name, cmd)

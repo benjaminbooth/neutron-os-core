@@ -1,9 +1,10 @@
 # Neutron OS — GitLab CI/CD Pipeline
 #
-# Three tiers:
-#   1. test:unit       — runs on every push, no secrets needed
-#   2. test:integration — runs on main/MRs, needs CI/CD variables for live channels
-#   3. build + publish — runs on tags, publishes to GitLab Package Registry
+# Pipeline tiers by trigger:
+#   Push to any branch  → unit tests + lint
+#   MR opened/updated   → unit tests + lint + integration + build wheel (artifact)
+#   Merge to main       → all tests + build + publish dev build to Package Registry
+#   Tag v* pushed       → all tests + build + publish stable release to Package Registry
 #
 # Required CI/CD Variables (Settings → CI/CD → Variables):
 #   GITLAB_TOKEN          — Personal access token for rsicc-gitlab.tacc.utexas.edu
@@ -22,6 +23,7 @@ stages:
   - test
   - build
   - publish
+  - ai
 
 # =============================================================================
 # Variables
@@ -86,6 +88,94 @@ lint:
     - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_MERGE_REQUEST_ID
 
+# -----------------------------------------------------------------------------
+# Database Migration Tests
+# -----------------------------------------------------------------------------
+# Tests that migrations can be applied cleanly to a fresh database.
+# This is a gate — migrations must succeed before merge.
+
+test:migrations:
+  extends: .python-setup
+  stage: test
+  services:
+    - name: pgvector/pgvector:pg16
+      alias: postgres
+  variables:
+    POSTGRES_DB: neut_test
+    POSTGRES_USER: neut
+    POSTGRES_PASSWORD: neut
+    NEUT_DB_URL: "postgresql://neut:neut@postgres:5432/neut_test"
+  before_script:
+    - pip install --quiet --upgrade pip
+    - pip install --quiet -e ".[dev,sense]"
+    # Wait for PostgreSQL to be ready
+    - |
+      for i in $(seq 1 30); do
+        pg_isready -h postgres -p 5432 -U neut && break
+        echo "Waiting for PostgreSQL... ($i/30)"
+        sleep 2
+      done
+  script:
+    # Test 1: Fresh migration applies cleanly
+    - echo "Testing fresh migration..."
+    - python -c "from tools.agents.sense.migrations import run_migrations, ensure_pgvector_extension; ensure_pgvector_extension(); run_migrations('upgrade', 'head')"
+    
+    # Test 2: Migration status is up-to-date
+    - echo "Checking migration status..."
+    - |
+      python -c "
+      from tools.agents.sense.migrations import check_migrations
+      status = check_migrations()
+      assert status['up_to_date'], f'Migrations not up to date: {status}'
+      print('✓ All migrations applied')
+      "
+    
+    # Test 3: Schema verification
+    - echo "Verifying schema..."
+    - |
+      python -c "
+      from tools.agents.sense.migrations import verify_schema
+      result = verify_schema()
+      assert result['valid'], f'Schema invalid: {result}'
+      assert result['has_pgvector'], 'pgvector extension missing'
+      print('✓ Schema verified')
+      print(f'  Tables: {result[\"tables_found\"]}')
+      "
+    
+    # Test 4: Downgrade and upgrade cycle
+    - echo "Testing downgrade/upgrade cycle..."
+    - python -c "from tools.agents.sense.migrations import run_migrations; run_migrations('downgrade', 'base')"
+    - python -c "from tools.agents.sense.migrations import run_migrations; run_migrations('upgrade', 'head')"
+    - echo "✓ Downgrade/upgrade cycle successful"
+    
+    # Test 5: SQLAlchemy models match schema
+    - echo "Verifying SQLAlchemy models..."
+    - |
+      python -c "
+      from sqlalchemy import create_engine, inspect
+      from tools.agents.sense.db_models import Base, Signal, Media, Participant, Person
+      import os
+      
+      engine = create_engine(os.environ['NEUT_DB_URL'])
+      inspector = inspect(engine)
+      
+      # Check all model tables exist
+      model_tables = {'signals', 'media', 'participants', 'people'}
+      db_tables = set(inspector.get_table_names())
+      
+      missing = model_tables - db_tables
+      assert not missing, f'Missing tables: {missing}'
+      print('✓ All model tables present')
+      "
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - tools/agents/sense/migrations/**/*
+        - tools/agents/sense/db_models.py
+        - tools/agents/sense/pgvector_store.py
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == "main"
+
 # =============================================================================
 # Build Stage
 # =============================================================================
@@ -102,12 +192,44 @@ build:wheel:
     expire_in: 1 week
   rules:
     - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_ID
 
 # =============================================================================
 # Publish Stage — GitLab Package Registry
 # =============================================================================
 
-publish:package:
+publish:dev:
+  extends: .python-setup
+  stage: publish
+  before_script:
+    - pip install --quiet --upgrade pip
+    - pip install --quiet build twine
+    # Stamp dev version: 0.1.0 → 0.1.0.dev<pipeline_iid>
+    - |
+      python -c "
+      import re, pathlib
+      p = pathlib.Path('pyproject.toml')
+      text = p.read_text()
+      text = re.sub(r'version\s*=\s*\"([^\"]+)\"', 'version = \"\g<1>.dev${CI_PIPELINE_IID}\"', text, count=1)
+      p.write_text(text)
+      "
+  script:
+    - python -m build
+    - |
+      TWINE_PASSWORD=${CI_JOB_TOKEN} \
+      TWINE_USERNAME=gitlab-ci-token \
+      python -m twine upload \
+        --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi \
+        dist/*
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 30 days
+
+publish:release:
   extends: .python-setup
   stage: publish
   script:
@@ -122,3 +244,34 @@ publish:package:
     - if: $CI_COMMIT_TAG
   needs:
     - build:wheel
+
+# =============================================================================
+# AI Review Stage — Claude Code
+# =============================================================================
+# Requires CI/CD Variable: ANTHROPIC_API_KEY (masked, protected)
+#
+# Triggers:
+#   - Automatically on merge requests
+#   - Manually from CI/CD → Pipelines → Run Pipeline
+#   - Via @claude mentions (requires webhook — see docs)
+
+claude:review:
+  stage: ai
+  image: node:24-alpine3.21
+  before_script:
+    - apk update
+    - apk add --no-cache git curl bash
+    - curl -fsSL https://claude.ai/install.sh | bash
+  script:
+    - /bin/gitlab-mcp-server || true
+    - >
+      claude
+      -p "${AI_FLOW_INPUT:-'Review this MR for code quality, security issues, and adherence to project conventions defined in CLAUDE.md. Flag any concerns and suggest improvements.'}"
+      --permission-mode acceptEdits
+      --allowedTools "Bash Read Edit Write mcp__gitlab"
+      --max-turns 10
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  timeout: 20 minutes
+  allow_failure: true  # Don't block MRs on AI review

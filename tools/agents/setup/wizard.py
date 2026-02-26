@@ -24,11 +24,12 @@ from tools.agents.setup.guides import (
     get_llm_guides,
 )
 from tools.agents.setup.probe import ProbeResult, run_probe
-from tools.agents.setup.state import SetupState, clear_state, load_state, save_state
+from tools.agents.setup.state import SetupState, load_state, save_state
 from tools.agents.setup.tester import ChannelTester
 
 # Phase names in order
-PHASES = ["probe", "summary", "credentials", "config", "test", "done"]
+# infra phase sets up Docker/K3D/PostgreSQL if needed
+PHASES = ["probe", "summary", "infra", "credentials", "config", "test", "done"]
 
 
 class SetupWizard:
@@ -179,6 +180,63 @@ class SetupWizard:
         renderer.blank()
 
     # ------------------------------------------------------------------
+    # Phase: INFRA (Docker, K3D, PostgreSQL)
+    # ------------------------------------------------------------------
+
+    def _phase_infra(self) -> None:
+        """Set up infrastructure: Docker, K3D, PostgreSQL."""
+        from tools.agents.setup.infra import (
+            check_docker,
+            check_k3d,
+            check_neut_cluster,
+            InfraStatus,
+            run_infra_setup,
+        )
+
+        # Quick check if infrastructure is already ready
+        docker = check_docker()
+        k3d = check_k3d()
+
+        if docker.status == InfraStatus.READY and k3d.status == InfraStatus.READY:
+            cluster = check_neut_cluster()
+            if cluster.status == InfraStatus.READY:
+                renderer.heading("Infrastructure")
+                renderer.success("Docker, K3D, and PostgreSQL already configured")
+                renderer.blank()
+                return
+
+        renderer.heading("Infrastructure Setup")
+        renderer.text(
+            "NeutronOS uses Docker and K3D to run PostgreSQL locally.\n"
+            "This provides the database for document embeddings and history.\n"
+        )
+
+        # Check if user wants to set up infrastructure now
+        if not renderer.prompt_yn("Set up local database infrastructure now?", default=True):
+            renderer.info("Skipped — you can set this up later with: neut infra")
+            self.state.infra_configured = False
+            return
+
+        # Run the infrastructure setup
+        renderer.blank()
+        result = run_infra_setup(
+            auto_fix=True,
+            interactive=True,
+            skip_cluster=False,
+        )
+
+        renderer.blank()
+        if result.success:
+            renderer.success("Infrastructure ready!")
+            self.state.infra_configured = True
+        else:
+            renderer.warning("Some infrastructure components need attention.")
+            renderer.text("You can complete setup later with: neut infra")
+            self.state.infra_configured = False
+
+        renderer.blank()
+
+    # ------------------------------------------------------------------
     # Phase: CREDENTIALS
     # ------------------------------------------------------------------
 
@@ -262,8 +320,9 @@ class SetupWizard:
 
         # Prompt for each value
         for guide in guides:
-            if (self.state.credentials_configured.get(guide.env_var)
-                    or self.probe_result.env_vars_set.get(guide.env_var)):
+            env_var_set = (self.probe_result.env_vars_set.get(guide.env_var)
+                           if self.probe_result else False)
+            if self.state.credentials_configured.get(guide.env_var) or env_var_set:
                 renderer.success(f"{guide.display_name} — already set")
                 self.state.credentials_configured[guide.env_var] = True
                 continue
@@ -596,10 +655,16 @@ class SetupWizard:
 
     def _offer_shell_alias(self) -> None:
         """Add a `neut` alias to the user's shell config."""
-        neut_path = self.root / "neut.py"
+        # Find venv binary - check parent dir first (workspace layout), then local
+        venv_neut = self.root.parent / ".venv" / "bin" / "neut"
+        if not venv_neut.exists():
+            venv_neut = self.root / ".venv" / "bin" / "neut"
+        if not venv_neut.exists():
+            # Fall back to hoping it's on PATH
+            venv_neut = Path("neut")
 
         if platform.system() == "Windows":
-            self._offer_powershell_alias(neut_path)
+            self._offer_powershell_alias(venv_neut)
             return
 
         shell = os.environ.get("SHELL", "")
@@ -612,7 +677,7 @@ class SetupWizard:
         else:
             return  # Unknown shell, skip
 
-        alias_line = f'alias neut="python {neut_path}"'
+        alias_line = f'alias neut="{venv_neut}"'
 
         # Don't duplicate
         if rc_file.exists():
@@ -627,7 +692,7 @@ class SetupWizard:
         renderer.info(f"Open a new terminal or run: {source_hint}")
         renderer.blank()
 
-    def _offer_powershell_alias(self, neut_path: Path) -> None:
+    def _offer_powershell_alias(self, venv_neut: Path) -> None:
         """Add a `neut` function to the PowerShell profile."""
         try:
             # Get PowerShell profile path
@@ -642,7 +707,10 @@ class SetupWizard:
             return
 
         profile = Path(profile_path)
-        func_line = f'function neut {{ python "{neut_path}" @args }}'
+        # On Windows, venv binary is in Scripts\neut.exe
+        if venv_neut.suffix != ".exe":
+            venv_neut = venv_neut.parent.parent / "Scripts" / "neut.exe"
+        func_line = f'function neut {{ & "{venv_neut}" @args }}'
 
         # Don't duplicate
         if profile.exists():
@@ -654,7 +722,7 @@ class SetupWizard:
         with open(profile, "a", encoding="utf-8") as f:
             f.write(f"\n# Neutron OS CLI shortcut\n{func_line}\n")
 
-        renderer.success(f"Added 'neut' shortcut to PowerShell profile")
+        renderer.success("Added 'neut' shortcut to PowerShell profile")
         renderer.info("Open a new PowerShell window to use it.")
         renderer.blank()
 

@@ -11,8 +11,25 @@ from __future__ import annotations
 
 import sys
 
+import argparse
+
 from tools.agents.setup.state import clear_state
 from tools.agents.setup.wizard import SetupWizard
+
+
+def get_parser() -> argparse.ArgumentParser:
+    """Build and return the argument parser.
+
+    Exposed for CLI registry introspection and argcomplete.
+    """
+    parser = argparse.ArgumentParser(
+        prog="neut setup",
+        description="Interactive onboarding wizard",
+    )
+    parser.add_argument("--status", action="store_true", help="Show configuration status")
+    parser.add_argument("--fix", metavar="NAME", help="Reconfigure a specific connection")
+    parser.add_argument("--reset", action="store_true", help="Clear state and start over")
+    return parser
 
 
 def main() -> None:

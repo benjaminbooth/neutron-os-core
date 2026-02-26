@@ -6,10 +6,10 @@ based on stakeholder inputs and pre-defined scenarios.
 
 Usage:
     from cost_estimation_tool import scenarios, CostCalculator
-    
+
     # Get a pre-defined scenario
     recommended = scenarios.scenario_recommended()
-    
+
     # Or calculate custom costs from stakeholder responses
     from data_models import StakeholderResponses
     responses = StakeholderResponses(...)

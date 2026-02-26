@@ -54,3 +54,53 @@ def ms_graph_creds():
         "client_secret": client_secret,
         "tenant_id": tenant_id or "common",
     }
+
+
+@pytest.fixture
+def github_token():
+    """GITHUB_TOKEN for GitHub API access."""
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        pytest.skip("GITHUB_TOKEN not set")
+    return token
+
+
+# ---------------------------------------------------------------------------
+# Freshness tracking fixture — compare against last known update
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def freshness_tracker(tmp_path):
+    """Track last sync time for channels."""
+    from datetime import datetime, timezone
+    import json
+    
+    state_file = tmp_path / "channel_freshness.json"
+    
+    class FreshnessTracker:
+        def __init__(self):
+            self.state = {}
+            if state_file.exists():
+                self.state = json.loads(state_file.read_text())
+        
+        def get_last_sync(self, channel: str) -> datetime | None:
+            """Get the last sync time for a channel."""
+            if ts := self.state.get(channel):
+                return datetime.fromisoformat(ts)
+            return None
+        
+        def mark_synced(self, channel: str) -> None:
+            """Mark a channel as just synced."""
+            self.state[channel] = datetime.now(timezone.utc).isoformat()
+            state_file.write_text(json.dumps(self.state, indent=2))
+        
+        def is_fresh(self, channel: str, max_age_hours: int = 24) -> bool:
+            """Check if channel was synced within max_age_hours."""
+            from datetime import timedelta
+            last = self.get_last_sync(channel)
+            if not last:
+                return False
+            age = datetime.now(timezone.utc) - last
+            return age < timedelta(hours=max_age_hours)
+    
+    return FreshnessTracker()

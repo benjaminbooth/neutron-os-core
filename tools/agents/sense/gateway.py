@@ -78,11 +78,16 @@ class GatewayResponse:
 class StreamChunk:
     """A single streaming delta from the LLM."""
 
-    type: str  # "text", "tool_use_start", "tool_input_delta", "tool_use_end", "done"
+    type: str  # "text", "tool_use_start", "tool_input_delta", "tool_use_end",
+    #            "thinking_start", "thinking_delta", "thinking_end", "usage", "done"
     text: str = ""
     tool_name: str = ""
     tool_id: str = ""
     tool_input_json: str = ""
+    # Usage fields (emitted with type="usage")
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
 
 
 @dataclass
@@ -105,6 +110,10 @@ class CompletionResponse:
     success: bool = True
     error: Optional[str] = None
     stop_reason: str = ""
+    # Usage tracking
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
 
 
 class Gateway:
@@ -417,6 +426,7 @@ class Gateway:
                     input=block.get("input", {}),
                 ))
 
+        usage = data.get("usage", {})
         return CompletionResponse(
             text="\n".join(text_parts),
             tool_use=tool_blocks,
@@ -424,6 +434,9 @@ class Gateway:
             model=provider.model,
             success=True,
             stop_reason=data.get("stop_reason", ""),
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+            cache_read_tokens=usage.get("cache_read_tokens", 0),
         )
 
     def _call_openai_with_tools(
@@ -490,6 +503,7 @@ class Gateway:
                 input=args,
             ))
 
+        usage = data.get("usage", {})
         return CompletionResponse(
             text=text,
             tool_use=tool_blocks,
@@ -497,6 +511,8 @@ class Gateway:
             model=provider.model,
             success=True,
             stop_reason=choice.get("finish_reason", ""),
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
         )
 
     # ------------------------------------------------------------------
@@ -604,6 +620,7 @@ class Gateway:
         current_tool_id = ""
         current_tool_name = ""
         tool_input_buf = ""
+        in_thinking = False
 
         for line in response.iter_lines(decode_unicode=True):
             if not line or not line.startswith("data: "):
@@ -630,6 +647,9 @@ class Gateway:
                         tool_id=current_tool_id,
                         tool_name=current_tool_name,
                     )
+                elif block.get("type") == "thinking":
+                    in_thinking = True
+                    yield StreamChunk(type="thinking_start")
 
             elif etype == "content_block_delta":
                 delta = event.get("delta", {})
@@ -643,9 +663,17 @@ class Gateway:
                         tool_id=current_tool_id,
                         tool_input_json=partial,
                     )
+                elif delta.get("type") == "thinking_delta":
+                    yield StreamChunk(
+                        type="thinking_delta",
+                        text=delta.get("thinking", ""),
+                    )
 
             elif etype == "content_block_stop":
-                if current_tool_name:
+                if in_thinking:
+                    in_thinking = False
+                    yield StreamChunk(type="thinking_end")
+                elif current_tool_name:
                     yield StreamChunk(
                         type="tool_use_end",
                         tool_id=current_tool_id,
@@ -655,6 +683,28 @@ class Gateway:
                     current_tool_id = ""
                     current_tool_name = ""
                     tool_input_buf = ""
+
+            elif etype == "message_delta":
+                # Extract usage from message_delta (Anthropic sends it here)
+                usage = event.get("usage", {})
+                if usage:
+                    yield StreamChunk(
+                        type="usage",
+                        input_tokens=usage.get("input_tokens", 0),
+                        output_tokens=usage.get("output_tokens", 0),
+                        cache_read_tokens=usage.get("cache_read_tokens", 0),
+                    )
+
+            elif etype == "message_start":
+                # Extract input tokens from message_start
+                msg = event.get("message", {})
+                usage = msg.get("usage", {})
+                if usage.get("input_tokens"):
+                    yield StreamChunk(
+                        type="usage",
+                        input_tokens=usage.get("input_tokens", 0),
+                        cache_read_tokens=usage.get("cache_read_tokens", 0),
+                    )
 
             elif etype == "message_stop":
                 break

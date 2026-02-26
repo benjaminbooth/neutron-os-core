@@ -2,8 +2,24 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+
+
+# Standard date formats for consistency across the pipeline
+DATE_FORMAT_ISO = "%Y-%m-%d"  # User-facing filenames: changelog_2026-02-24.md
+DATETIME_FORMAT_COMPACT = "%Y%m%d_%H%M%S"  # Internal IDs: signal_20260224_143052
+
+
+def _compute_signal_hash(source: str, timestamp: str, detail: str, raw_text: str) -> str:
+    """Compute a stable hash for signal deduplication.
+
+    Uses source + timestamp + first 500 chars of raw_text + detail.
+    Returns first 12 chars of SHA256 for readability.
+    """
+    content = f"{source}|{timestamp}|{raw_text[:500]}|{detail}"
+    return hashlib.sha256(content.encode()).hexdigest()[:12]
 
 
 @dataclass
@@ -25,6 +41,16 @@ class Signal:
     confidence: float = 0.5  # 0.0-1.0 (1.0 for gitlab_diff, lower for LLM)
     metadata: dict = field(default_factory=dict)
 
+    # Provenance: who submitted this signal (for feedback loop)
+    originator: str = ""  # Email or identifier of signal creator
+    originator_notified: bool = False  # Have we sent them a receipt?
+    feedback_received: bool = False  # Have they responded?
+
+    @property
+    def signal_id(self) -> str:
+        """Unique identifier for deduplication, computed from content hash."""
+        return _compute_signal_hash(self.source, self.timestamp, self.detail, self.raw_text)
+
     def to_dict(self) -> dict:
         return {
             "source": self.source,
@@ -36,6 +62,9 @@ class Signal:
             "detail": self.detail,
             "confidence": self.confidence,
             "metadata": self.metadata,
+            "originator": self.originator,
+            "originator_notified": self.originator_notified,
+            "feedback_received": self.feedback_received,
         }
 
     @classmethod
@@ -87,3 +116,95 @@ class Changelog:
     generated_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+
+
+@dataclass
+class ReportedSignal:
+    """Record of a signal that has been included in a changelog."""
+
+    signal_id: str
+    reported_at: str
+    changelog_date: str
+    initiative: str = ""
+    detail_preview: str = ""  # First 100 chars for human review
+
+
+class SignalManifest:
+    """Tracks which signals have been reported to avoid re-reporting stale news.
+
+    Persists to signal_manifest.json in the processed directory.
+    """
+
+    def __init__(self, manifest_path: "Path | None" = None):
+        from pathlib import Path
+        _AGENTS_DIR = Path(__file__).resolve().parent.parent
+        self.manifest_path = manifest_path or (_AGENTS_DIR / "inbox" / "processed" / "signal_manifest.json")
+        self._reported: dict[str, ReportedSignal] = {}
+        self._load()
+
+    def _load(self) -> None:
+        """Load manifest from disk."""
+        import json
+        if self.manifest_path.exists():
+            try:
+                data = json.loads(self.manifest_path.read_text())
+                for signal_id, info in data.get("reported", {}).items():
+                    self._reported[signal_id] = ReportedSignal(
+                        signal_id=signal_id,
+                        reported_at=info.get("reported_at", ""),
+                        changelog_date=info.get("changelog_date", ""),
+                        initiative=info.get("initiative", ""),
+                        detail_preview=info.get("detail_preview", ""),
+                    )
+            except (json.JSONDecodeError, KeyError):
+                self._reported = {}
+
+    def _save(self) -> None:
+        """Persist manifest to disk."""
+        import json
+        data = {
+            "reported": {
+                sig_id: {
+                    "reported_at": r.reported_at,
+                    "changelog_date": r.changelog_date,
+                    "initiative": r.initiative,
+                    "detail_preview": r.detail_preview,
+                }
+                for sig_id, r in self._reported.items()
+            },
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
+        self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        self.manifest_path.write_text(json.dumps(data, indent=2))
+
+    def is_reported(self, signal: Signal) -> bool:
+        """Check if a signal has already been reported."""
+        return signal.signal_id in self._reported
+
+    def mark_reported(self, signal: Signal, changelog_date: str) -> None:
+        """Mark a signal as reported in the given changelog."""
+        self._reported[signal.signal_id] = ReportedSignal(
+            signal_id=signal.signal_id,
+            reported_at=datetime.now(timezone.utc).isoformat(),
+            changelog_date=changelog_date,
+            initiative=signal.initiatives[0] if signal.initiatives else "",
+            detail_preview=signal.detail[:100],
+        )
+
+    def mark_batch_reported(self, signals: list[Signal], changelog_date: str) -> None:
+        """Mark multiple signals as reported and save."""
+        for signal in signals:
+            self.mark_reported(signal, changelog_date)
+        self._save()
+
+    def filter_unreported(self, signals: list[Signal]) -> list[Signal]:
+        """Return only signals that haven't been reported yet."""
+        return [s for s in signals if not self.is_reported(s)]
+
+    def get_reported_count(self) -> int:
+        """Return total number of reported signals."""
+        return len(self._reported)
+
+    def get_reported_since(self, date: str) -> list[ReportedSignal]:
+        """Get signals reported since a given date."""
+        return [r for r in self._reported.values() if r.changelog_date >= date]

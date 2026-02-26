@@ -16,12 +16,26 @@ from pathlib import Path
 
 from tools.agents.sense.extractors.base import BaseExtractor
 from tools.agents.sense.models import Extraction, Signal
+from tools.agents.sense.registry import register_source, SourceType
 
 
+@register_source(
+    name="voice",
+    description="Voice memos from iPhone/macOS + video files",
+    source_type=SourceType.PUSH,
+    file_patterns=["*.m4a", "*.mp3", "*.wav", "*.webm", "*.mp4", "*.mov", "*.avi", "*.mkv"],
+    icon="🎤",
+    category="capture",
+)
 class VoiceExtractor(BaseExtractor):
-    """Extract signals from voice memo recordings."""
+    """Extract signals from voice memo recordings and video files."""
 
-    SUPPORTED_EXTENSIONS = {".m4a", ".mp3", ".wav", ".webm", ".mp4", ".ogg"}
+    # Audio formats
+    AUDIO_EXTENSIONS = {".m4a", ".mp3", ".wav", ".webm", ".ogg", ".aac", ".flac"}
+    # Video formats (audio extracted via ffmpeg by whisper)
+    VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+    # Combined
+    SUPPORTED_EXTENSIONS = AUDIO_EXTENSIONS | VIDEO_EXTENSIONS
 
     @property
     def name(self) -> str:
@@ -61,12 +75,13 @@ class VoiceExtractor(BaseExtractor):
         signals: list[Signal] = []
         errors: list[str] = []
 
-        # Transcribe
+        # Transcribe with word-level timestamps for accurate audio clip extraction
         try:
             print(f"  Transcribing {source.name} (model={model_size})...", flush=True)
             model = whisper.load_model(model_size)
-            result = model.transcribe(str(source))
-            transcript = result.get("text", "")
+            result = model.transcribe(str(source), word_timestamps=True)
+            transcript: str = str(result.get("text", ""))
+            segments = result.get("segments", [])
 
             if not transcript.strip():
                 return Extraction(
@@ -84,24 +99,59 @@ class VoiceExtractor(BaseExtractor):
                 errors=[f"Transcription failed: {e}"],
             )
 
-        # Optional diarization
+        # Optional diarization + voice identification
         speakers: dict[str, list[str]] = {}
-        try:
-            from pyannote.audio import Pipeline  # type: ignore
+        identified_speakers: dict[str, str] = {}  # label -> person name
+        speaker_matches: list = []
 
+        try:
             hf_token = __import__("os").environ.get("HF_TOKEN")
             if hf_token:
-                print("  Running speaker diarization...", flush=True)
-                pipeline = Pipeline.from_pretrained(
-                    "pyannote/speaker-diarization-3.1",
-                    use_auth_token=hf_token,
-                )
-                diarization = pipeline(str(source))
-                for turn, _, speaker in diarization.itertracks(yield_label=True):
-                    speakers.setdefault(speaker, []).append(
-                        f"[{turn.start:.1f}s-{turn.end:.1f}s]"
+                # Try voice identification (maps speakers to known people)
+                try:
+                    from tools.agents.sense.voice_id import (
+                        VoiceProfileStore,
+                        SpeakerIdentifier,
                     )
-                print(f"  Found {len(speakers)} speaker(s)", flush=True)
+
+                    # Get agents dir (relative to this file)
+                    agents_dir = Path(__file__).parent.parent.parent
+                    profiles = VoiceProfileStore(agents_dir)
+
+                    if profiles.list_profiles():
+                        print("  Identifying speakers...", flush=True)
+                        identifier = SpeakerIdentifier(profiles)
+                        speaker_matches = identifier.identify_with_consolidation(source)
+
+                        # Build speaker timeline
+                        for match in speaker_matches:
+                            name = match.person_name or "Unknown"
+                            speakers.setdefault(name, []).append(
+                                f"[{match.start_time:.1f}s-{match.end_time:.1f}s]"
+                            )
+
+                        # Summary of identified vs unknown
+                        identified = {m.person_name for m in speaker_matches if m.person_name}
+                        print(f"  Identified: {identified or 'none'}", flush=True)
+                except ImportError:
+                    pass  # voice_id not available
+                except Exception as e:
+                    errors.append(f"Voice identification failed (non-fatal): {e}")
+
+                # Fall back to basic diarization if no voice profiles
+                if not speaker_matches:
+                    from pyannote.audio import Pipeline  # type: ignore
+                    print("  Running speaker diarization...", flush=True)
+                    pipeline = Pipeline.from_pretrained(
+                        "pyannote/speaker-diarization-3.1",
+                        use_auth_token=hf_token,
+                    )
+                    diarization = pipeline(str(source))
+                    for turn, _, speaker in diarization.itertracks(yield_label=True):
+                        speakers.setdefault(speaker, []).append(
+                            f"[{turn.start:.1f}s-{turn.end:.1f}s]"
+                        )
+                    print(f"  Found {len(speakers)} speaker(s)", flush=True)
         except ImportError:
             pass  # pyannote not available, skip diarization
         except Exception as e:
@@ -125,6 +175,98 @@ class VoiceExtractor(BaseExtractor):
 
         transcript_path.write_text(transcript_content, encoding="utf-8")
 
+        # Save word-level timestamps for accurate audio clip extraction
+        # This enables precise clip extraction when reviewing corrections
+        timestamps_path = processed_dir / f"{source.stem}_timestamps.json"
+        try:
+            import json
+
+            word_timestamps = []
+            for seg in segments:
+                for word_info in seg.get("words", []):
+                    word_timestamps.append({
+                        "word": word_info.get("word", ""),
+                        "start": word_info.get("start", 0),
+                        "end": word_info.get("end", 0),
+                    })
+
+            timestamps_data = {
+                "source_audio": str(source),
+                "transcript_path": str(transcript_path),
+                "created_at": now,
+                "word_count": len(word_timestamps),
+                "words": word_timestamps,
+            }
+            timestamps_path.write_text(json.dumps(timestamps_data, indent=2), encoding="utf-8")
+            print(f"  Saved {len(word_timestamps)} word timestamps", flush=True)
+
+            # Save speaker-annotated transcript if we identified speakers
+            if speaker_matches:
+                try:
+                    from tools.agents.sense.voice_id import annotate_transcript_with_speakers
+
+                    annotated = annotate_transcript_with_speakers(
+                        transcript, word_timestamps, speaker_matches
+                    )
+                    identified = {m.person_name for m in speaker_matches if m.person_name}
+
+                    speakers_path = processed_dir / f"{source.stem}_speakers.md"
+                    speaker_content = f"# Speaker-Annotated Transcript: {source.name}\n\n"
+                    speaker_content += f"**Transcribed:** {now}\n"
+                    speaker_content += f"**Speakers Identified:** {', '.join(identified) if identified else 'none'}\n\n"
+                    speaker_content += "## Transcript\n\n"
+                    speaker_content += annotated
+                    speakers_path.write_text(speaker_content, encoding="utf-8")
+                    print("  Saved speaker-annotated transcript", flush=True)
+                except Exception as e:
+                    errors.append(f"Failed to save speaker annotations (non-fatal): {e}")
+
+        except Exception as e:
+            errors.append(f"Failed to save word timestamps (non-fatal): {e}")
+
+        # === AUTO-CORRECT TRANSCRIPT ===
+        # Apply high-confidence corrections before signal extraction
+        corrected_transcript = transcript  # fallback to original
+        try:
+            from tools.agents.sense.corrector import TranscriptCorrector
+
+            corrector = TranscriptCorrector()
+            result = corrector.correct(transcript, transcript_path=str(transcript_path))
+
+            if result.corrections:
+                # Auto-apply corrections with confidence >= 0.85
+                high_conf = [c for c in result.corrections if c.confidence >= 0.85]
+                if high_conf:
+                    # Apply corrections to transcript
+                    corrected_transcript = transcript
+                    for corr in high_conf:
+                        idx = corrected_transcript.lower().find(corr.original.lower())
+                        if idx != -1:
+                            corrected_transcript = (
+                                corrected_transcript[:idx] +
+                                corr.corrected +
+                                corrected_transcript[idx + len(corr.original):]
+                            )
+
+                    # Save corrected version
+                    corrected_path = processed_dir / f"{source.stem}_corrected.md"
+                    corrected_content = f"# Corrected Transcript: {source.name}\n\n"
+                    corrected_content += f"**Transcribed:** {now}\n"
+                    corrected_content += f"**Corrections Applied:** {len(high_conf)}\n\n"
+                    corrected_content += "## Full Transcript\n\n"
+                    corrected_content += corrected_transcript
+                    corrected_path.write_text(corrected_content, encoding="utf-8")
+
+                    # Save correction metadata
+                    corrector.save_corrections(result,
+                        processed_dir / f"{source.stem}_corrections.json")
+
+                    print(f"    Applied {len(high_conf)} correction(s)", flush=True)
+        except ImportError:
+            pass  # corrector not available, use original
+        except Exception as e:
+            errors.append(f"Correction failed (non-fatal): {e}")
+
         # Create base signal
         signal = Signal(
             source=self.name,
@@ -142,25 +284,27 @@ class VoiceExtractor(BaseExtractor):
         )
 
         # Try LLM extraction (import here to avoid circular import at module level)
+        # Use corrected_transcript for better signal extraction accuracy
         from tools.agents.sense.extractors.freetext import FreetextExtractor
 
         if gateway and gateway.available:
             ft = FreetextExtractor()
             llm_signals = ft._extract_with_llm(
-                transcript, source, gateway, correlator, now
+                corrected_transcript, source, gateway, correlator, now
             )
             for s in llm_signals:
                 s.source = self.name
                 s.metadata["original_file"] = source.name
+                s.metadata["used_corrected"] = corrected_transcript != transcript
             signals.extend(llm_signals)
         else:
             # No LLM — use correlator for basic matching
             if correlator:
                 signal.people = FreetextExtractor._find_people_mentions(
-                    transcript, correlator
+                    corrected_transcript, correlator
                 )
                 signal.initiatives = FreetextExtractor._find_initiative_mentions(
-                    transcript, correlator
+                    corrected_transcript, correlator
                 )
             signals.append(signal)
 

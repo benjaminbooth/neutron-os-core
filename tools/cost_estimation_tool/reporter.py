@@ -11,7 +11,7 @@ Formats CostBreakdown objects as:
 import json
 import csv
 from io import StringIO
-from typing import List, Dict
+from typing import List
 from .data_models import CostBreakdown
 
 
@@ -22,7 +22,7 @@ class CostReporter:
     def to_markdown_table(breakdowns: List[CostBreakdown]) -> str:
         """
         Format cost breakdowns as markdown table.
-        
+
         Shows all 9 service categories + external services.
         """
         lines = [
@@ -122,25 +122,25 @@ class CostReporter:
         lines.append(total_row)
 
         lines.append("")
-        
+
         # Annual summaries
         lines.append("## Annual & Biennial Costs")
         lines.append("")
-        
+
         annual_table = "| Timeframe | " + " | ".join(b.scenario_name for b in breakdowns) + " |"
         lines.append(annual_table)
         lines.append("|---|" + "|".join(["---"] * len(breakdowns)) + "|")
-        
+
         cost_2026 = "| 2026 (9 months, Feb-Dec) | " + " | ".join(
             f"${b.annual_cost_2026_9mo():,.0f}" for b in breakdowns
         ) + " |"
         lines.append(cost_2026)
-        
+
         cost_2027 = "| 2027 (12 months) | " + " | ".join(
             f"${b.annual_cost_2027_12mo():,.0f}" for b in breakdowns
         ) + " |"
         lines.append(cost_2027)
-        
+
         cost_total = "| **Phase 1 Total (2026-2027)** | " + " | ".join(
             f"**${b.biennial_cost():,.0f}**" for b in breakdowns
         ) + " |"
@@ -152,13 +152,13 @@ class CostReporter:
     def to_detailed_markdown(breakdown: CostBreakdown) -> str:
         """
         Generate detailed markdown report for a single scenario.
-        
+
         Includes full line-item breakdown for each service category.
         """
         lines = [
             f"# Cost Estimate: {breakdown.scenario_name}",
             "",
-            f"**Generated:** Phase 1 (2026-2027)",
+            "**Generated:** Phase 1 (2026-2027)",
             "",
             "---",
             "",
@@ -185,7 +185,7 @@ class CostReporter:
             f"| EKS Worker Nodes ({breakdown.compute.num_worker_nodes} nodes) | ${breakdown.compute.eks_worker_nodes_monthly * breakdown.compute.num_worker_nodes:.2f} |",
             f"| Load Balancer | ${breakdown.compute.load_balancer_monthly:.2f} |",
             f"| EBS Storage | ${breakdown.compute.ebs_storage_monthly:.2f} |",
-            f"| NAT Gateway ({breakdown.compute.nat_gateway_count}) | ${breakdown.compute.nat_gateway_monthly * breakdown.compute.nat_gateway_count:.2f} |",
+            # NAT Gateway costs are shown under Networking
             f"| VPC Endpoints | ${breakdown.compute.vpc_endpoints_monthly:.2f} |",
             f"| Lambda | ${breakdown.compute.lambda_monthly:.2f} |",
             f"| **Subtotal** | **${breakdown.compute.total_monthly:.2f}** |",
@@ -237,7 +237,7 @@ class CostReporter:
             "| Component | Monthly Cost |",
             "|---|---|",
             f"| Data Egress (Internet) | ${breakdown.networking.data_egress_monthly:.2f} |",
-            f"| NAT Gateway | ${breakdown.networking.nat_gateway_monthly:.2f} |",
+            f"| NAT Gateway ({getattr(breakdown.networking, 'nat_gateway_count', 1)}) | ${breakdown.networking.nat_gateway_monthly * getattr(breakdown.networking, 'nat_gateway_count', 1):.2f} |",
             f"| VPC Endpoints | ${breakdown.networking.vpc_endpoints_monthly:.2f} |",
             f"| Cross-Region Transfer | ${breakdown.networking.cross_region_transfer_monthly:.2f} |",
             f"| **Subtotal** | **${breakdown.networking.total_monthly:.2f}** |",
@@ -319,6 +319,10 @@ class CostReporter:
             "|---|---|",
             f"| AWS Services Subtotal | ${breakdown.aws_subtotal_monthly:,.2f} |",
             f"| External Services Subtotal | ${breakdown.external_subtotal_monthly:,.2f} |",
+            # Pre-waiver subtotal = post-waiver subtotal + egress waiver (if any)
+            f"| Pre-Waiver Subtotal | ${breakdown.subtotal_monthly + getattr(breakdown, 'egress_waiver_monthly', 0.0):,.2f} |",
+            f"| Egress Waiver | ${getattr(breakdown, 'egress_waiver_monthly', 0.0):,.2f} |",
+            f"| POC Credit | ${getattr(breakdown, 'poc_credit_monthly', 0.0):,.2f} |",
             f"| **Subtotal** | **${breakdown.subtotal_monthly:,.2f}** |",
             f"| Contingency (20%) | ${breakdown.contingency_monthly:,.2f} |",
             f"| **TOTAL MONTHLY** | **${breakdown.total_monthly:,.2f}** |",
@@ -380,6 +384,10 @@ class CostReporter:
         for category_name, cost_getter in categories:
             row = [category_name] + [f"${cost_getter(b):.2f}" for b in breakdowns]
             writer.writerow(row)
+
+        # Add explicit machine-readable total_monthly row for downstream tools/tests
+        total_row = ["total_monthly"] + [f"{b.total_monthly:.2f}" for b in breakdowns]
+        writer.writerow(total_row)
 
         return output.getvalue()
 

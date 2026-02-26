@@ -40,7 +40,7 @@ Neutron_OS/
     program/                # Program management artifacts
     research/               # Surveys, analyses
     standards/              # Coding and documentation standards
-    NEUP_2026/              # Grant portfolio
+    proposals/NEUP_2026/    # Grant portfolio (moved)
   plugins/
     plugin-triga/           # UT TRIGA reactor-specific logic
     plugin-msr/             # Molten salt reactor logic
@@ -50,8 +50,6 @@ Neutron_OS/
   frontend/                 # Web UI (planned)
   tools/
     agents/                 # Agentic sensing pipeline (neut sense)
-    meeting-intake/         # Teams → Transcribe → Extract → GitLab
-    linear_sync/            # Linear ↔ project sync
     exports/                # GitLab weekly data exports
     tracker/                # Program tracker build tools
     cost_estimation/        # Infrastructure cost models
@@ -157,7 +155,7 @@ Consistent .gitignore standards across all 6 digital twin projects ensure:
 | Layer | Technology | Notes |
 |-------|-----------|-------|
 | CLI | Rust (clap v4) | `neut` binary, offline-first |
-| Agent tooling | Python | `tools/agents/`, `tools/meeting-intake/` |
+| Agent tooling | Python | `tools/agents/` |
 | Data platform | Apache Iceberg + DuckDB + Dagster + dbt | Medallion architecture |
 | Object storage | MinIO | S3-compatible, on-premise |
 | Analytics | Apache Superset | Self-service dashboards |
@@ -231,11 +229,7 @@ Sources (voice memos, Teams, GitLab, Linear, freetext)
 - `tools/agents/correlator.py` — Entity resolution
 - `tools/agents/synthesizer.py` — Cross-source signal merging
 - `tools/agents/publisher.py` — Multi-target publishing
-- `tools/meeting-intake/` — Teams recording pipeline (pre-existing)
-
 ### Design Principles
-
-- **Extend, don't replace:** `meeting-intake` is an extractor that `sense` orchestrates
 - **Human-in-the-loop:** All writes require explicit approval
 - **Model-agnostic:** Gateway routes to any OpenAI-compatible endpoint
 - **IDE-agnostic:** CLI-first, no IDE plugins
@@ -245,6 +239,100 @@ Sources (voice memos, Teams, GitLab, Linear, freetext)
 ### Architecture Spec
 
 Full design: `docs/specs/neutron_os_agent_architecture_v2.md`
+
+---
+
+## Local Development
+
+### Quick Start (One Command)
+
+```bash
+cd /path/to/Neutron_OS
+./scripts/bootstrap.sh
+```
+
+This creates the venv, installs the package, and sets up direnv if available.
+
+### Manual Setup
+
+```bash
+# Create venv at project root (one level above Neutron_OS)
+cd /path/to/UT_Computational_NE
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install Neutron_OS in editable mode with all extras
+cd Neutron_OS
+pip install -e ".[all]"
+
+# Verify
+neut --help
+neut sense status
+```
+
+### Recommended: direnv for Automatic venv Activation
+
+Using [direnv](https://direnv.net) eliminates the need to manually activate the venv:
+
+```bash
+# Install direnv
+brew install direnv  # macOS
+# or: sudo apt install direnv  # Linux
+
+# Add to your shell config (~/.zshrc or ~/.bashrc)
+eval "$(direnv hook zsh)"  # or bash
+
+# Allow the .envrc in Neutron_OS
+cd /path/to/Neutron_OS
+direnv allow
+```
+
+Now when you `cd` into Neutron_OS, the venv activates automatically.
+The `neut` command will work without manual activation.
+
+### Common Issues
+
+**`neut: command not found` or `ModuleNotFoundError`:**
+```bash
+# Quick fix: reinstall
+cd Neutron_OS && ../.venv/bin/pip install -e ".[all]"
+
+# Or run bootstrap to fully reset
+./scripts/bootstrap.sh
+```
+
+**Options to make `neut` available:**
+1. **direnv** (recommended) - Auto-activates venv when you enter the directory
+2. **Manual activation**: `source ../.venv/bin/activate`
+3. **Add to PATH permanently** - Add to ~/.zshrc or ~/.bashrc:
+   ```bash
+   export PATH="/path/to/UT_Computational_NE/.venv/bin:$PATH"
+   ```
+
+**Import errors like `neut.cli` not found:**
+- Don't create files named `neut.py` in your working directory (shadows the command)
+- Run from venv: `source ../.venv/bin/activate` or use full path `../.venv/bin/neut`
+
+**Testing new features:**
+```bash
+# Always work with activated venv
+source ../.venv/bin/activate
+
+# Run CLI commands directly
+neut sense ingest --source voice
+neut sense corrections --guided
+
+# Or run tests
+pytest tests/sense/ -v
+```
+
+### Alternative: Direct Module Execution
+
+If you need to bypass the entry point:
+```bash
+python -m tools.agents.sense.cli status
+python -m tools.neut_cli sense status
+```
 
 ---
 

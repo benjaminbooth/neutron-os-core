@@ -116,8 +116,7 @@ class ComputeCosts:
     num_worker_nodes: int = 2
     load_balancer_monthly: float = 16.0
     ebs_storage_monthly: float = 10.0
-    nat_gateway_monthly: float = 32.0
-    nat_gateway_count: int = 1  # 1 for single-AZ, 2 for multi-AZ
+    # NAT Gateway costs moved to NetworkingCosts to avoid double-counting
     vpc_endpoints_monthly: float = 7.0
     lambda_monthly: float = 10.0
     total_monthly: float = field(default=0.0, init=False)
@@ -129,7 +128,7 @@ class ComputeCosts:
             + (self.eks_worker_nodes_monthly * self.num_worker_nodes)
             + self.load_balancer_monthly
             + self.ebs_storage_monthly
-            + (self.nat_gateway_monthly * self.nat_gateway_count)
+            # NAT Gateway costs are accounted for in NetworkingCosts
             + self.vpc_endpoints_monthly
             + self.lambda_monthly
         )
@@ -186,6 +185,7 @@ class NetworkingCosts:
     """Breakdown of networking costs (Section 5)."""
     data_egress_monthly: float = 50.0  # Most variable; depends on download patterns
     nat_gateway_monthly: float = 32.0
+    nat_gateway_count: int = 1
     vpc_endpoints_monthly: float = 7.0
     cross_region_transfer_monthly: float = 0.0
     total_monthly: float = field(default=0.0, init=False)
@@ -194,7 +194,7 @@ class NetworkingCosts:
         """Calculate total networking cost."""
         self.total_monthly = (
             self.data_egress_monthly
-            + self.nat_gateway_monthly
+            + (self.nat_gateway_monthly * self.nat_gateway_count)
             + self.vpc_endpoints_monthly
             + self.cross_region_transfer_monthly
         )
@@ -297,7 +297,11 @@ class CostBreakdown:
     management: ManagementCosts
     external_services: ExternalServicesCosts
     contingency_percentage: float = 0.20  # 20% contingency
-    
+
+    # Optional policy adjustments (set by caller after construction)
+    egress_waiver_monthly: float = field(default=0.0, init=False)
+    poc_credit_monthly: float = field(default=0.0, init=False)
+
     # Calculated fields
     aws_subtotal_monthly: float = field(default=0.0, init=False)
     external_subtotal_monthly: float = field(default=0.0, init=False)
@@ -319,16 +323,16 @@ class CostBreakdown:
             + self.developer_tools.total_monthly
             + self.management.total_monthly
         )
-        
+
         # External services subtotal
         self.external_subtotal_monthly = self.external_services.total_monthly
-        
+
         # Total before contingency
         self.subtotal_monthly = self.aws_subtotal_monthly + self.external_subtotal_monthly
-        
+
         # Contingency (20%)
         self.contingency_monthly = self.subtotal_monthly * self.contingency_percentage
-        
+
         # Total after contingency
         self.total_monthly = self.subtotal_monthly + self.contingency_monthly
 
@@ -352,7 +356,7 @@ class CostBreakdown:
                 "eks_control_plane": self.compute.eks_control_plane_monthly,
                 "eks_worker_nodes": self.compute.eks_worker_nodes_monthly * self.compute.num_worker_nodes,
                 "load_balancer": self.compute.load_balancer_monthly,
-                "nat_gateway": self.compute.nat_gateway_monthly * self.compute.nat_gateway_count,
+                    # NAT gateway costs are reported under networking
                 "vpc_endpoints": self.compute.vpc_endpoints_monthly,
                 "subtotal": self.compute.total_monthly,
             },
@@ -375,7 +379,7 @@ class CostBreakdown:
             },
             "networking": {
                 "data_egress": self.networking.data_egress_monthly,
-                "nat_gateway": self.networking.nat_gateway_monthly,
+                "nat_gateway": self.networking.nat_gateway_monthly * self.networking.nat_gateway_count,
                 "vpc_endpoints": self.networking.vpc_endpoints_monthly,
                 "subtotal": self.networking.total_monthly,
             },

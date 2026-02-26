@@ -66,6 +66,7 @@ class Session:
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     updated_at: str = ""
+    usage: dict[str, Any] = field(default_factory=dict)
 
     def add_message(
         self,
@@ -80,13 +81,16 @@ class Session:
         return msg
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "session_id": self.session_id,
             "messages": [m.to_dict() for m in self.messages],
             "context": self.context,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
+        if self.usage:
+            d["usage"] = self.usage
+        return d
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Session:
@@ -96,6 +100,7 @@ class Session:
             context=d.get("context", {}),
             created_at=d.get("created_at", ""),
             updated_at=d.get("updated_at", ""),
+            usage=d.get("usage", {}),
         )
 
 

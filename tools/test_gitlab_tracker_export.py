@@ -5,8 +5,6 @@ Unit tests for gitlab_tracker_export.py
 Run with: pytest test_gitlab_tracker_export.py -v
 """
 
-import json
-import os
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 

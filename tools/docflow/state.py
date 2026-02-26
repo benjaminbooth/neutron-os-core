@@ -10,7 +10,165 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from tools.docflow.models import DocumentState
+# Import directly from the models.py file (avoid models/ package conflict)
+from dataclasses import dataclass, field
+
+
+# Copy the necessary classes from models.py to avoid circular imports
+@dataclass
+class PublicationRecord:
+    """Record of a document's publication to storage."""
+
+    storage_id: str  # e.g., "medical-isotope-prd.docx" or SharePoint asset ID
+    url: str  # URL or file path where the document is stored
+    version: str = "v1.0.0"  # Semantic version: v{major}.{minor}.{patch}
+    published_at: str = ""  # ISO 8601 timestamp
+    commit_sha: str = ""  # Git commit SHA when published
+    generation_provider: str = ""  # e.g., "pandoc-docx"
+    storage_provider: str = ""  # e.g., "local", "sharepoint", "onedrive"
+    artifact_hash: str = ""  # SHA256 hash of the generated artifact (for no-op detection)
+
+    def to_dict(self) -> dict:
+        return {
+            "artifact_hash": self.artifact_hash,
+            "commit_sha": self.commit_sha,
+            "generation_provider": self.generation_provider,
+            "published_at": self.published_at,
+            "storage_id": self.storage_id,
+            "storage_provider": self.storage_provider,
+            "url": self.url,
+            "version": self.version,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> PublicationRecord:
+        return cls(
+            storage_id=data.get("storage_id", ""),
+            url=data.get("url", ""),
+            version=data.get("version", "v1.0.0"),
+            published_at=data.get("published_at", ""),
+            commit_sha=data.get("commit_sha", ""),
+            generation_provider=data.get("generation_provider", ""),
+            storage_provider=data.get("storage_provider", ""),
+            artifact_hash=data.get("artifact_hash", ""),
+        )
+
+
+@dataclass
+class DocumentState:
+    """Complete lifecycle state for a single document."""
+
+    doc_id: str
+    source_path: str  # Relative path from repo root
+    status: str = "draft"  # "draft", "published", "orphan"
+    published: PublicationRecord | None = None
+    active_draft: dict | None = None  # Current draft being edited
+    draft_history: list[dict] = field(default_factory=list)
+    pending_comments: list[dict] = field(default_factory=list)
+    stakeholders: list[str] = field(default_factory=list)
+    last_branch: str = ""  # Git branch where last published
+    last_commit: str = ""  # Git commit SHA of last publication
+
+    def to_dict(self) -> dict:
+        return {
+            "active_draft": self.active_draft,
+            "doc_id": self.doc_id,
+            "draft_history": self.draft_history,
+            "last_branch": self.last_branch,
+            "last_commit": self.last_commit,
+            "pending_comments": self.pending_comments,
+            "published": self.published.to_dict() if self.published else None,
+            "source_path": self.source_path,
+            "stakeholders": self.stakeholders,
+            "status": self.status,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> DocumentState:
+        published_data = data.get("published")
+        published = PublicationRecord.from_dict(published_data) if published_data else None
+        return cls(
+            doc_id=data.get("doc_id", ""),
+            source_path=data.get("source_path", ""),
+            status=data.get("status", "draft"),
+            published=published,
+            active_draft=data.get("active_draft"),
+            draft_history=data.get("draft_history", []),
+            pending_comments=data.get("pending_comments", []),
+            stakeholders=data.get("stakeholders", []),
+            last_branch=data.get("last_branch", ""),
+            last_commit=data.get("last_commit", ""),
+        )
+
+
+@dataclass
+class Comment:
+    """Reviewer comment extracted from a published artifact."""
+
+    comment_id: str
+    author: str
+    timestamp: str  # ISO 8601
+    text: str
+    context: str | None = None  # Text range the comment is anchored to
+    resolved: bool = False
+    replies: list[Comment] = field(default_factory=list)
+    source: str = ""  # Provider name that produced this comment
+
+    def to_dict(self) -> dict:
+        return {
+            "comment_id": self.comment_id,
+            "author": self.author,
+            "timestamp": self.timestamp,
+            "text": self.text,
+            "context": self.context,
+            "resolved": self.resolved,
+            "replies": [r.to_dict() for r in self.replies],
+            "source": self.source,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Comment:
+        replies = [cls.from_dict(r) for r in data.get("replies", [])]
+        return cls(
+            comment_id=data.get("comment_id", ""),
+            author=data.get("author", ""),
+            timestamp=data.get("timestamp", ""),
+            text=data.get("text", ""),
+            context=data.get("context"),
+            resolved=data.get("resolved", False),
+            replies=replies,
+            source=data.get("source", ""),
+        )
+
+
+@dataclass
+class LinkEntry:
+    """Registry entry mapping a document to its published URL."""
+
+    doc_id: str  # e.g., "experiment-manager-prd"
+    source_path: str  # e.g., "docs/prd/experiment-manager-prd.md"
+    published_url: str  # From StorageProvider.get_canonical_url()
+    draft_url: str | None = None
+    storage_id: str = ""  # Provider-specific reference
+    last_published: str = ""  # ISO 8601
+    version: str = "v1"
+    commit_sha: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "doc_id": self.doc_id,
+            "source_path": self.source_path,
+            "published_url": self.published_url,
+            "draft_url": self.draft_url,
+            "storage_id": self.storage_id,
+            "last_published": self.last_published,
+            "version": self.version,
+            "commit_sha": self.commit_sha,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> LinkEntry:
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
 class StateStore:

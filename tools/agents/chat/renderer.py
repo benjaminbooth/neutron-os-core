@@ -9,8 +9,8 @@ from __future__ import annotations
 import re
 import sys
 import threading
-import time
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Iterator, TYPE_CHECKING
 
 from tools.agents.orchestrator.actions import Action, ActionStatus
@@ -28,6 +28,60 @@ _HEADING_RE = re.compile(r"^(#{1,3})\s+(.+)$")
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 _INLINE_CODE_RE = re.compile(r"`([^`]+)`")
 _LIST_RE = re.compile(r"^(\s*)-\s+(.+)$")
+
+# File path patterns for clickable links
+# Matches paths like: docs/foo.md, ./tools/bar.py, tools/agents/sense/cli.py:123
+_FILE_PATH_RE = re.compile(
+    r'`([a-zA-Z0-9_./-]+\.[a-zA-Z]+(?::\d+)?)`'  # backticked paths with extension
+    r'|'
+    r'\b((?:\.?/)?(?:tools|docs|tests|scripts|data|inbox)/[a-zA-Z0-9_./\-]+\.[a-zA-Z]+(?::\d+)?)\b'  # bare repo paths
+)
+
+# Repository root for resolving relative paths to absolute
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
+def _make_path_clickable(match: re.Match) -> str:
+    """Convert a file path match to a clickable terminal link."""
+    # Get the matched path (from either capture group)
+    path_str = match.group(1) or match.group(2)
+    if not path_str:
+        return match.group(0)
+
+    # Parse line number if present
+    line_num = None
+    if ':' in path_str:
+        path_str, line_str = path_str.rsplit(':', 1)
+        if line_str.isdigit():
+            line_num = int(line_str)
+
+    # Resolve to absolute path
+    p = Path(path_str)
+    if not p.is_absolute():
+        p = _REPO_ROOT / p
+    p = p.resolve()
+
+    # Only linkify if file exists
+    if not p.exists():
+        return match.group(0)
+
+    abs_path = str(p)
+    if line_num:
+        abs_path = f"{abs_path}:{line_num}"
+
+    # Format as clickable link
+    display = path_str
+    if line_num:
+        display = f"{path_str}:{line_num}"
+
+    if not _use_color():
+        return abs_path
+
+    # Use OSC 8 hyperlink + plain path fallback
+    uri = f"file://{p}"
+    # OSC 8: \x1b]8;;URL\x07DISPLAY\x1b]8;;\x07
+    hyperlink = f"\x1b]8;;{uri}\x07{_c(_Colors.CYAN, display)}\x1b]8;;\x07"
+    return hyperlink
 
 
 def format_markdown_line(line: str) -> str:
@@ -59,11 +113,18 @@ def format_markdown_line(line: str) -> str:
 
 
 def _apply_inline(text: str) -> str:
-    """Apply inline formatting: **bold** and `code`."""
+    """Apply inline formatting: **bold**, `code`, and clickable file paths."""
     if not _use_color():
         return text
+
+    # First, convert file paths to clickable links (before other formatting)
+    text = _FILE_PATH_RE.sub(_make_path_clickable, text)
+
+    # Then apply other inline formatting
     text = _BOLD_RE.sub(lambda m: _c(_Colors.BOLD, m.group(1)), text)
-    text = _INLINE_CODE_RE.sub(lambda m: _c(_Colors.CYAN, f"`{m.group(1)}`"), text)
+    # Skip inline code formatting for paths that were already linkified (contain OSC 8)
+    if '\x1b]8;;' not in text:
+        text = _INLINE_CODE_RE.sub(lambda m: _c(_Colors.CYAN, f"`{m.group(1)}`"), text)
     return text
 
 
@@ -74,36 +135,80 @@ def _apply_inline(text: str) -> str:
 def stream_text(chunks: Iterator[StreamChunk]) -> str:
     """Write streaming text deltas to stdout, return accumulated text.
 
-    Handles text chunks and tool-use indicators.
+    Shows partial lines in real-time for responsiveness, then replaces
+    with formatted version when the line is complete. Applies markdown
+    formatting (headings, bold, lists, code) to complete lines.
     """
     accumulated = ""
     in_code_block = False
+    line_buffer = ""  # Buffer for incomplete lines
+    partial_displayed = 0  # How many chars of partial line are on screen
+    is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+
+    def _clear_partial():
+        """Clear the partially displayed line from screen."""
+        nonlocal partial_displayed
+        if partial_displayed > 0 and is_tty:
+            # Move to start of line and clear
+            sys.stdout.write("\r" + " " * partial_displayed + "\r")
+            sys.stdout.flush()
+        partial_displayed = 0
+
+    def _show_partial(text: str):
+        """Display partial line (unformatted)."""
+        nonlocal partial_displayed
+        if text:
+            sys.stdout.write(text)
+            sys.stdout.flush()
+            partial_displayed = len(text)
+
+    def _flush_line(line: str):
+        """Format and output a complete line."""
+        nonlocal in_code_block
+        _clear_partial()
+
+        # Check for code block toggles
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            if _use_color():
+                line = _c(_Colors.DIM, line)
+        elif in_code_block:
+            # Inside code block - dim but no markdown formatting
+            if _use_color():
+                line = _c(_Colors.DIM, line)
+        else:
+            # Normal text - apply full markdown formatting
+            if _use_color():
+                line = format_markdown_line(line)
+
+        sys.stdout.write(line + "\n")
+        sys.stdout.flush()
 
     for chunk in chunks:
         if chunk.type == "text":
             text = chunk.text
-            # Format line-by-line when we hit newlines
-            if "\n" in text:
-                parts = text.split("\n")
-                for i, part in enumerate(parts):
-                    if i > 0:
-                        sys.stdout.write("\n")
-                    if part:
-                        # Check for code block toggles
-                        if part.strip().startswith("```"):
-                            in_code_block = not in_code_block
-                        if _use_color() and not in_code_block:
-                            part = _apply_inline(part)
-                        sys.stdout.write(part)
-            else:
-                if _use_color() and not in_code_block:
-                    text = _apply_inline(text)
-                sys.stdout.write(text)
-            sys.stdout.flush()
-            accumulated += chunk.text
+            accumulated += text
+
+            # Clear any partial display before processing
+            _clear_partial()
+            line_buffer += text
+
+            # Process complete lines from buffer
+            while "\n" in line_buffer:
+                line, line_buffer = line_buffer.split("\n", 1)
+                _flush_line(line)
+
+            # Show remaining partial line for responsiveness
+            if line_buffer:
+                _show_partial(line_buffer)
 
         elif chunk.type == "tool_use_start":
-            msg = f"\n  {_c(_Colors.DIM, f'[calling {chunk.tool_name}...]')}\n"
+            # Flush any buffered content first
+            if line_buffer:
+                _clear_partial()
+                _flush_line(line_buffer)
+                line_buffer = ""
+            msg = f"  {_c(_Colors.DIM, f'[calling {chunk.tool_name}...]')}\n"
             sys.stdout.write(msg)
             sys.stdout.flush()
 
@@ -111,9 +216,20 @@ def stream_text(chunks: Iterator[StreamChunk]) -> str:
             pass  # Tool results rendered separately
 
         elif chunk.type == "done":
+            # Flush any remaining buffered content
+            _clear_partial()
+            if line_buffer:
+                if line_buffer.strip().startswith("```"):
+                    in_code_block = not in_code_block
+                if _use_color() and not in_code_block:
+                    line_buffer = format_markdown_line(line_buffer)
+                elif _use_color() and in_code_block:
+                    line_buffer = _c(_Colors.DIM, line_buffer)
+                sys.stdout.write(line_buffer)
+                line_buffer = ""
             if accumulated and not accumulated.endswith("\n"):
                 sys.stdout.write("\n")
-                sys.stdout.flush()
+            sys.stdout.flush()
             break
 
     return accumulated
@@ -181,10 +297,14 @@ def render_message(role: str, content: str) -> None:
         print(f"  {_c(_Colors.DIM, content)}")
 
 
-def render_welcome(gateway=None) -> None:
+def render_welcome(gateway=None, show_banner: bool = False) -> None:
     """Print the chat welcome message with gateway status."""
-    print()
-    print(f"  {_c(_Colors.BOLD + _Colors.BRIGHT_BLUE, 'neut chat')} — interactive agent")
+    if show_banner:
+        from tools.agents.setup.renderer import banner as mascot_banner
+        mascot_banner()
+    else:
+        print()
+        print(f"  {_c(_Colors.BOLD + _Colors.BRIGHT_BLUE, 'neut chat')} — interactive agent")
 
     if gateway is not None:
         provider = gateway.active_provider
@@ -284,6 +404,62 @@ def render_session_list(sessions: list[dict[str, Any]]) -> None:
         updated = s.get("updated", "")
         print(f"  {_c(_Colors.CYAN, sid)}  {msgs} messages  {_c(_Colors.DIM, updated)}")
     print()
+
+
+# ---------------------------------------------------------------------------
+# File links (clickable in VS Code terminal)
+# ---------------------------------------------------------------------------
+
+def file_link(path: str | Path, line: int | None = None, display: str | None = None) -> str:
+    """Format a file path as a clickable terminal link.
+
+    In VS Code's integrated terminal, file paths are auto-detected and made
+    clickable. This function ensures proper formatting and uses OSC 8
+    hyperlinks for richer terminals.
+
+    Args:
+        path: Relative or absolute path to the file
+        line: Optional line number to jump to
+        display: Optional display text (defaults to path basename)
+
+    Returns:
+        Formatted string that's clickable in VS Code terminal
+    """
+    # Resolve to absolute path
+    p = Path(path)
+    if not p.is_absolute():
+        p = _REPO_ROOT / p
+    p = p.resolve()
+
+    abs_path = str(p)
+    if line:
+        abs_path = f"{abs_path}:{line}"
+
+    # Display text: use provided or basename
+    if display is None:
+        display = p.name
+        if line:
+            display = f"{display}:{line}"
+
+    if not _use_color():
+        return abs_path
+
+    # Use OSC 8 hyperlink for terminals that support it
+    # Format: \x1b]8;;URL\x07DISPLAY\x1b]8;;\x07
+    uri = f"file://{p}"
+    hyperlink = f"\x1b]8;;{uri}\x07{_c(_Colors.CYAN, display)}\x1b]8;;\x07"
+
+    # Also include plain path for fallback (VS Code picks this up)
+    return f"{hyperlink} ({_c(_Colors.DIM, abs_path)})"
+
+
+def format_file_reference(path: str | Path, line: int | None = None) -> str:
+    """Format a file reference for display in neut chat output.
+
+    Creates a clickable link instead of showing file contents inline.
+    """
+    link = file_link(path, line)
+    return f"\n  📄 {link}\n"
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@
 #   make install       → pip install -e .[all]
 #   make env           → Copy .env.example to .env
 
-.PHONY: install env test integration test-all lint build clean serve help
+.PHONY: install env test integration test-all lint build clean serve install-preview ci-version help
 
 # ─── Setup ───────────────────────────────────────────────────────────────────
 
@@ -67,6 +67,15 @@ build:  ## Build wheel and sdist
 clean:  ## Remove build artifacts
 	rm -rf dist/ build/ *.egg-info .pytest_cache .pip-cache
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+
+install-preview:  ## Install latest dev build from GitLab Package Registry
+	@test -n "$${GITLAB_PROJECT_ID}" || (echo "Set GITLAB_PROJECT_ID first (find it on the GitLab project homepage)" && exit 1)
+	pip install neutron-os --upgrade \
+		--index-url https://rsicc-gitlab.tacc.utexas.edu/api/v4/projects/$${GITLAB_PROJECT_ID}/packages/pypi/simple \
+		--trusted-host rsicc-gitlab.tacc.utexas.edu
+
+ci-version:  ## Show the dev version that CI would stamp for this pipeline
+	@python -c "import tomllib; v=tomllib.load(open('pyproject.toml','rb'))['project']['version']; print(f'{v}.dev<CI_PIPELINE_IID>')"
 
 # ─── GitLab Runner ───────────────────────────────────────────────────────────
 

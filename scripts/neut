@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# neut — Self-healing Neutron OS CLI wrapper
+#
+# This wrapper ensures `neut` always works, even when:
+# - pip entry points are stale
+# - the venv isn't activated  
+# - PYTHONPATH isn't set
+#
+# Works from either location:
+# - scripts/neut (source repo)
+# - .venv/bin/neut (installed)
+
+set -e
+
+# Find Neutron_OS repo root
+find_repo_root() {
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # If we're in .venv/bin/, look for Neutron_OS nearby
+    if [[ "$script_dir" == */.venv/bin ]]; then
+        local parent="$(dirname "$(dirname "$script_dir")")"
+        # Check common layouts: parent/Neutron_OS or parent itself
+        if [[ -f "$parent/Neutron_OS/tools/neut_cli.py" ]]; then
+            echo "$parent/Neutron_OS"
+            return
+        elif [[ -f "$parent/tools/neut_cli.py" ]]; then
+            echo "$parent"
+            return
+        fi
+    fi
+    
+    # If we're in scripts/, go up one
+    if [[ "$script_dir" == */scripts ]]; then
+        echo "$(dirname "$script_dir")"
+        return
+    fi
+    
+    # Last resort: search upward for tools/neut_cli.py
+    local dir="$script_dir"
+    while [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/tools/neut_cli.py" ]]; then
+            echo "$dir"
+            return
+        fi
+        dir="$(dirname "$dir")"
+    done
+    
+    echo ""
+}
+
+REPO_ROOT=$(find_repo_root)
+
+if [[ -z "$REPO_ROOT" || ! -f "$REPO_ROOT/tools/neut_cli.py" ]]; then
+    echo "neut: error: Cannot find Neutron_OS repo (looking for tools/neut_cli.py)" >&2
+    echo "Script location: $(dirname "${BASH_SOURCE[0]}")" >&2
+    exit 1
+fi
+
+# Find Python - prefer venv, fall back to system
+find_python() {
+    local venv_locations=(
+        "$REPO_ROOT/../.venv"
+        "$REPO_ROOT/.venv"
+        "$VIRTUAL_ENV"
+    )
+    
+    for venv in "${venv_locations[@]}"; do
+        if [[ -n "$venv" && -x "$venv/bin/python" ]]; then
+            echo "$venv/bin/python"
+            return
+        fi
+    done
+    
+    command -v python3 || command -v python
+}
+
+PYTHON=$(find_python)
+
+if [[ -z "$PYTHON" ]]; then
+    echo "neut: error: No Python interpreter found" >&2
+    exit 1
+fi
+
+cd "$REPO_ROOT"
+exec "$PYTHON" -m tools.neut_cli "$@"
