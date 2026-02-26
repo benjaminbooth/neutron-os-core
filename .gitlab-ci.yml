@@ -256,10 +256,6 @@ publish:dev:
         dist/*
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 30 days
 
 publish:release:
   extends: .python-setup
