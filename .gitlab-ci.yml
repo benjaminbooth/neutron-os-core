@@ -239,14 +239,17 @@ publish:dev:
     - pip install --quiet build twine
     # Stamp dev version: 0.1.0 → 0.1.0.dev<pipeline_iid>
     - |
-      python -c "
-      import re, pathlib
+      python3 -c "
+      import re, pathlib, os
+      iid = os.environ.get('CI_PIPELINE_IID', '0')
       p = pathlib.Path('pyproject.toml')
       text = p.read_text()
-      text = re.sub(r'version\s*=\s*\"([^\"]+)\"', 'version = \"\g<1>.dev${CI_PIPELINE_IID}\"', text, count=1)
+      text = re.sub(r'version = \"([^\"]+)\"', lambda m: f'version = \"{m.group(1)}.dev{iid}\"', text, count=1)
       p.write_text(text)
+      print(f'Stamped version: {m.group(1)}.dev{iid}' if (m := re.search(r'version = \"([^\"]+)\"', text)) else 'Version stamp applied')
       "
   script:
+    - rm -rf dist/
     - python -m build
     - |
       TWINE_PASSWORD=${CI_JOB_TOKEN} \
