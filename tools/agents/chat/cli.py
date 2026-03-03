@@ -33,6 +33,7 @@ from tools.agents.chat.commands import (
     cmd_rename,
     cmd_archive,
     cmd_usage,
+    find_close_command,
     get_slash_commands,
 )
 from tools.agents.chat.provider_factory import create_render_provider, create_input_provider
@@ -77,57 +78,31 @@ def run_repl(
 
     render.render_welcome(gateway=agent.gateway, show_banner=show_banner)
 
-    multiline_mode = False
-    multiline_buffer: list[str] = []
-
     try:
         while True:
             try:
-                if multiline_mode:
-                    prefix = "...> "
-                else:
-                    # Padding lifts input area away from terminal bottom
-                    print("\n\n\n\n\n\n")
-                    # Top border before input
-                    print(_input_border())
-                    prefix = "you> "
+                # Padding lifts input area away from terminal bottom
+                print("\n\n\n\n\n\n")
+                # Top border before input
+                print(_input_border())
 
-                user_input = input_prov.prompt(prefix, show_border=not multiline_mode)
+                user_input = input_prov.prompt("you> ", show_border=True)
             except KeyboardInterrupt:
-                if multiline_mode:
-                    multiline_mode = False
-                    multiline_buffer.clear()
-                    print()
-                    continue
                 print()  # New prompt on Ctrl+C
                 continue
             except EOFError:
                 print(f"\n  {_c(_Colors.DIM, 'Goodbye.')}")
                 break
 
-            # Multi-line mode toggle
-            if user_input.strip() == '"""':
-                if multiline_mode:
-                    # End multi-line mode
-                    multiline_mode = False
-                    user_input = "\n".join(multiline_buffer)
-                    multiline_buffer.clear()
-                else:
-                    # Start multi-line mode
-                    multiline_mode = True
-                    multiline_buffer.clear()
-                    print(f"  {_c(_Colors.DIM, 'Multi-line mode. Type')}"
-                          f" {_c(_Colors.CYAN, '\"\"\"')}"
-                          f" {_c(_Colors.DIM, 'to send.')}")
-                    continue
-
-            if multiline_mode:
-                multiline_buffer.append(user_input)
-                continue
-
             user_input = user_input.strip()
             if not user_input:
                 continue
+
+            # Support """ wrapping as alternative multiline delimiter
+            if user_input.startswith('"""') and user_input.endswith('"""') and len(user_input) > 6:
+                user_input = user_input[3:-3].strip()
+                if not user_input:
+                    continue
 
             # --- Slash commands ---
             if user_input.startswith("/"):
@@ -227,15 +202,9 @@ def _handle_slash_command(
         return _execute_cli_command(command)
 
     # --- Unknown command with suggestion ---
-    from difflib import get_close_matches
-
-    all_commands = list(get_slash_commands().keys())
-    suggestions = get_close_matches(
-        command.split()[0], [c.split()[0] for c in all_commands], n=1, cutoff=0.5,
-    )
-
-    if suggestions:
-        return f"\n  Unknown command: {cmd}. Did you mean {suggestions[0]}?\n"
+    suggestion = find_close_command(command)
+    if suggestion:
+        return f"\n  Unknown command: {cmd}. Did you mean {suggestion}?\n"
     return f"\n  Unknown command: {cmd}. Type /help for available commands.\n"
 
 
@@ -388,8 +357,10 @@ def main():
             finally:
                 store.save(agent.session)
             return
-        except Exception:
-            pass  # Fall through to classic REPL
+        except Exception as _tui_err:
+            import traceback as _tb
+            print(f"[TUI failed, falling back to REPL: {_tui_err}]", file=sys.stderr)
+            _tb.print_exc(file=sys.stderr)
 
     # Classic REPL fallback
     render = create_render_provider(force=args.render)

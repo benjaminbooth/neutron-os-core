@@ -6,7 +6,7 @@ Commands return a string to display, or None for no output.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from tools.agents.setup.renderer import _c, _Colors
 
@@ -55,8 +55,7 @@ def cmd_help() -> str:
             lines.append("")
 
     lines.extend([
-        f"  {_c(_Colors.DIM, 'Tip: Use triple quotes')} {_c(_Colors.CYAN, '\"\"\"')} "
-        f"{_c(_Colors.DIM, 'for multi-line input.')}",
+        f"  {_c(_Colors.DIM, 'Tip: Alt+Enter for newline in multi-line input.')}",
         f"  {_c(_Colors.DIM, 'CLI commands run directly:')} {_c(_Colors.CYAN, '/sense status')}",
         "",
     ])
@@ -335,6 +334,22 @@ def get_slash_commands() -> dict[str, str]:
     commands = CHAT_META_COMMANDS.copy()
     commands.update(_get_cli_commands())
     return commands
+
+
+def find_close_command(cmd: str) -> Optional[str]:
+    """Return the closest matching slash command, or None.
+
+    Uses difflib fuzzy matching on the first word of each command.
+    Shared by both the classic REPL and the fullscreen TUI.
+    """
+    from difflib import get_close_matches
+
+    all_commands = list(get_slash_commands().keys())
+    first_words = [c.split()[0] for c in all_commands]
+    matches = get_close_matches(
+        cmd.split()[0], first_words, n=1, cutoff=0.5,
+    )
+    return matches[0] if matches else None
 
 
 # For backwards compatibility

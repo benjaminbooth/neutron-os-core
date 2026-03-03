@@ -65,11 +65,13 @@ SUBCOMMANDS = {
     "doc": "tools.docflow.cli",
     "docflow": "tools.docflow.cli",
     "chat": "tools.agents.chat.cli",
-    "db": "tools.db.cli",  # Database infrastructure (K3D, migrations)
+    "code": "tools.agents.chat.cli",  # Alias for chat
+    "db": "tools.db.cli",  # PostgreSQL + pgvector infrastructure
     "infra": "tools.agents.setup.infra",  # Infrastructure setup (Docker, K3D)
     "test": "tools.test.cli",  # Test orchestration
     "update": "tools.update.cli",  # Dependency and migration updates
     "status": "tools.status.cli",  # System health dashboard
+    "mo": "tools.mo.cli",  # M-O resource steward
     "serve-mcp": "tools.mcp_server.server",
     "doctor": None,  # Built-in, handled specially
 }
@@ -324,11 +326,13 @@ _SUBCOMMAND_HELP = {
     "doc": "Document lifecycle management",
     "docflow": "Document lifecycle management (alias for doc)",
     "chat": "Interactive agent with tool calling",
-    "db": "Database infrastructure (K3D, migrations)",
+    "code": "Interactive agent with tool calling",
+    "db": "PostgreSQL + pgvector infrastructure",
     "infra": "Infrastructure setup (Docker, K3D)",
     "test": "Test orchestration",
     "update": "Dependency and migration updates",
     "status": "System health dashboard",
+    "mo": "M-O resource steward (scratch, vitals, cleanup)",
     "serve-mcp": "Start the MCP server for IDE integration",
     "doctor": "AI-powered environment diagnostics",
 }
@@ -452,8 +456,9 @@ def get_parser() -> argparse.ArgumentParser:
 
         try:
             mod = importlib.import_module(module_path)
-            if hasattr(mod, "get_parser"):
-                child_parser = mod.get_parser()
+            _get = getattr(mod, "get_parser", None) or getattr(mod, "build_parser", None)
+            if _get:
+                child_parser = _get()
                 sub = subparsers.add_parser(
                     name,
                     help=child_parser.description or _SUBCOMMAND_HELP.get(name, ""),
@@ -471,26 +476,37 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def print_usage():
-    print("neut — Neutron OS CLI (Python prototype)")
+def print_usage(show_all: bool = False):
+    print("neut — Neutron OS CLI")
     print()
-    print("Usage: neut <subcommand> [args...]")
+    print("Usage: neut <command> [args...]")
     print()
-    print("Subcommands:")
-    print("  setup     Interactive onboarding wizard")
-    print("  sense     Agentic signal ingestion pipeline")
-    print("  doc       Document lifecycle management (alias: docflow)")
-    print("  chat      Interactive agent with tool calling")
-    print("  serve-mcp Start the MCP server for IDE integration")
-    print("  doctor    AI-powered environment diagnostics")
-    print()
-    print("Examples:")
-    print("  neut sense status")
-    print("  neut sense ingest --source gitlab")
-    print("  neut doc publish docs/prd/foo.md")
-    print("  neut doc providers")
-    print("  neut doctor                     # Check environment health")
-    print("  neut doctor 'ModuleNotFoundError: No module named neut'")
+    print("Commands:")
+    print("  status    System health dashboard")
+    print("  doctor    Diagnose environment issues")
+    print("  update    Check for updates and apply them")
+    print("  setup     First-time configuration")
+
+    if show_all:
+        print()
+        print("Tools:")
+        print("  sense     Agentic signal ingestion pipeline")
+        print("  doc       Document lifecycle management (alias: docflow)")
+        print("  chat      Interactive agent with tool calling")
+        print("  code      Interactive agent with tool calling (alias for chat)")
+        print("  mo        M-O resource steward (scratch, vitals, cleanup)")
+        print()
+        print("Infrastructure:")
+        print("  db        PostgreSQL + pgvector database management")
+        print("  infra     Infrastructure setup (Docker, K3D)")
+        print()
+        print("Development:")
+        print("  test      Test orchestration")
+        print("  serve-mcp Start the MCP server for IDE integration")
+    else:
+        print()
+        print("Type 'neut' with no args for interactive mode.")
+        print("Run 'neut --help-all' for all commands.")
 
 
 def _suggest_command(cmd: str, valid_commands: list[str]) -> str | None:
@@ -528,6 +544,10 @@ def main():
 
     if subcommand in ("-h", "--help", "help"):
         print_usage()
+        sys.exit(0)
+
+    if subcommand == "--help-all":
+        print_usage(show_all=True)
         sys.exit(0)
 
     if subcommand == "doctor":

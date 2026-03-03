@@ -11,6 +11,7 @@ from tools.agents.chat.commands import (
     cmd_sessions,
     cmd_resume,
     cmd_new,
+    find_close_command,
     get_slash_commands,
     CHAT_META_COMMANDS,
 )
@@ -223,6 +224,35 @@ class TestBannerRendering:
         parser = get_parser()
         args = parser.parse_args([])
         assert args.bare is False
+
+
+class TestFindCloseCommand:
+    """Test the fuzzy command matching helper."""
+
+    def test_close_match_found(self):
+        """A near-miss like /sesions should match /sessions."""
+        result = find_close_command("/sesions")
+        assert result == "/sessions"
+
+    def test_close_match_help(self):
+        """A near-miss like /helo should match /help."""
+        result = find_close_command("/helo")
+        assert result == "/help"
+
+    def test_no_match_for_garbage(self):
+        """A completely unrelated string returns None."""
+        result = find_close_command("/xyzzy_garbage_999")
+        assert result is None
+
+    def test_exact_match_returns_itself(self):
+        """An exact command name should be returned as a match."""
+        result = find_close_command("/help")
+        assert result == "/help"
+
+    def test_multi_word_uses_first_word(self):
+        """Only the first word is used for matching."""
+        result = find_close_command("/statu extra args")
+        assert result == "/status"
 
 
 class TestMultiLineInput:

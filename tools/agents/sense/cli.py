@@ -1,13 +1,16 @@
-"""CLI handler for `neut sense` — agentic signal ingestion.
+"""CLI handler for `neut sense` — program awareness.
 
-Subcommands:
-    neut sense ingest --source gitlab    Run gitlab diff extractor
-    neut sense ingest --source voice     Process voice memos
-    neut sense ingest --source freetext  Process text files in inbox
-    neut sense ingest --source all       All extractors
-    neut sense draft                     Synthesize → generate changelog
-    neut sense status                    Show inbox/processed/draft status
-    neut sense serve [--port] [--host]   HTTP inbox ingestion server
+User commands (shown in default help):
+    neut sense brief                     Catch up on what happened
+    neut sense media search <query>      Search recordings
+    neut sense draft                     Generate weekly changelog
+    neut sense status                    Check pipeline health
+
+Pipeline commands (under `neut sense pipeline`):
+    neut sense pipeline ingest --source voice   Process voice memos
+    neut sense pipeline review                  Guided correction review
+    neut sense pipeline review --transcripts    Transcript correction
+    neut sense pipeline suggest --run           LLM signal-to-PRD matching
 """
 
 from __future__ import annotations
@@ -24,9 +27,17 @@ from pathlib import Path
 class SuggestingArgumentParser(argparse.ArgumentParser):
     """ArgumentParser that suggests similar commands on typos."""
 
-    def __init__(self, *args, valid_subcommands: list[str] | None = None, **kwargs):
+    def __init__(self, *args, valid_subcommands: list[str] | None = None,
+                 custom_help: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         self._valid_subcommands = valid_subcommands or []
+        self._custom_help = custom_help
+
+    def print_help(self, file=None) -> None:
+        if self._custom_help:
+            print(self._custom_help, file=file or sys.stdout)
+        else:
+            super().print_help(file)
 
     def error(self, message: str) -> None:
         # Check if this is an "invalid choice" error for a subcommand
@@ -38,6 +49,39 @@ class SuggestingArgumentParser(argparse.ArgumentParser):
             err_msg = f"{self.prog}: error: {message}\n"
             if suggestions:
                 err_msg += f"\nDid you mean: {' or '.join(suggestions)}?\n"
+
+                # Interactive terminal + single close match → offer to run corrected command
+                if (len(suggestions) == 1
+                        and hasattr(sys.stdin, "isatty") and sys.stdin.isatty()
+                        and hasattr(sys.stdout, "isatty") and sys.stdout.isatty()):
+                    sys.stderr.write(err_msg)
+                    try:
+                        from tools.agents.setup.renderer import prompt_yn
+                        corrected = suggestions[0]
+                        if prompt_yn(f"Run `neut sense {corrected}` instead?", default=True):
+                            # Re-parse with corrected subcommand
+                            fixed_argv = sys.argv[:]
+                            # Replace the typo with the corrected command
+                            try:
+                                idx = fixed_argv.index(typo)
+                                fixed_argv[idx] = corrected
+                            except ValueError:
+                                fixed_argv = ["neut", "sense", corrected]
+                            # Re-enter via main with corrected args
+                            sys.argv = fixed_argv
+                            parser = get_parser()
+                            args = parser.parse_args(fixed_argv[2:])  # skip "neut sense"
+                            _dispatch(args)
+                            self.exit(0)
+                    except (KeyboardInterrupt, EOFError):
+                        pass  # Ctrl+C / Ctrl+D — fall through to exit
+                    except ImportError:
+                        pass  # Missing deps — fall through to exit
+                    except SystemExit:
+                        raise
+                    except Exception:
+                        pass  # Dispatch failed — fall through to exit
+
             self.exit(2, err_msg)
         else:
             super().error(message)
@@ -1051,45 +1095,163 @@ def cmd_brief(args: argparse.Namespace) -> None:
         print("  ✓ Briefing acknowledged")
     print()
 
+    # Enticement into chat — only in interactive terminals
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        print("  " + "─" * 60)
+        print()
+        print("  Discuss with Neut — ask about this briefing,")
+        print("  dig into signals, or change the time window.")
+        print()
+        try:
+            from tools.agents.setup.renderer import prompt_yn
+
+            if prompt_yn("Enter chat?", default=True):
+                from tools.agents.chat.entry import (
+                    enter_chat,
+                    _format_briefing_context,
+                )
+
+                topic_label = brief.topic if brief.topic != "general" else "executive"
+                ctx_md = _format_briefing_context(brief.to_dict())
+                enter_chat(
+                    context_markdown=ctx_md,
+                    context_data=brief.to_dict(),
+                    title=f"Briefing: {topic_label}",
+                    suggestions=[
+                        "What are the key takeaways?",
+                        "Any blockers I should worry about?",
+                        "Summarize the most important signals",
+                    ],
+                    source="neut_sense_brief",
+                )
+        except (KeyboardInterrupt, EOFError):
+            pass  # Ctrl+C / Ctrl+D — return to shell quietly
+
 
 # ---------------------------------------------------------------------------
 # Command Registry (auto-synced to chat slash commands)
 # ---------------------------------------------------------------------------
 
-COMMANDS: dict[str, str] = {
-    "ingest": "Run extractors on inbox data",
-    "draft": "Synthesize signals into changelog draft",
-    "status": "Show inbox/processed/draft status",
-    "serve": "HTTP inbox ingestion server",
-    "correct": "Correct transcription errors using LLM",
-    "routes": "Show signal routing status and endpoints",
-    "suggest": "LLM-powered signal-to-PRD matching",
-    "brief": "Get an executive briefing on recent signals",
-    "corrections": "Manage auto-applied corrections and feedback",
-    "sources": "Manage signal sources (extractors)",
-    "subscribers": "Manage signal subscribers (sinks)",
-    "providers": "List docflow providers",
-    "media": "Search, play, and discuss recordings with Neut",
-    "db": "Manage vector database (sync, stats, migrate)",
-    "voice": "Show voice identification status",
+# User-facing commands — shown in default help
+USER_COMMANDS: dict[str, str] = {
+    "brief":  "Catch up on what happened",
+    "media":  "Search, play, and discuss recordings",
+    "draft":  "Generate your weekly changelog",
+    "status": "Check pipeline health",
 }
 
+# Pipeline internals — accessible via `neut sense pipeline <cmd>`
+PIPELINE_COMMANDS: dict[str, str] = {
+    "ingest":      "Run signal extractors",
+    "review":      "Review and correct AI transcriptions",
+    "suggest":     "Match signals to PRD documents",
+    "sources":     "Manage signal sources",
+    "subscribers": "Manage signal subscribers",
+    "routes":      "Signal routing and delivery",
+    "providers":   "Docflow provider status",
+    "serve":       "HTTP ingestion server",
+    "voice":       "Voice identification status",
+    "timestamps":  "Regenerate word-level timestamps",
+}
 
-def get_parser() -> SuggestingArgumentParser:
-    """Build and return the argument parser.
+# Merged dict — backward compat for chat slash commands, CLI registry
+COMMANDS: dict[str, str] = {**USER_COMMANDS, **PIPELINE_COMMANDS}
 
-    Exposed for CLI registry introspection. Commands auto-sync to chat.
-    """
-    valid_subcommands = list(COMMANDS.keys())
 
-    parser = SuggestingArgumentParser(
-        prog="neut sense",
-        description="Agentic signal ingestion pipeline",
-        valid_subcommands=valid_subcommands,
+def _build_custom_help() -> str:
+    """Build the clean user-facing help text."""
+    lines = [
+        "neut sense -- Program awareness",
+        "",
+    ]
+    # User commands
+    for cmd, desc in USER_COMMANDS.items():
+        lines.append(f"  {cmd:<12}{desc}")
+    lines.append("")
+    lines.append("Run 'neut sense pipeline' for advanced pipeline commands.")
+    lines.append("Run 'neut sense <command> --help' for details.")
+    return "\n".join(lines)
+
+
+def _build_pipeline_help() -> str:
+    """Build help text for the pipeline subcommand group."""
+    lines = [
+        "neut sense pipeline -- Advanced pipeline commands",
+        "",
+    ]
+    for cmd, desc in PIPELINE_COMMANDS.items():
+        lines.append(f"  {cmd:<14}{desc}")
+    lines.append("")
+    lines.append("Run 'neut sense pipeline <command> --help' for details.")
+    return "\n".join(lines)
+
+
+def _add_review_args(review_parser: argparse.ArgumentParser) -> None:
+    """Add arguments to a review subparser (shared between top-level and pipeline)."""
+    review_parser.add_argument(
+        "--transcripts",
+        action="store_true",
+        help="Correct transcription errors (runs transcript correction)",
+    )
+    review_parser.add_argument(
+        "--stats",
+        action="store_true",
+        help="Show learning/training statistics",
+    )
+    review_parser.add_argument(
+        "--errors",
+        action="store_true",
+        help="Show recently flagged errors",
+    )
+    review_parser.add_argument(
+        "--play",
+        action="store_true",
+        help="Auto-play audio clips during guided review (macOS only)",
+    )
+    review_parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Max corrections to review (default: all pending)",
+    )
+    review_parser.add_argument(
+        "--by",
+        type=str,
+        default=os.environ.get("USER", "reviewer"),
+        help="Who is providing feedback (default: $USER)",
+    )
+    # Passthrough args for transcript correction mode (--transcripts)
+    review_parser.add_argument(
+        "path",
+        nargs="?",
+        help="Path to transcript file (used with --transcripts)",
+    )
+    review_parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Auto-apply high-confidence corrections (used with --transcripts)",
+    )
+    review_parser.add_argument(
+        "--min-confidence",
+        type=float,
+        default=0.8,
+        help="Minimum confidence for auto-apply (used with --transcripts, default: 0.8)",
+    )
+    review_parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="correct_all",
+        help="Correct all transcripts (used with --transcripts)",
     )
 
-    subparsers = parser.add_subparsers(dest="command")
 
+def _add_pipeline_subparsers(subparsers) -> None:
+    """Register all pipeline command subparsers.
+
+    Called for both the top-level parser (hidden from help) and the pipeline
+    subcommand group. This ensures `neut sense pipeline ingest` works the
+    same as if we registered ingest at the top level.
+    """
     # ingest
     ingest_parser = subparsers.add_parser("ingest", help="Run extractors on inbox data")
     ingest_parser.add_argument(
@@ -1117,82 +1279,14 @@ def get_parser() -> SuggestingArgumentParser:
         help="Process a single file (bypasses date filter and directory scan)",
     )
 
-    # draft
-    draft_parser = subparsers.add_parser("draft", help="Synthesize signals into changelog draft")
-    draft_parser.add_argument(
-        "--all", "-a",
-        dest="include_all",
-        action="store_true",
-        help="Include previously reported signals (default: only new signals)",
+    # review (merged correct + corrections)
+    review_parser = subparsers.add_parser(
+        "review",
+        help="Review and correct AI transcriptions",
     )
-    draft_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Generate changelog but don't mark signals as reported",
-    )
+    _add_review_args(review_parser)
 
-    # status
-    subparsers.add_parser("status", help="Show inbox/processed/draft status")
-
-    # serve
-    serve_parser = subparsers.add_parser("serve", help="HTTP inbox ingestion server")
-    serve_parser.add_argument(
-        "--port", type=int, default=8765, help="Port to listen on (default: 8765)"
-    )
-    serve_parser.add_argument(
-        "--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)"
-    )
-    serve_parser.add_argument(
-        "--process", action="store_true", help="Auto-transcribe voice memos on upload"
-    )
-    serve_parser.add_argument(
-        "--webhook", type=str, help="URL to POST notifications when items are processed"
-    )
-
-    # correct
-    correct_parser = subparsers.add_parser("correct", help="Correct transcription errors using LLM")
-    correct_parser.add_argument(
-        "path",
-        nargs="?",
-        help="Path to transcript file (default: most recent)",
-    )
-    correct_parser.add_argument(
-        "--apply",
-        action="store_true",
-        help="Auto-apply high-confidence corrections",
-    )
-    correct_parser.add_argument(
-        "--min-confidence",
-        type=float,
-        default=0.8,
-        help="Minimum confidence for auto-apply (default: 0.8)",
-    )
-    correct_parser.add_argument(
-        "--all",
-        action="store_true",
-        dest="correct_all",
-        help="Correct all transcripts in processed/",
-    )
-
-    # routes
-    routes_parser = subparsers.add_parser("routes", help="Show signal routing status and endpoints")
-    routes_parser.add_argument(
-        "--deliver",
-        action="store_true",
-        help="Deliver queued signals to endpoints",
-    )
-    routes_parser.add_argument(
-        "--endpoint",
-        type=str,
-        help="Show details for specific endpoint",
-    )
-    routes_parser.add_argument(
-        "--pending",
-        action="store_true",
-        help="Show only pending/queued signals",
-    )
-
-    # suggest (LLM-powered PRD routing)
+    # suggest
     suggest_parser = subparsers.add_parser("suggest", help="LLM-powered signal-to-PRD matching")
     suggest_parser.add_argument(
         "--run",
@@ -1223,459 +1317,303 @@ def get_parser() -> SuggestingArgumentParser:
         help="Reject a suggestion (signal_id:prd_id)",
     )
 
+    # sources
+    sources_parser = subparsers.add_parser("sources", help="Manage signal sources")
+    sources_parser.add_argument("--list", "-l", action="store_true", dest="list_sources",
+                                help="List all registered sources")
+    sources_parser.add_argument("--check", action="store_true",
+                                help="Check configuration status of all sources")
+    sources_parser.add_argument("--inbox", action="store_true",
+                                help="Show inbox status for all sources")
+    sources_parser.add_argument("--init", action="store_true",
+                                help="Create all inbox directories")
+    sources_parser.add_argument("--fetch", type=str, metavar="SOURCE",
+                                help="Fetch new data from a PULL source")
+
+    # subscribers
+    subs_parser = subparsers.add_parser("subscribers", help="Manage signal subscribers")
+    subs_parser.add_argument("--list", "-l", action="store_true", dest="list_subs",
+                             help="List all registered subscribers")
+    subs_parser.add_argument("--status", action="store_true",
+                             help="Show subscriber status and publish counts")
+
+    # routes
+    routes_parser = subparsers.add_parser("routes", help="Signal routing and delivery")
+    routes_parser.add_argument("--deliver", action="store_true",
+                               help="Deliver queued signals to endpoints")
+    routes_parser.add_argument("--endpoint", type=str,
+                               help="Show details for specific endpoint")
+    routes_parser.add_argument("--pending", action="store_true",
+                               help="Show only pending/queued signals")
+
+    # providers
+    providers_parser = subparsers.add_parser("providers", help="Docflow provider status")
+    providers_parser.add_argument("--sync", action="store_true",
+                                  help="Sync all configured folder providers")
+    providers_parser.add_argument("--test", type=str, metavar="SLUG",
+                                  help="Test connectivity for a specific provider")
+
+    # serve
+    serve_parser = subparsers.add_parser("serve", help="HTTP ingestion server")
+    serve_parser.add_argument("--port", type=int, default=8765,
+                              help="Port to listen on (default: 8765)")
+    serve_parser.add_argument("--host", default="0.0.0.0",
+                              help="Host to bind to (default: 0.0.0.0)")
+    serve_parser.add_argument("--process", action="store_true",
+                              help="Auto-transcribe voice memos on upload")
+    serve_parser.add_argument("--webhook", type=str,
+                              help="URL to POST notifications when items are processed")
+
+    # voice
+    subparsers.add_parser("voice", help="Voice identification status")
+
+    # timestamps
+    timestamps_parser = subparsers.add_parser("timestamps",
+                                              help="Regenerate word-level timestamps")
+    timestamps_parser.add_argument("--all", action="store_true",
+                                   help="Regenerate timestamps for ALL transcripts (slow)")
+    timestamps_parser.add_argument("--file", "-f", type=str,
+                                   help="Regenerate timestamps for a specific transcript")
+    timestamps_parser.add_argument("--dry-run", action="store_true",
+                                   help="Show what would be regenerated without doing it")
+    timestamps_parser.add_argument("--model", type=str, default="base",
+                                   help="Whisper model size (default: base)")
+
+
+def get_parser() -> SuggestingArgumentParser:
+    """Build and return the argument parser.
+
+    Exposed for CLI registry introspection. Commands auto-sync to chat.
+    """
+    all_commands = list(COMMANDS.keys()) + ["pipeline"]
+
+    parser = SuggestingArgumentParser(
+        prog="neut sense",
+        description="Agentic signal ingestion pipeline",
+        valid_subcommands=all_commands,
+        custom_help=_build_custom_help(),
+    )
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    # ── User-facing commands (shown in default help) ──────────────
+
     # brief (executive briefing)
-    brief_parser = subparsers.add_parser("brief", help="Get an executive briefing on recent signals")
+    brief_parser = subparsers.add_parser("brief", help="Catch up on what happened")
     brief_parser.add_argument(
-        "topic",
-        nargs="?",
-        type=str,
+        "topic", nargs="?", type=str,
         help="Topic to focus on (person, initiative, category, or free-form query)",
     )
-    brief_parser.add_argument(
-        "--since",
-        type=str,
-        help="Explicit start time (ISO format, e.g., 2025-02-20T00:00:00)",
-    )
-    brief_parser.add_argument(
-        "--hours",
-        type=int,
-        help="Look back N hours from now",
-    )
-    brief_parser.add_argument(
-        "--ack",
-        action="store_true",
-        help="Acknowledge this briefing (affects future time windows)",
-    )
-    brief_parser.add_argument(
-        "--caught-up",
-        action="store_true",
-        dest="caught_up",
-        help="Mark yourself as caught up (without generating briefing)",
-    )
-    brief_parser.add_argument(
-        "--status",
-        action="store_true",
-        help="Show briefing service status",
-    )
-    brief_parser.add_argument(
-        "--topics",
-        action="store_true",
-        help="Show available topics for focused briefings",
-    )
-    brief_parser.add_argument(
-        "--index",
-        action="store_true",
-        help="Re-index signals for RAG (improves topic matching)",
-    )
-
-    # corrections (non-blocking error feedback system)
-    corrections_parser = subparsers.add_parser(
-        "corrections",
-        help="Manage auto-applied corrections and downstream feedback",
-    )
-    corrections_parser.add_argument(
-        "--list", "-l",
-        action="store_true",
-        dest="list_awaiting",
-        help="List corrections awaiting feedback",
-    )
-    corrections_parser.add_argument(
-        "--errors",
-        action="store_true",
-        help="List recently flagged errors",
-    )
-    corrections_parser.add_argument(
-        "--flag",
-        type=str,
-        metavar="ID",
-        help="Flag a correction as wrong (you noticed an error)",
-    )
-    corrections_parser.add_argument(
-        "--confirm",
-        type=str,
-        metavar="ID",
-        help="Confirm a correction was correct (positive feedback)",
-    )
-    corrections_parser.add_argument(
-        "--actual",
-        type=str,
-        help="What the text should have been (used with --flag)",
-    )
-    corrections_parser.add_argument(
-        "--reason",
-        type=str,
-        default="",
-        help="Reason for flagging (used with --flag)",
-    )
-    corrections_parser.add_argument(
-        "--by",
-        type=str,
-        default=os.environ.get("USER", "reviewer"),
-        help="Who is providing feedback (default: $USER)",
-    )
-    corrections_parser.add_argument(
-        "--stats",
-        action="store_true",
-        help="Show learning statistics",
-    )
-    corrections_parser.add_argument(
-        "--resynthesis",
-        action="store_true",
-        help="Show pending re-synthesis jobs",
-    )
-    corrections_parser.add_argument(
-        "--guided",
-        action="store_true",
-        help="Start guided review session with audio clips",
-    )
-    corrections_parser.add_argument(
-        "--play",
-        action="store_true",
-        help="Auto-play audio clips during guided review (macOS only)",
-    )
-    corrections_parser.add_argument(
-        "--defer",
-        type=int,
-        nargs="?",
-        const=24,
-        metavar="HOURS",
-        help="Defer correction review (default: 24 hours)",
-    )
-    corrections_parser.add_argument(
-        "--cleanup",
-        action="store_true",
-        help="Remove processed audio clips past retention",
-    )
-    corrections_parser.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        help="Max corrections to review (default: all pending)",
-    )
-    corrections_parser.add_argument(
-        "--check-prompt",
-        action="store_true",
-        dest="check_prompt",
-        help="Check if Neut should suggest correction review",
-    )
-
-    # sources (registry management)
-    sources_parser = subparsers.add_parser(
-        "sources",
-        help="Manage signal sources (extractors)",
-    )
-    sources_parser.add_argument(
-        "--list", "-l",
-        action="store_true",
-        dest="list_sources",
-        help="List all registered sources",
-    )
-    sources_parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Check configuration status of all sources",
-    )
-    sources_parser.add_argument(
-        "--inbox",
-        action="store_true",
-        help="Show inbox status for all sources",
-    )
-    sources_parser.add_argument(
-        "--init",
-        action="store_true",
-        help="Create all inbox directories",
-    )
-    sources_parser.add_argument(
-        "--fetch",
-        type=str,
-        metavar="SOURCE",
-        help="Fetch new data from a PULL source",
-    )
-
-    # subscribers (sink registry)
-    subs_parser = subparsers.add_parser(
-        "subscribers",
-        help="Manage signal subscribers (sinks)",
-    )
-    subs_parser.add_argument(
-        "--list", "-l",
-        action="store_true",
-        dest="list_subs",
-        help="List all registered subscribers",
-    )
-    subs_parser.add_argument(
-        "--status",
-        action="store_true",
-        help="Show subscriber status and publish counts",
-    )
-
-    # providers (docflow providers)
-    providers_parser = subparsers.add_parser(
-        "providers",
-        help="List docflow providers (Google Docs, Dropbox, Box, etc.)",
-    )
-    providers_parser.add_argument(
-        "--sync",
-        action="store_true",
-        help="Sync all configured folder providers",
-    )
-    providers_parser.add_argument(
-        "--test",
-        type=str,
-        metavar="SLUG",
-        help="Test connectivity for a specific provider",
-    )
-
-    # db management
-    db_parser = subparsers.add_parser(
-        "db",
-        help="Manage vector database (sync, stats, migrate)",
-    )
-    db_subparsers = db_parser.add_subparsers(dest="db_action")
-
-    # db stats
-    db_subparsers.add_parser(
-        "stats",
-        help="Show database statistics",
-    )
-
-    # db sync
-    db_sync_parser = db_subparsers.add_parser(
-        "sync",
-        help="Sync local database to central server",
-    )
-    db_sync_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force sync even if no changes detected",
-    )
-
-    # db import (legacy: migrate from file-based index)
-    db_import_parser = db_subparsers.add_parser(
-        "import",
-        help="Import data from file-based index to PostgreSQL",
-    )
-    db_import_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be imported without changing anything",
-    )
-
-    # db migrate (Alembic schema migrations)
-    db_migrate_parser = db_subparsers.add_parser(
-        "migrate",
-        help="Run Alembic database schema migrations",
-    )
-    db_migrate_parser.add_argument(
-        "migrate_command",
-        nargs="?",
-        choices=["upgrade", "downgrade", "current", "history", "revision", "check"],
-        default="check",
-        help="Migration command (default: check)",
-    )
-    db_migrate_parser.add_argument(
-        "revision",
-        nargs="?",
-        default="head",
-        help="Target revision (default: head)",
-    )
-    db_migrate_parser.add_argument(
-        "-m", "--message",
-        help="Message for new revision (required for 'revision' command)",
-    )
-    db_migrate_parser.add_argument(
-        "--autogenerate",
-        action="store_true",
-        help="Auto-detect model changes for 'revision' command",
-    )
-
-    # db config
-    db_subparsers.add_parser(
-        "config",
-        help="Show current database configuration",
-    )
-
-    # db up (K3D)
-    db_subparsers.add_parser(
-        "up",
-        help="Start local K3D cluster with PostgreSQL + pgvector",
-    )
-
-    # db down (K3D)
-    db_subparsers.add_parser(
-        "down",
-        help="Stop local K3D cluster",
-    )
-
-    # db delete (K3D)
-    db_delete_parser = db_subparsers.add_parser(
-        "delete",
-        help="Delete local K3D cluster and all data",
-    )
-    db_delete_parser.add_argument(
-        "--confirm",
-        action="store_true",
-        help="Confirm deletion (required)",
-    )
+    brief_parser.add_argument("--since", type=str,
+        help="Start time: ISO date, relative (2d, 3h, 1w), or natural (yesterday, 'last week')")
+    brief_parser.add_argument("--hours", type=int, help="Look back N hours from now")
+    brief_parser.add_argument("--ack", action="store_true",
+        help="Acknowledge this briefing (affects future time windows)")
+    brief_parser.add_argument("--caught-up", action="store_true", dest="caught_up",
+        help="Mark yourself as caught up (without generating briefing)")
+    brief_parser.add_argument("--status", action="store_true",
+        help="Show briefing service status")
+    brief_parser.add_argument("--topics", action="store_true",
+        help="Show available topics for focused briefings")
+    brief_parser.add_argument("--index", action="store_true",
+        help="Re-index signals for RAG (improves topic matching)")
 
     # media library
-    media_parser = subparsers.add_parser(
-        "media",
-        help="Search, play, and discuss recordings with Neut",
-    )
+    media_parser = subparsers.add_parser("media",
+        help="Search, play, and discuss recordings")
     media_subparsers = media_parser.add_subparsers(dest="media_action")
 
-    # media search
-    media_search_parser = media_subparsers.add_parser(
-        "search",
-        help="Search recordings by keyword or concept",
-    )
-    media_search_parser.add_argument(
-        "query",
-        nargs="+",
-        help="Search query (auto-detects keyword vs semantic)",
-    )
-    media_search_parser.add_argument(
-        "--mode",
-        choices=["auto", "keyword", "semantic", "hybrid"],
-        default="auto",
-        help="Search mode (default: auto-detect)",
-    )
-    media_search_parser.add_argument(
-        "--limit", "-n",
-        type=int,
-        default=5,
-        help="Maximum results to show (default: 5)",
-    )
-    media_search_parser.add_argument(
-        "--play",
-        action="store_true",
-        help="Play matched segment of first result",
-    )
-    media_search_parser.add_argument(
-        "--discuss",
-        action="store_true",
-        help="Start interactive discussion with Neut about first result",
-    )
+    media_search_parser = media_subparsers.add_parser("search",
+        help="Search recordings by keyword or concept")
+    media_search_parser.add_argument("query", nargs="+",
+        help="Search query (auto-detects keyword vs semantic)")
+    media_search_parser.add_argument("--mode",
+        choices=["auto", "keyword", "semantic", "hybrid"], default="auto",
+        help="Search mode (default: auto-detect)")
+    media_search_parser.add_argument("--limit", "-n", type=int, default=5,
+        help="Maximum results to show (default: 5)")
+    media_search_parser.add_argument("--play", action="store_true",
+        help="Play matched segment of first result")
+    media_search_parser.add_argument("--discuss", action="store_true",
+        help="Start interactive discussion with Neut about first result")
 
-    # media play
-    media_play_parser = media_subparsers.add_parser(
-        "play",
-        help="Play a recording or segment",
-    )
-    media_play_parser.add_argument(
-        "media_id",
-        help="Media ID to play",
-    )
-    media_play_parser.add_argument(
-        "--start",
-        type=float,
-        help="Start time in seconds",
-    )
-    media_play_parser.add_argument(
-        "--duration",
-        type=float,
-        default=15.0,
-        help="Duration to play in seconds (default: 15)",
-    )
+    media_play_parser = media_subparsers.add_parser("play",
+        help="Play a recording or segment")
+    media_play_parser.add_argument("media_id", help="Media ID to play")
+    media_play_parser.add_argument("--start", type=float, help="Start time in seconds")
+    media_play_parser.add_argument("--duration", type=float, default=15.0,
+        help="Duration to play in seconds (default: 15)")
 
-    # media discuss
-    media_discuss_parser = media_subparsers.add_parser(
-        "discuss",
-        help="Discuss a recording with Neut (interactive)",
-    )
-    media_discuss_parser.add_argument(
-        "media_id",
-        help="Media ID to discuss",
-    )
-    media_discuss_parser.add_argument(
-        "--question", "-q",
-        help="Ask a single question (non-interactive)",
-    )
-    media_discuss_parser.add_argument(
-        "--summary",
-        action="store_true",
-        help="Get a quick summary",
-    )
-    media_discuss_parser.add_argument(
-        "--concepts",
-        action="store_true",
-        help="Explain technical concepts",
-    )
-    media_discuss_parser.add_argument(
-        "--actions",
-        action="store_true",
-        help="Extract action items",
-    )
+    media_discuss_parser = media_subparsers.add_parser("discuss",
+        help="Discuss a recording with Neut (interactive)")
+    media_discuss_parser.add_argument("media_id", help="Media ID to discuss")
+    media_discuss_parser.add_argument("--question", "-q",
+        help="Ask a single question (non-interactive)")
+    media_discuss_parser.add_argument("--summary", action="store_true",
+        help="Get a quick summary")
+    media_discuss_parser.add_argument("--concepts", action="store_true",
+        help="Explain technical concepts")
+    media_discuss_parser.add_argument("--actions", action="store_true",
+        help="Extract action items")
 
-    # media stats
-    media_subparsers.add_parser(
-        "stats",
-        help="Show media library statistics",
-    )
+    media_subparsers.add_parser("stats", help="Show media library statistics")
 
-    # media index
-    media_index_parser = media_subparsers.add_parser(
-        "index",
-        help="Rebuild media index",
-    )
-    media_index_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force full re-index",
-    )
+    media_index_parser = media_subparsers.add_parser("index",
+        help="Rebuild media index")
+    media_index_parser.add_argument("--force", action="store_true",
+        help="Force full re-index")
 
-    # media list
-    media_list_parser = media_subparsers.add_parser(
-        "list",
-        help="List all indexed recordings",
-    )
-    media_list_parser.add_argument(
-        "--limit", "-n",
-        type=int,
-        default=10,
-        help="Maximum recordings to show (default: 10)",
-    )
-    media_list_parser.add_argument(
-        "--with",
-        dest="with_person",
-        help="Filter by participant (person ID or name)",
-    )
+    media_list_parser = media_subparsers.add_parser("list",
+        help="List all indexed recordings")
+    media_list_parser.add_argument("--limit", "-n", type=int, default=10,
+        help="Maximum recordings to show (default: 10)")
+    media_list_parser.add_argument("--with", dest="with_person",
+        help="Filter by participant (person ID or name)")
 
-    # timestamps (regenerate word-level timestamps for audio)
-    timestamps_parser = subparsers.add_parser(
-        "timestamps",
-        help="Regenerate word-level timestamps for audio clips",
-    )
-    timestamps_parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Regenerate timestamps for ALL transcripts (slow)",
-    )
-    timestamps_parser.add_argument(
-        "--file", "-f",
-        type=str,
-        help="Regenerate timestamps for a specific transcript",
-    )
-    timestamps_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be regenerated without doing it",
-    )
-    timestamps_parser.add_argument(
-        "--model",
-        type=str,
-        default="base",
-        help="Whisper model size (default: base)",
-    )
+    # draft
+    draft_parser = subparsers.add_parser("draft",
+        help="Generate your weekly changelog")
+    draft_parser.add_argument("--all", "-a", dest="include_all", action="store_true",
+        help="Include previously reported signals (default: only new signals)")
+    draft_parser.add_argument("--dry-run", action="store_true",
+        help="Generate changelog but don't mark signals as reported")
 
-    # voice identification status (enrollment happens during review)
-    subparsers.add_parser(
-        "voice",
-        help="Show voice identification status (enrollment happens during media review)",
+    # status
+    subparsers.add_parser("status", help="Check pipeline health")
+
+    # ── Pipeline subcommand group ─────────────────────────────────
+
+    pipeline_parser = subparsers.add_parser(
+        "pipeline",
+        help="Advanced pipeline commands",
     )
+    pipeline_parser._custom_help = _build_pipeline_help()
+    # Override print_help on the pipeline parser
+    _orig_pipeline_help = pipeline_parser.print_help
+    def _pipeline_help(file=None, _orig=_orig_pipeline_help):
+        print(_build_pipeline_help(), file=file or sys.stdout)
+    pipeline_parser.print_help = _pipeline_help
+
+    pipeline_subparsers = pipeline_parser.add_subparsers(dest="pipeline_command")
+    _add_pipeline_subparsers(pipeline_subparsers)
+
+    # ── Legacy corrections parser (kept for `neut sense corrections --help`) ──
+    # Still registered so existing scripts/docs referencing it get a hint
+    corrections_parser = subparsers.add_parser(
+        "corrections",
+        help="(moved to: neut sense pipeline review)",
+    )
+    corrections_parser.add_argument("--list", "-l", action="store_true", dest="list_awaiting")
+    corrections_parser.add_argument("--errors", action="store_true")
+    corrections_parser.add_argument("--flag", type=str, metavar="ID")
+    corrections_parser.add_argument("--confirm", type=str, metavar="ID")
+    corrections_parser.add_argument("--actual", type=str)
+    corrections_parser.add_argument("--reason", type=str, default="")
+    corrections_parser.add_argument("--by", type=str,
+        default=os.environ.get("USER", "reviewer"))
+    corrections_parser.add_argument("--stats", action="store_true")
+    corrections_parser.add_argument("--resynthesis", action="store_true")
+    corrections_parser.add_argument("--guided", action="store_true")
+    corrections_parser.add_argument("--play", action="store_true")
+    corrections_parser.add_argument("--defer", type=int, nargs="?", const=24, metavar="HOURS")
+    corrections_parser.add_argument("--cleanup", action="store_true")
+    corrections_parser.add_argument("--limit", type=int, default=None)
+    corrections_parser.add_argument("--check-prompt", action="store_true", dest="check_prompt")
+
+    # ── Legacy correct parser ──
+    correct_parser = subparsers.add_parser(
+        "correct",
+        help="(moved to: neut sense pipeline review --transcripts)",
+    )
+    correct_parser.add_argument("path", nargs="?")
+    correct_parser.add_argument("--apply", action="store_true")
+    correct_parser.add_argument("--min-confidence", type=float, default=0.8)
+    correct_parser.add_argument("--all", action="store_true", dest="correct_all")
+
+    # ── Legacy db parser (promoted to neut db) ──
+    subparsers.add_parser("db", help="(moved to: neut db)")
 
     return parser
+
+
+def _dispatch_pipeline_command(command: str, args: argparse.Namespace) -> None:
+    """Dispatch a pipeline command by name."""
+    dispatch = {
+        "ingest": cmd_ingest,
+        "review": cmd_review,
+        "suggest": cmd_suggest,
+        "sources": cmd_sources,
+        "subscribers": cmd_subscribers,
+        "routes": cmd_routes,
+        "providers": cmd_providers,
+        "serve": cmd_serve,
+        "voice": cmd_voice,
+        "timestamps": cmd_timestamps,
+    }
+    handler = dispatch.get(command)
+    if handler:
+        handler(args)
+    else:
+        print(_build_pipeline_help())
+        sys.exit(1)
+
+
+def _dispatch(args: argparse.Namespace) -> None:
+    """Dispatch a parsed command to its handler.
+
+    Extracted from main() so self-healing can retry with fixed args.
+    """
+    # ── User-facing commands ──
+    if args.command == "brief":
+        cmd_brief(args)
+    elif args.command == "media":
+        cmd_media(args)
+    elif args.command == "draft":
+        cmd_draft(args)
+    elif args.command == "status":
+        cmd_status(args)
+
+    # ── Pipeline subcommand group ──
+    elif args.command == "pipeline":
+        pipeline_cmd = getattr(args, "pipeline_command", None)
+        if not pipeline_cmd:
+            print(_build_pipeline_help())
+            sys.exit(1)
+        _dispatch_pipeline_command(pipeline_cmd, args)
+
+    # ── Legacy commands (still work, kept for backward compat) ──
+    elif args.command == "corrections":
+        cmd_corrections(args)
+    elif args.command == "correct":
+        cmd_correct(args)
+    elif args.command == "ingest":
+        cmd_ingest(args)
+    elif args.command == "suggest":
+        cmd_suggest(args)
+    elif args.command == "sources":
+        cmd_sources(args)
+    elif args.command == "subscribers":
+        cmd_subscribers(args)
+    elif args.command == "routes":
+        cmd_routes(args)
+    elif args.command == "providers":
+        cmd_providers(args)
+    elif args.command == "serve":
+        cmd_serve(args)
+    elif args.command == "voice":
+        cmd_voice(args)
+    elif args.command == "timestamps":
+        cmd_timestamps(args)
+    elif args.command == "review":
+        cmd_review(args)
+    elif args.command == "db":
+        print("'neut sense db' has moved to 'neut db'.")
+        sys.exit(1)
+
+    # ── No subcommand → custom help ──
+    else:
+        print(_build_custom_help())
+        sys.exit(1)
 
 
 def main():
@@ -1683,41 +1621,51 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    if args.command == "status":
-        cmd_status(args)
-    elif args.command == "ingest":
-        cmd_ingest(args)
-    elif args.command == "draft":
-        cmd_draft(args)
-    elif args.command == "serve":
-        cmd_serve(args)
-    elif args.command == "correct":
-        cmd_correct(args)
-    elif args.command == "routes":
-        cmd_routes(args)
-    elif args.command == "suggest":
-        cmd_suggest(args)
-    elif args.command == "brief":
-        cmd_brief(args)
-    elif args.command == "corrections":
-        cmd_corrections(args)
-    elif args.command == "sources":
-        cmd_sources(args)
-    elif args.command == "subscribers":
-        cmd_subscribers(args)
-    elif args.command == "providers":
-        cmd_providers(args)
-    elif args.command == "media":
-        cmd_media(args)
-    elif args.command == "db":
-        cmd_db(args)
-    elif args.command == "timestamps":
-        cmd_timestamps(args)
-    elif args.command == "voice":
-        cmd_voice(args)
-    else:
-        parser.print_help()
+    if not getattr(args, "command", None):
+        print(_build_custom_help())
         sys.exit(1)
+
+    try:
+        _dispatch(args)
+    except (ValueError, TypeError, AttributeError) as e:
+        import traceback
+        from tools.agents.self_heal import attempt_recovery, emit_cli_error
+        from tools.agents.orchestrator.bus import EventBus
+
+        # Capture the full traceback while we're still in the except block
+        tb_str = traceback.format_exc()
+
+        bus = EventBus(log_path=_AGENTS_DIR / "logs" / "cli_events.jsonl")
+
+        # Doctor agent as primary error handler (soft — no-ops if unavailable)
+        try:
+            from tools.agents.doctor.subscriber import register as register_doctor
+            register_doctor(bus)
+        except ImportError:
+            pass
+
+        # GitLab as fallback for doctor failures (soft — no-ops if unavailable)
+        try:
+            from tools.agents.subscribers.gitlab_issues import gitlab_issue_handler
+            bus.subscribe("doctor.patch_failed", gitlab_issue_handler)
+            bus.subscribe("doctor.llm_unavailable", gitlab_issue_handler)
+        except ImportError:
+            pass
+
+        recovered_args = attempt_recovery(args.command, args, e)
+        if recovered_args:
+            _dispatch(recovered_args)
+
+        emit_cli_error(
+            bus, args.command, sys.argv, e,
+            recovered=recovered_args is not None,
+            traceback_str=tb_str,
+        )
+
+        if not recovered_args:
+            print(f"\n  Error: {e}")
+            print(f"  Run 'neut sense {args.command} --help' for usage.\n")
+            sys.exit(1)
 
 
 def _play_audio_clip(clip_path: str) -> bool:
@@ -2660,6 +2608,61 @@ def cmd_corrections(args):
 
     # Default: list corrections awaiting feedback
     print_unfeedback_corrections()
+
+
+def cmd_review(args: argparse.Namespace) -> None:
+    """Unified review command — merges correct + corrections.
+
+    Dispatches based on flags:
+      --transcripts  → transcript correction (cmd_correct)
+      --stats        → training stats
+      --errors       → recent errors
+      (default)      → guided correction review
+    """
+    if getattr(args, "transcripts", False):
+        cmd_correct(args)
+    elif getattr(args, "stats", False):
+        # Wire up for cmd_corrections
+        args.guided = False
+        args.list_awaiting = False
+        args.errors = False
+        args.flag = None
+        args.confirm = None
+        args.resynthesis = False
+        args.check_prompt = False
+        args.defer = None
+        args.cleanup = False
+        cmd_corrections(args)
+    elif getattr(args, "errors", False):
+        args.guided = False
+        args.list_awaiting = False
+        args.stats = False
+        args.flag = None
+        args.confirm = None
+        args.resynthesis = False
+        args.check_prompt = False
+        args.defer = None
+        args.cleanup = False
+        cmd_corrections(args)
+    else:
+        # Default: guided review (the most useful mode)
+        args.guided = True
+        args.list_awaiting = False
+        args.errors = False
+        args.stats = False
+        args.flag = None
+        args.confirm = None
+        args.resynthesis = False
+        args.check_prompt = False
+        args.defer = None
+        args.cleanup = False
+        if not hasattr(args, "play"):
+            args.play = False
+        if not hasattr(args, "by"):
+            args.by = os.environ.get("USER", "reviewer")
+        if not hasattr(args, "limit"):
+            args.limit = None
+        cmd_corrections(args)
 
 
 def cmd_sources(args):
