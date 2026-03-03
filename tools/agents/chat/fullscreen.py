@@ -667,23 +667,68 @@ class _ScrollMetricsCapture(Margin):
             self._tui._scroll_content_height = window_render_info.content_height
             self._tui._scroll_window_height = window_render_info.window_height
             self._tui._scroll_vertical_scroll = window_render_info.vertical_scroll
+            self._tui._scroll_window_width = window_render_info.window_width
         return []
 
 
 class _ScrollableBufferControl(BufferControl):
-    """BufferControl with fast mouse scroll and click-to-select.
+    """BufferControl with fast mouse scroll and click-drag text selection.
 
-    Delegates click/drag events to the base BufferControl so the user can
-    select text in the output area, then snaps focus back to the input
-    buffer on mouse-up so typing continues normally.
+    Implements mouse selection explicitly (position translation + drag
+    tracking) because the base BufferControl's mouse_handler doesn't
+    reliably support drag-to-select across prompt_toolkit versions.
+
+    On mouse-up the selected text is auto-copied to the system clipboard
+    (terminal-style), then focus snaps back to the input buffer so the
+    user can keep typing immediately.
     """
 
     _cached_half: int = 20
     _cache_time: float = 0.0
 
+    def __init__(self, tui: FullScreenChat, **kwargs):
+        super().__init__(**kwargs)
+        self._tui = tui
+        self._drag_start: int | None = None
+
+    # -- Position translation ------------------------------------------------
+
+    def _mouse_pos_to_cursor(self, row: int, col: int) -> int:
+        """Translate mouse (visual_row, col) to a buffer cursor position.
+
+        The buffer text is pre-wrapped by ``_word_wrap`` so most lines map
+        1:1 to visual lines.  For any line that still exceeds the window
+        width (e.g. during streaming before a re-wrap), we account for the
+        Window's character-level wrapping.
+        """
+        text = self.buffer.text
+        scroll = self._tui._scroll_vertical_scroll
+        width = self._tui._scroll_window_width or 80
+
+        target_visual = scroll + row
+        visual_line = 0
+        cursor_pos = 0
+
+        for line in text.split("\n"):
+            line_len = len(line)
+            visual_count = max(1, (line_len + width - 1) // width) if line_len else 1
+
+            if visual_line + visual_count > target_visual:
+                visual_offset = target_visual - visual_line
+                char_offset = min(visual_offset * width + col, line_len)
+                return cursor_pos + char_offset
+
+            visual_line += visual_count
+            cursor_pos += line_len + 1  # +1 for the \n
+
+        return max(0, len(text))
+
+    # -- Mouse handler -------------------------------------------------------
+
     def mouse_handler(self, mouse_event):
         from prompt_toolkit.mouse_events import MouseEventType
 
+        # --- Scroll ---
         if mouse_event.event_type in (
             MouseEventType.SCROLL_UP, MouseEventType.SCROLL_DOWN,
         ):
@@ -699,19 +744,62 @@ class _ScrollableBufferControl(BufferControl):
                 pass
             return None
 
-        # Click/drag — delegate to base BufferControl for text selection.
-        # MOUSE_DOWN gives this window focus and starts selection,
-        # MOUSE_MOVE extends it, MOUSE_UP finalizes it.
-        if mouse_event.event_type in (
-            MouseEventType.MOUSE_DOWN,
-            MouseEventType.MOUSE_MOVE,
-        ):
-            return super().mouse_handler(mouse_event)
+        # --- MOUSE_DOWN — focus, position cursor, begin drag ---
+        if mouse_event.event_type == MouseEventType.MOUSE_DOWN:
+            try:
+                from prompt_toolkit.application import get_app
+                get_app().layout.current_control = self
+            except Exception:
+                pass
+            pos = self._mouse_pos_to_cursor(
+                mouse_event.position.y, mouse_event.position.x,
+            )
+            self.buffer.cursor_position = pos
+            self.buffer.selection_state = None
+            self._drag_start = pos
+            return None
 
+        # --- MOUSE_MOVE — extend selection from drag start ---
+        if mouse_event.event_type == MouseEventType.MOUSE_MOVE:
+            if self._drag_start is not None:
+                pos = self._mouse_pos_to_cursor(
+                    mouse_event.position.y, mouse_event.position.x,
+                )
+                self.buffer.cursor_position = pos
+                if pos != self._drag_start:
+                    self.buffer.selection_state = SelectionState(
+                        original_cursor_position=self._drag_start,
+                        type=SelectionType.CHARACTERS,
+                    )
+                try:
+                    from prompt_toolkit.application import get_app
+                    get_app().invalidate()
+                except Exception:
+                    pass
+            return None
+
+        # --- MOUSE_UP — auto-copy selection, snap focus to input ---
         if mouse_event.event_type == MouseEventType.MOUSE_UP:
-            result = super().mouse_handler(mouse_event)
-            # Snap focus back to the input buffer so the user can keep typing.
-            # Selection state is preserved on the output buffer for Ctrl+C.
+            if self._drag_start is not None:
+                pos = self._mouse_pos_to_cursor(
+                    mouse_event.position.y, mouse_event.position.x,
+                )
+                self.buffer.cursor_position = pos
+
+                # Auto-copy to system clipboard if a real drag occurred
+                if self.buffer.selection_state is not None:
+                    start = self.buffer.selection_state.original_cursor_position
+                    end = self.buffer.cursor_position
+                    if start > end:
+                        start, end = end, start
+                    selected = self.buffer.text[start:end]
+                    if selected:
+                        _copy_to_system_clipboard(selected)
+
+                self.buffer.selection_state = None
+                self._drag_start = None
+
+            # Snap focus back to input buffer
             try:
                 from prompt_toolkit.application import get_app
                 app = get_app()
@@ -720,11 +808,12 @@ class _ScrollableBufferControl(BufferControl):
                     if isinstance(ctrl, BufferControl) and ctrl.buffer.name == "input":
                         app.layout.focus(win)
                         break
+                app.invalidate()
             except Exception:
                 pass
-            return result
+            return None
 
-        return super().mouse_handler(mouse_event)
+        return None
 
     def _cached_half_page(self) -> int:
         """Terminal half-page height, cached for 1 second."""
@@ -983,6 +1072,7 @@ class FullScreenChat:
         self._scroll_content_height = 0
         self._scroll_window_height = 0
         self._scroll_vertical_scroll = 0
+        self._scroll_window_width = 0
 
         # Spinner state (updated from spinner thread)
         self._spinner_label = "Thinking"
@@ -1410,6 +1500,7 @@ class FullScreenChat:
         # the fixed-height bottom elements to the terminal floor.
         output_window = Window(
             content=_ScrollableBufferControl(
+                tui=self,
                 buffer=self._output_buffer,
                 focusable=True,
                 lexer=_OutputLexer(),
