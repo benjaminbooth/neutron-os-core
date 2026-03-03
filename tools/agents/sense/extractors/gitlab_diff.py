@@ -151,15 +151,19 @@ class GitLabDiffExtractor(BaseExtractor):
                     by_author.setdefault(author, []).append(c)
 
                 for author, commits in by_author.items():
-                    titles = [c["title"] for c in commits]
+                    # Use full message when available, fall back to title
+                    messages = [
+                        c.get("message") or c["title"] for c in commits
+                    ]
+                    first_title = commits[0]["title"]
                     signals.append(Signal(
                         source=self.name,
                         timestamp=timestamp,
-                        raw_text="\n".join(titles),
+                        raw_text="\n\n".join(messages),
                         people=[author],
                         initiatives=[self._guess_initiative(path)],
                         signal_type="progress",
-                        detail=f"{author}: {len(commits)} new commit(s) in {path.split('/')[-1]} — {titles[0]}",
+                        detail=f"{author}: {len(commits)} new commit(s) in {path.split('/')[-1]} — {first_title}",
                         confidence=1.0,
                         metadata={
                             "project": path,
@@ -234,6 +238,54 @@ class GitLabDiffExtractor(BaseExtractor):
                     metadata={"project": path, "event": "repo_stale"},
                 ))
 
+            # New issue comments
+            curr_note_ids = {
+                c["note_id"]
+                for c in curr_activity.get("issue_comments", [])
+            }
+            prev_note_ids = {
+                c["note_id"]
+                for c in prev_activity.get("issue_comments", [])
+            }
+            new_note_ids = curr_note_ids - prev_note_ids
+
+            if new_note_ids:
+                new_comments = [
+                    c for c in curr_activity.get("issue_comments", [])
+                    if c["note_id"] in new_note_ids
+                ]
+                # Group by issue for readability
+                by_issue: dict[int, list] = {}
+                for c in new_comments:
+                    by_issue.setdefault(c["issue_iid"], []).append(c)
+
+                for iid, comments in by_issue.items():
+                    issue_title = comments[0].get("issue_title", f"#{iid}")
+                    authors = sorted({c["author"] for c in comments})
+                    bodies = [
+                        f"{c['author']}: {c['body']}" for c in comments
+                    ]
+                    signals.append(Signal(
+                        source=self.name,
+                        timestamp=comments[0].get("created_at", timestamp),
+                        raw_text="\n\n".join(bodies),
+                        people=authors,
+                        initiatives=[self._guess_initiative(path)],
+                        signal_type="progress",
+                        detail=(
+                            f"{len(comments)} new comment(s) on "
+                            f"{path.split('/')[-1]}#{iid}: {issue_title}"
+                        ),
+                        confidence=1.0,
+                        metadata={
+                            "project": path,
+                            "event": "issue_comments",
+                            "iid": iid,
+                            "note_ids": [c["note_id"] for c in comments],
+                            "comment_count": len(comments),
+                        },
+                    ))
+
             # New contributors
             curr_authors = set(curr_activity.get("contributor_summary", {}).keys())
             prev_authors = set(prev_activity.get("contributor_summary", {}).keys())
@@ -296,6 +348,19 @@ class GitLabDiffExtractor(BaseExtractor):
                 detail=f"Newly discovered project: {proj['name']} ({proj['path']})",
                 confidence=1.0,
                 metadata={"project": proj["path"], "event": "new_project"},
+            ))
+
+        # Issue comment activity (from per-project data)
+        total_comments = summary.get("total_issue_comments", 0)
+        if total_comments:
+            signals.append(Signal(
+                source=self.name,
+                timestamp=timestamp,
+                raw_text=f"{total_comments} issue comments in the export period",
+                signal_type="progress",
+                detail=f"{total_comments} issue comment(s) across all projects",
+                confidence=1.0,
+                metadata={"event": "comment_summary", "count": total_comments},
             ))
 
         return signals

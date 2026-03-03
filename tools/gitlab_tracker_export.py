@@ -218,6 +218,7 @@ class GitLabExporter:
             "contributor_summary": {},
             "open_issues": [],
             "recently_closed_issues": [],
+            "issue_comments": [],
             "open_mrs": [],
             "recently_merged_mrs": [],
             "milestones": [],
@@ -232,6 +233,12 @@ class GitLabExporter:
         # Issues
         activity["open_issues"] = self._get_open_issues(project)
         activity["recently_closed_issues"] = self._get_closed_issues(project)
+
+        # Issue comments (notes) — from open + recently closed issues
+        activity["issue_comments"] = self._get_issue_comments(
+            project,
+            activity["open_issues"] + activity["recently_closed_issues"],
+        )
 
         # Merge Requests
         activity["open_mrs"] = self._get_open_mrs(project)
@@ -269,6 +276,10 @@ class GitLabExporter:
                         "author_email": commit.author_email,
                         "created_at": commit.created_at,
                         "title": truncate(commit.title, MAX_COMMIT_MESSAGE_LENGTH),
+                        "message": truncate(
+                            getattr(commit, "message", None) or commit.title,
+                            500,
+                        ),
                     }
                 )
         except GitlabHttpError as e:
@@ -313,6 +324,50 @@ class GitLabExporter:
             if e.response_code != 403:
                 raise
         return issues
+
+    def _get_issue_comments(
+        self, project, issues: list[dict], max_notes_per_issue: int = 20
+    ) -> list[dict]:
+        """Fetch non-system comments (notes) for a list of issues.
+
+        Returns a flat list of comment dicts, each referencing its parent
+        issue_iid and issue_title for easy cross-referencing.
+        """
+        comments: list[dict] = []
+        for issue_data in issues:
+            iid = issue_data["iid"]
+            try:
+                issue_obj = project.issues.get(iid)
+                since_str = self.cutoff_date.isoformat()
+                for note in retry_on_rate_limit(
+                    lambda _iid=iid, _obj=issue_obj: list(
+                        _obj.notes.list(
+                            per_page=max_notes_per_issue,
+                            get_all=False,
+                            order_by="created_at",
+                            sort="desc",
+                        )
+                    )
+                ):
+                    # Skip system-generated notes (label changes, assignments, etc.)
+                    if getattr(note, "system", False):
+                        continue
+                    # Only include notes within the time window
+                    if not is_within_days(getattr(note, "created_at", None), self.days):
+                        continue
+                    author_data = getattr(note, "author", {}) or {}
+                    comments.append({
+                        "issue_iid": iid,
+                        "issue_title": issue_data.get("title", ""),
+                        "note_id": note.id,
+                        "author": author_data.get("username", author_data.get("name", "")),
+                        "body": truncate(note.body, 500),
+                        "created_at": note.created_at,
+                    })
+            except GitlabHttpError as e:
+                if e.response_code != 403:
+                    raise
+        return comments
 
     def _format_issue(self, issue) -> dict:
         """Format issue data."""
@@ -438,6 +493,7 @@ class GitLabExporter:
             "total_commits": 0,
             "total_open_issues": 0,
             "total_open_mrs": 0,
+            "total_issue_comments": 0,
         }
 
         for proj in projects_data:
@@ -461,8 +517,10 @@ class GitLabExporter:
             # Per-project stats
             open_issues = len(activity.get("open_issues", []))
             open_mrs = len(activity.get("open_mrs", []))
+            issue_comments = len(activity.get("issue_comments", []))
             summary["total_open_issues"] += open_issues
             summary["total_open_mrs"] += open_mrs
+            summary["total_issue_comments"] += issue_comments
 
             summary["project_stats"].append(
                 {
@@ -470,6 +528,7 @@ class GitLabExporter:
                     "commits_90d": len(commits),
                     "open_issues": open_issues,
                     "open_mrs": open_mrs,
+                    "issue_comments": issue_comments,
                 }
             )
 
@@ -508,7 +567,8 @@ class GitLabExporter:
             else:
                 commit_count = len(activity.get("commits", []))
                 issue_count = len(activity.get("open_issues", []))
-                print(f"{commit_count} commits, {issue_count} open issues")
+                comment_count = len(activity.get("issue_comments", []))
+                print(f"{commit_count} commits, {issue_count} open issues, {comment_count} comments")
 
             projects_data.append({"info": proj_info, "activity": activity})
 
@@ -557,6 +617,7 @@ class GitLabExporter:
         print(f"   Commits (last {self.days} days): {summary['total_commits']}")
         print(f"   Open Issues: {summary['total_open_issues']}")
         print(f"   Open MRs: {summary['total_open_mrs']}")
+        print(f"   Issue Comments: {summary['total_issue_comments']}")
 
         print(f"\n👥 TOP CONTRIBUTORS (last {self.days} days)")
         top_authors = list(summary["total_commits_by_author"].items())[:10]

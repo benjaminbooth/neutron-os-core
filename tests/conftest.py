@@ -74,6 +74,7 @@ def sample_gitlab_export(tmp_path):
                             "author_email": "alice@example.com",
                             "created_at": "2026-02-15T10:00:00+00:00",
                             "title": "Add new feature X",
+                            "message": "Add new feature X\n\nImplements the X subsystem with full test coverage.\nCloses #42.",
                         },
                         {
                             "sha": "def456",
@@ -81,6 +82,7 @@ def sample_gitlab_export(tmp_path):
                             "author_email": "bob@example.com",
                             "created_at": "2026-02-14T10:00:00+00:00",
                             "title": "Fix bug in module Y",
+                            "message": "Fix bug in module Y\n\nThe Y module was crashing on empty input.\nAdded null check and regression test.",
                         },
                     ],
                     "contributor_summary": {"Alice Smith": 1, "Bob Jones": 1},
@@ -98,6 +100,24 @@ def sample_gitlab_export(tmp_path):
                         }
                     ],
                     "recently_closed_issues": [],
+                    "issue_comments": [
+                        {
+                            "issue_iid": 1,
+                            "issue_title": "Implement feature Z",
+                            "note_id": 501,
+                            "author": "asmith",
+                            "body": "I started working on this. The approach looks solid.",
+                            "created_at": "2026-02-12T14:00:00Z",
+                        },
+                        {
+                            "issue_iid": 1,
+                            "issue_title": "Implement feature Z",
+                            "note_id": 502,
+                            "author": "bjones",
+                            "body": "Reviewed the draft PR. Needs more tests for edge cases.",
+                            "created_at": "2026-02-13T09:30:00Z",
+                        },
+                    ],
                     "open_mrs": [],
                     "recently_merged_mrs": [],
                     "milestones": [],
@@ -115,6 +135,7 @@ def sample_gitlab_export(tmp_path):
             "total_commits": 2,
             "total_open_issues": 1,
             "total_open_mrs": 0,
+            "total_issue_comments": 2,
         },
     }
 
@@ -151,11 +172,22 @@ def sample_gitlab_export_previous(tmp_path):
                             "author_email": "alice@example.com",
                             "created_at": "2026-02-05T10:00:00+00:00",
                             "title": "Initial commit",
+                            "message": "Initial commit",
                         },
                     ],
                     "contributor_summary": {"Alice Smith": 1},
                     "open_issues": [],
                     "recently_closed_issues": [],
+                    "issue_comments": [
+                        {
+                            "issue_iid": 1,
+                            "issue_title": "Implement feature Z",
+                            "note_id": 500,
+                            "author": "asmith",
+                            "body": "Created this issue to track feature Z.",
+                            "created_at": "2026-02-04T10:00:00Z",
+                        },
+                    ],
                     "open_mrs": [],
                     "recently_merged_mrs": [],
                     "milestones": [],

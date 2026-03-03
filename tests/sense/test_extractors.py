@@ -12,6 +12,61 @@ from tools.agents.sense.correlator import Correlator
 from tools.agents.sense.gateway import Gateway
 
 
+def _make_export(
+    tmp_path: Path,
+    filename: str,
+    commits: list | None = None,
+    issue_comments: list | None = None,
+) -> Path:
+    """Create a minimal gitlab export JSON for targeted tests."""
+    export = {
+        "exported_at": "2026-02-17T00:00:00+00:00",
+        "gitlab_url": "https://gitlab.example.com",
+        "group": "test-group",
+        "time_window_days": 90,
+        "projects": [
+            {
+                "info": {
+                    "id": 1,
+                    "name": "Alpha Project",
+                    "path": "alpha-project",
+                    "path_with_namespace": "test-group/alpha-project",
+                    "description": "Test project",
+                    "default_branch": "main",
+                    "last_activity_at": "2026-02-16T10:00:00Z",
+                    "web_url": "https://gitlab.example.com/test-group/alpha-project",
+                },
+                "activity": {
+                    "commits": commits or [],
+                    "contributor_summary": {},
+                    "open_issues": [],
+                    "recently_closed_issues": [],
+                    "issue_comments": issue_comments or [],
+                    "open_mrs": [],
+                    "recently_merged_mrs": [],
+                    "milestones": [],
+                    "labels": [],
+                    "active_branches": [],
+                },
+            }
+        ],
+        "summary": {
+            "total_commits_by_author": {},
+            "stale_repos": [],
+            "project_stats": [],
+            "newly_discovered_projects": [],
+            "total_projects": 1,
+            "total_commits": len(commits or []),
+            "total_open_issues": 0,
+            "total_open_mrs": 0,
+            "total_issue_comments": len(issue_comments or []),
+        },
+    }
+    path = tmp_path / filename
+    path.write_text(json.dumps(export, indent=2))
+    return path
+
+
 # ─── GitLab Diff Extractor ───
 
 
@@ -87,6 +142,114 @@ class TestGitLabDiffExtractor:
         ]
         # Bob Jones is new compared to previous export
         assert len(contributor_signals) > 0
+
+    def test_diff_commit_messages_in_raw_text(
+        self, sample_gitlab_export, sample_gitlab_export_previous
+    ):
+        """Full commit messages (not just titles) appear in signal raw_text."""
+        extractor = GitLabDiffExtractor()
+        extraction = extractor.extract(
+            sample_gitlab_export, previous=sample_gitlab_export_previous
+        )
+
+        commit_signals = [
+            s for s in extraction.signals
+            if s.metadata.get("event") == "new_commits"
+        ]
+        assert len(commit_signals) > 0
+
+        # At least one signal should contain the full message body
+        all_raw = " ".join(s.raw_text for s in commit_signals)
+        assert "Closes #42" in all_raw or "null check" in all_raw
+
+    def test_diff_commit_message_fallback(self, tmp_path):
+        """When commits lack 'message' field, falls back to 'title'."""
+        # Export with no message field (legacy format)
+        current = _make_export(tmp_path, "current.json", commits=[
+            {"sha": "new1", "author_name": "Dev", "author_email": "d@e.com",
+             "created_at": "2026-02-15T10:00:00Z", "title": "Some change"},
+        ])
+        previous = _make_export(tmp_path, "previous.json", commits=[])
+
+        extractor = GitLabDiffExtractor()
+        extraction = extractor.extract(current, previous=previous)
+
+        commit_signals = [
+            s for s in extraction.signals
+            if s.metadata.get("event") == "new_commits"
+        ]
+        assert len(commit_signals) == 1
+        assert "Some change" in commit_signals[0].raw_text
+
+    def test_diff_detects_new_issue_comments(
+        self, sample_gitlab_export, sample_gitlab_export_previous
+    ):
+        """Diff detects new issue comments (notes)."""
+        extractor = GitLabDiffExtractor()
+        extraction = extractor.extract(
+            sample_gitlab_export, previous=sample_gitlab_export_previous
+        )
+
+        comment_signals = [
+            s for s in extraction.signals
+            if s.metadata.get("event") == "issue_comments"
+        ]
+        assert len(comment_signals) > 0
+
+        sig = comment_signals[0]
+        # note_ids 501 and 502 are new (500 existed in previous)
+        assert 501 in sig.metadata["note_ids"] or 502 in sig.metadata["note_ids"]
+        assert sig.metadata["comment_count"] == 2
+        assert "Implement feature Z" in sig.detail
+
+    def test_diff_no_comments_when_unchanged(self, tmp_path):
+        """No comment signals when comments haven't changed between exports."""
+        comments = [
+            {"issue_iid": 1, "issue_title": "Issue", "note_id": 100,
+             "author": "user", "body": "old comment", "created_at": "2026-02-01T00:00:00Z"},
+        ]
+        current = _make_export(tmp_path, "current.json", issue_comments=comments)
+        previous = _make_export(tmp_path, "previous.json", issue_comments=comments)
+
+        extractor = GitLabDiffExtractor()
+        extraction = extractor.extract(current, previous=previous)
+
+        comment_signals = [
+            s for s in extraction.signals
+            if s.metadata.get("event") == "issue_comments"
+        ]
+        assert len(comment_signals) == 0
+
+    def test_backward_compat_missing_issue_comments(self, tmp_path):
+        """Exports without issue_comments field don't crash the extractor."""
+        current = _make_export(tmp_path, "current.json")
+        previous = _make_export(tmp_path, "previous.json")
+
+        # Remove issue_comments to simulate old export format
+        import json
+        data = json.loads(current.read_text())
+        del data["projects"][0]["activity"]["issue_comments"]
+        current.write_text(json.dumps(data))
+
+        data = json.loads(previous.read_text())
+        del data["projects"][0]["activity"]["issue_comments"]
+        previous.write_text(json.dumps(data))
+
+        extractor = GitLabDiffExtractor()
+        extraction = extractor.extract(current, previous=previous)
+        assert not extraction.errors
+
+    def test_single_export_comment_summary(self, sample_gitlab_export):
+        """Single export with comments produces a comment summary signal."""
+        extractor = GitLabDiffExtractor()
+        extraction = extractor.extract(sample_gitlab_export)
+
+        comment_signals = [
+            s for s in extraction.signals
+            if s.metadata.get("event") == "comment_summary"
+        ]
+        assert len(comment_signals) == 1
+        assert comment_signals[0].metadata["count"] == 2
 
     def test_confidence_always_1(self, sample_gitlab_export):
         """All GitLab signals should have confidence=1.0."""
