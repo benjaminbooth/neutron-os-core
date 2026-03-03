@@ -671,10 +671,11 @@ class _ScrollMetricsCapture(Margin):
 
 
 class _ScrollableBufferControl(BufferControl):
-    """BufferControl with fast mouse scroll (half a screen per tick).
+    """BufferControl with fast mouse scroll and click-to-select.
 
-    Blocks MOUSE_UP/DOWN/MOVE so clicks in the output area don't steal
-    focus from the input buffer.
+    Delegates click/drag events to the base BufferControl so the user can
+    select text in the output area, then snaps focus back to the input
+    buffer on mouse-up so typing continues normally.
     """
 
     _cached_half: int = 20
@@ -698,13 +699,30 @@ class _ScrollableBufferControl(BufferControl):
                 pass
             return None
 
-        # Block click/drag — don't let output window steal focus from input
+        # Click/drag — delegate to base BufferControl for text selection.
+        # MOUSE_DOWN gives this window focus and starts selection,
+        # MOUSE_MOVE extends it, MOUSE_UP finalizes it.
         if mouse_event.event_type in (
-            MouseEventType.MOUSE_UP,
             MouseEventType.MOUSE_DOWN,
             MouseEventType.MOUSE_MOVE,
         ):
-            return NotImplemented
+            return super().mouse_handler(mouse_event)
+
+        if mouse_event.event_type == MouseEventType.MOUSE_UP:
+            result = super().mouse_handler(mouse_event)
+            # Snap focus back to the input buffer so the user can keep typing.
+            # Selection state is preserved on the output buffer for Ctrl+C.
+            try:
+                from prompt_toolkit.application import get_app
+                app = get_app()
+                for win in app.layout.get_visible_focusable_windows():
+                    ctrl = win.content
+                    if isinstance(ctrl, BufferControl) and ctrl.buffer.name == "input":
+                        app.layout.focus(win)
+                        break
+            except Exception:
+                pass
+            return result
 
         return super().mouse_handler(mouse_event)
 
@@ -720,6 +738,46 @@ class _ScrollableBufferControl(BufferControl):
                 self._cached_half = 20
             self._cache_time = now
         return self._cached_half
+
+
+def _copy_to_system_clipboard(text: str) -> None:
+    """Best-effort copy to the OS clipboard.
+
+    Tries platform tools first (pbcopy/xclip), then falls back to the
+    OSC 52 escape sequence which works across SSH and most modern terminals.
+    """
+    import base64
+
+    # Platform tool
+    try:
+        if sys.platform == "darwin":
+            proc = subprocess.Popen(
+                ["pbcopy"], stdin=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            )
+            proc.communicate(text.encode("utf-8"), timeout=2)
+            if proc.returncode == 0:
+                return
+        else:
+            for cmd in (["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]):
+                try:
+                    proc = subprocess.Popen(
+                        cmd, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                    )
+                    proc.communicate(text.encode("utf-8"), timeout=2)
+                    if proc.returncode == 0:
+                        return
+                except FileNotFoundError:
+                    continue
+    except Exception:
+        pass
+
+    # Fallback: OSC 52 (terminal-native clipboard escape)
+    try:
+        encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
+        sys.stdout.write(f"\033]52;c;{encoded}\a")
+        sys.stdout.flush()
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -1191,28 +1249,32 @@ class FullScreenChat:
         # Note: Ctrl+C is already bound to cancel above, so we use it
         # only when there IS a selection (copy), otherwise cancel.
 
-        # Override Ctrl+C: copy if selection exists, otherwise cancel
+        # Override Ctrl+C: copy if selection exists, otherwise cancel.
+        # Checks BOTH input and output buffers since focus snaps back to
+        # input after mouse-up but the selection lives on the output buffer.
         @kb.add("c-c", eager=True)
         def _copy_or_cancel(event):
-            buf = event.current_buffer
-            if buf.selection_state is not None:
-                # Copy selection to clipboard
-                start = buf.selection_state.original_cursor_position
-                end = buf.cursor_position
-                if start > end:
-                    start, end = end, start
-                if start != end:
-                    selected_text = buf.text[start:end]
-                    event.app.clipboard.set_data(ClipboardData(selected_text))
-                buf.selection_state = None
+            # Check output buffer first (mouse selection lands here)
+            for buf in (self._output_buffer, event.current_buffer):
+                if buf.selection_state is not None:
+                    start = buf.selection_state.original_cursor_position
+                    end = buf.cursor_position
+                    if start > end:
+                        start, end = end, start
+                    if start != end:
+                        selected_text = buf.text[start:end]
+                        event.app.clipboard.set_data(ClipboardData(selected_text))
+                        # Also copy to system clipboard via OSC 52
+                        _copy_to_system_clipboard(selected_text)
+                    buf.selection_state = None
+                    return
+            # No selection — original cancel behavior
+            if self._picker is not None:
+                self._dismiss_picker()
+            elif self._busy:
+                self._interrupted = True
             else:
-                # Original cancel behavior
-                if self._picker is not None:
-                    self._dismiss_picker()
-                elif self._busy:
-                    self._interrupted = True
-                else:
-                    self._input_buffer.reset()
+                self._input_buffer.reset()
 
         # Ctrl+V — paste
         @kb.add("c-v", eager=True)
