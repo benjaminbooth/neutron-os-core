@@ -88,14 +88,14 @@ class TestSenseCompletion:
 
     def test_sense_subcommands(self):
         completions = _get_completions("neut sense ")
+        assert "brief" in completions
         assert "status" in completions
-        assert "ingest" in completions
-        assert "corrections" in completions
         assert "draft" in completions
+        assert "pipeline" in completions
 
     def test_sense_partial(self):
-        completions = _get_completions("neut sense in")
-        assert "ingest" in completions
+        completions = _get_completions("neut sense br")
+        assert "brief" in completions
 
 
 class TestDocCompletion:

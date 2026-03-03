@@ -43,7 +43,7 @@ class TestSenseCLISubprocess:
         )
         # Should exit non-zero (no subcommand) and print usage
         assert result.returncode != 0
-        assert "ingest" in (result.stdout + result.stderr).lower()
+        assert "pipeline" in (result.stdout + result.stderr).lower()
 
 
 # ─── Full Pipeline Tests ───

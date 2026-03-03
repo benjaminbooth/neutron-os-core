@@ -73,7 +73,11 @@ class TestSessionStore:
     def test_list_sessions(self, tmp_path):
         store = SessionStore(tmp_path / "sessions")
         s1 = store.create()
+        s1.add_message("user", "hello")
+        store.save(s1)
         s2 = store.create()
+        s2.add_message("user", "world")
+        store.save(s2)
 
         ids = store.list_sessions()
         assert s1.session_id in ids
