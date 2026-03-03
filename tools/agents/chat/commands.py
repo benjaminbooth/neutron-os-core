@@ -299,6 +299,7 @@ CHAT_META_COMMANDS = {
     "/rename": "Rename the current session (/rename <title>)",
     "/archive": "Archive a session (/archive [id|#])",
     "/new": "Start a fresh session",
+    "/update": "Check for and apply updates (/update [now|later|check])",
     "/exit": "Save and exit",
 }
 

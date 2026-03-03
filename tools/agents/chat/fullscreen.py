@@ -24,31 +24,47 @@ Threading model:
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+import shutil
+import subprocess
+import sys
+from tools.mo import acquire_dir
 import textwrap
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any, Iterator, Optional, TYPE_CHECKING
+
+import random
 
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.document import Document
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.key_binding import KeyBindings, ConditionalKeyBindings, merge_key_bindings
 from prompt_toolkit.layout.containers import (
     ConditionalContainer,
+    Float,
+    FloatContainer,
     HSplit,
+    VSplit,
     Window,
 )
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension as D
 from prompt_toolkit.layout.layout import Layout
+from prompt_toolkit.layout.margins import Margin
+from prompt_toolkit.layout.menus import CompletionsMenu
 from prompt_toolkit.layout.processors import BeforeInput, Processor, Transformation
+from prompt_toolkit.selection import SelectionType, SelectionState
+from prompt_toolkit.clipboard import ClipboardData
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 
@@ -65,6 +81,9 @@ if TYPE_CHECKING:
     from tools.agents.orchestrator.actions import Action
     from tools.agents.orchestrator.session import SessionStore
     from tools.agents.sense.gateway import StreamChunk
+
+from tools.update.background import BackgroundUpdateChecker
+from tools.update.version_check import VersionInfo
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +128,14 @@ _STYLE = Style.from_dict({
     # Mermaid / diagrams
     "diagram.label":   f"{_CHERENKOV} bold",
     "diagram.code":    "#7a9cc7",
-    "diagram.keyword": f"#7a9cc7 bold",
+    "diagram.keyword": "#7a9cc7 bold",
+    "diagram.rendered": "#5faf5f italic",
+    # Autocomplete menu
+    "completion-menu":                    "bg:#1a1a2e #c0c0c0",
+    "completion-menu.completion":         "bg:#1a1a2e #c0c0c0",
+    "completion-menu.completion.current": f"bg:{_CHERENKOV_DIM} #000000",
+    # Scroll indicator
+    "scrollbar.thumb":  "bg:#444444",
     # Session picker
     "picker.header":   f"{_CHERENKOV} bold",
     "picker.cursor":   f"{_CHERENKOV} bold",
@@ -131,8 +157,8 @@ _RE_LIST = re.compile(r"^(\s*)[-*]\s+(.+)$")
 _RE_ORDERED = re.compile(r"^(\s*)\d+\.\s+(.+)$")
 _RE_STATUS = re.compile(r"^\s+\S.*\d+in/\d+out")
 _RE_SLASH = re.compile(r"^(\s+)(/\w+)(\s+.*)$")
-_RE_TABLE_ROW = re.compile(r"^(\s*)\|(.+)\|\s*$")
-_RE_TABLE_SEP = re.compile(r"^(\s*)\|[\s:]*-[-\s:|]*\|\s*$")
+_RE_TABLE_ROW = re.compile(r"^(\s*)[|\u2502](.+)[|\u2502]\s*$")
+_RE_TABLE_SEP = re.compile(r"^(\s*)[|\u2502][\s:]*-[-\s:|]*[|\u2502]\s*$")
 
 # Mermaid keywords for syntax highlighting
 _MERMAID_KEYWORDS = {
@@ -154,7 +180,6 @@ class _OutputLexer(Lexer):
         styled: list[list[tuple[str, str]]] = []
         in_code = False
         code_lang = ""
-        table_header_next = False  # the row after a separator is still "header zone"
 
         for i, line in enumerate(lines):
             stripped = line.strip()
@@ -194,7 +219,6 @@ class _OutputLexer(Lexer):
             # --- Table rows ---
             if _RE_TABLE_SEP.match(line):
                 styled.append([("class:table.separator", line)])
-                table_header_next = False
                 continue
 
             m = _RE_TABLE_ROW.match(line)
@@ -219,6 +243,10 @@ class _OutputLexer(Lexer):
 
     def _style_line(self, line: str) -> list[tuple[str, str]]:
         stripped = line.strip()
+
+        # Rendered mermaid diagram placeholder
+        if stripped.startswith("\u25b8 Diagram rendered"):
+            return [("class:diagram.rendered", line)]
 
         # Picker lines
         if stripped.startswith(("Select a session", "Archive sessions")):
@@ -256,10 +284,14 @@ class _OutputLexer(Lexer):
                 ("class:md.bold", line[idx + 5:]),
             ]
 
-        # Headings: ## ...
+        # Headings: ## ... — strip ** markers and leading emoji
         m = _RE_HEADING.match(line)
         if m:
-            return [("class:md.heading", line)]
+            indent = m.group(1)   # leading whitespace
+            text = m.group(3).replace("**", "")  # heading text
+            # Strip leading emoji (Unicode emoji + variation selectors)
+            text = re.sub(r"^[\U0001f300-\U0001f9ff\u2600-\u27bf\ufe0f\u200d]+\s*", "", text)
+            return [("class:md.heading", f"{indent}{text}")]
 
         # Status line: model | 1234in/567out
         if _RE_STATUS.match(line):
@@ -291,8 +323,8 @@ class _OutputLexer(Lexer):
         if stripped.startswith("Neut v") and "\u2014" in stripped:
             return [("class:welcome", line)]
 
-        # Metadata lines: "  model: ... | commit: ..."
-        if stripped.startswith("model:") or stripped.startswith("cwd:"):
+        # Metadata lines: org line, path line
+        if stripped.startswith("UT Nuclear") or stripped.startswith("/"):
             return [("class:dim", line)]
 
         # Help hint line
@@ -412,9 +444,10 @@ class _OutputLexer(Lexer):
         self, line: str, is_header: bool,
     ) -> list[tuple[str, str]]:
         """Style a markdown table row with colored pipes and header bold."""
+        # Normalise box-drawing │ to ASCII | before splitting
+        normalised = line.replace("\u2502", "|")
         fragments: list[tuple[str, str]] = []
-        cell_style = "class:table.header" if is_header else ""
-        parts = line.split("|")
+        parts = normalised.split("|")
 
         for i, part in enumerate(parts):
             if i > 0:
@@ -451,12 +484,13 @@ def _align_table(lines: list[str], max_width: int) -> list[str]:
     if not lines:
         return lines
 
-    # Parse each row into cells
+    # Parse each row into cells (normalise box-drawing │ to |)
     rows: list[tuple[str, list[str], bool]] = []  # (indent, cells, is_sep)
     for line in lines:
-        stripped = line.lstrip()
-        indent = line[: len(line) - len(stripped)]
-        is_sep = bool(_RE_TABLE_SEP.match(line))
+        normalised = line.replace("\u2502", "|")
+        stripped = normalised.lstrip()
+        indent = normalised[: len(normalised) - len(stripped)]
+        is_sep = bool(_RE_TABLE_SEP.match(normalised))
         cells = [c.strip() for c in stripped.strip("|").split("|")]
         rows.append((indent, cells, is_sep))
 
@@ -503,6 +537,192 @@ def _strip_ansi(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Mermaid diagram rendering — background SVG generation via mmdc
+# ---------------------------------------------------------------------------
+
+_MERMAID_BLOCK_RE = re.compile(
+    r"```mermaid\s*\n(.*?)```",
+    re.DOTALL,
+)
+
+_MMDC_PATH: str | None = shutil.which("mmdc")
+
+
+def _render_mermaid_svg(code: str, diagram_dir: Path) -> str | None:
+    """Render mermaid code to SVG via mmdc.
+
+    Args:
+        code: Mermaid diagram source.
+        diagram_dir: Writable directory for input/output files.
+
+    Returns:
+        SVG file path, or None on failure (missing mmdc, permission error,
+        render failure, timeout).
+    """
+    if not _MMDC_PATH:
+        return None
+
+    digest = hashlib.sha256(code.encode()).hexdigest()[:12]
+    input_path = diagram_dir / f"input-{digest}.mmd"
+    output_path = diagram_dir / f"diagram-{digest}.svg"
+
+    # Skip re-render if SVG already exists for this exact code
+    if output_path.exists():
+        return str(output_path)
+
+    try:
+        input_path.write_text(code, encoding="utf-8")
+        subprocess.run(
+            [_MMDC_PATH, "-i", str(input_path), "-o", str(output_path),
+             "-t", "dark", "-b", "transparent"],
+            capture_output=True, timeout=15,
+        )
+    except (subprocess.TimeoutExpired, OSError, PermissionError):
+        return None
+
+    if output_path.exists():
+        return str(output_path)
+    return None
+
+
+def _open_file(path: str) -> None:
+    """Open a file with the system viewer (non-blocking)."""
+    try:
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", path], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+        elif sys.platform == "linux":
+            subprocess.Popen(["xdg-open", path], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
+
+
+def _make_mermaid_placeholder(svg_path: str) -> str:
+    """Build a single-line placeholder for a rendered mermaid diagram."""
+    return f"  \u25b8 Diagram rendered \u2192 {svg_path}"
+
+
+def _process_mermaid_blocks(
+    raw: str,
+    rendered: dict[str, str | None],
+    diagram_dir: Path,
+) -> str:
+    """Find complete mermaid blocks in raw text, render + replace with placeholders.
+
+    Args:
+        raw: The full raw output text.
+        rendered: Cache mapping mermaid code -> svg_path (mutated in place).
+        diagram_dir: Writable directory for rendered files.
+
+    Returns:
+        Updated raw text with rendered blocks replaced by placeholders.
+    """
+    if not _MMDC_PATH:
+        return raw
+
+    def _replace(m: re.Match) -> str:
+        code = m.group(1).strip()
+        if not code:
+            return m.group(0)
+
+        # Check cache first
+        if code in rendered:
+            svg_path = rendered[code]
+            if svg_path:
+                return _make_mermaid_placeholder(svg_path)
+            # None means render failed — keep raw
+            return m.group(0)
+
+        # Render in-line (called from background thread already)
+        svg_path = _render_mermaid_svg(code, diagram_dir)
+        rendered[code] = svg_path  # cache even failures (as None)
+        if svg_path:
+            _open_file(svg_path)
+            return _make_mermaid_placeholder(svg_path)
+        return m.group(0)
+
+    return _MERMAID_BLOCK_RE.sub(_replace, raw)
+
+
+# ---------------------------------------------------------------------------
+# Fast-scroll BufferControl — higher mouse wheel sensitivity
+# ---------------------------------------------------------------------------
+
+class _ScrollMetricsCapture(Margin):
+    """Zero-width invisible margin that captures scroll metrics from window_render_info.
+
+    The captured metrics (content_height, window_height, vertical_scroll) are
+    stored on the TUI instance and read by the full-height scrollbar column.
+    """
+
+    def __init__(self, tui):
+        self._tui = tui
+
+    def get_width(self, get_ui_content):
+        return 0
+
+    def create_margin(self, window_render_info, width, height):
+        if window_render_info is not None:
+            self._tui._scroll_content_height = window_render_info.content_height
+            self._tui._scroll_window_height = window_render_info.window_height
+            self._tui._scroll_vertical_scroll = window_render_info.vertical_scroll
+        return []
+
+
+class _ScrollableBufferControl(BufferControl):
+    """BufferControl with fast mouse scroll (half a screen per tick).
+
+    Blocks MOUSE_UP/DOWN/MOVE so clicks in the output area don't steal
+    focus from the input buffer.
+    """
+
+    _cached_half: int = 20
+    _cache_time: float = 0.0
+
+    def mouse_handler(self, mouse_event):
+        from prompt_toolkit.mouse_events import MouseEventType
+
+        if mouse_event.event_type in (
+            MouseEventType.SCROLL_UP, MouseEventType.SCROLL_DOWN,
+        ):
+            half_page = self._cached_half_page()
+            if mouse_event.event_type == MouseEventType.SCROLL_UP:
+                self.buffer.cursor_up(count=half_page)
+            else:
+                self.buffer.cursor_down(count=half_page)
+            try:
+                from prompt_toolkit.application import get_app
+                get_app().invalidate()
+            except Exception:
+                pass
+            return None
+
+        # Block click/drag — don't let output window steal focus from input
+        if mouse_event.event_type in (
+            MouseEventType.MOUSE_UP,
+            MouseEventType.MOUSE_DOWN,
+            MouseEventType.MOUSE_MOVE,
+        ):
+            return NotImplemented
+
+        return super().mouse_handler(mouse_event)
+
+    def _cached_half_page(self) -> int:
+        """Terminal half-page height, cached for 1 second."""
+        import time as _time
+        now = _time.monotonic()
+        if now - self._cache_time > 1.0:
+            try:
+                import shutil
+                self._cached_half = max(shutil.get_terminal_size().lines // 2, 10)
+            except Exception:
+                self._cached_half = 20
+            self._cache_time = now
+        return self._cached_half
+
+
+# ---------------------------------------------------------------------------
 # Session picker state
 # ---------------------------------------------------------------------------
 
@@ -518,6 +738,7 @@ class PickerState:
     cursor: int = 0
     checked: set[int] = field(default_factory=set)
     saved_output: str = ""       # output buffer to restore on dismiss
+    include_archived: bool = False
 
 
 def _relative_time(iso_str: str) -> str:
@@ -573,6 +794,22 @@ class _PlaceholderProcessor(Processor):
 # Suggestion intelligence — context-aware input hints
 # ---------------------------------------------------------------------------
 
+# Varied phrasing for "did you mean X?" when a fuzzy match is found.
+_COMMAND_SUGGESTION_PHRASES = [
+    "Did you mean {cmd}?",
+    "Maybe you meant {cmd}?",
+    "Perhaps you were looking for {cmd}?",
+    "Looks like you might mean {cmd}.",
+    "Close match: {cmd} — want to run it?",
+    "Not sure about that one — did you mean {cmd}?",
+]
+
+# Affirmative responses that accept a pending command suggestion.
+_AFFIRMATIVES = frozenset({
+    "y", "yes", "yeah", "yep", "yup", "sure",
+    "ok", "okay", "do it", "go", "run it", "go ahead",
+})
+
 # Suggestions keyed by conversation state.
 # Each entry is a list to allow rotation on repeated visits.
 _SUGGESTIONS: dict[str, list[str]] = {
@@ -595,6 +832,11 @@ _SUGGESTIONS: dict[str, list[str]] = {
     ],
     "after_approval": [
         "Continue, or /status to review",
+    ],
+    "context": [
+        "Ask about what you just saw, or /help for commands",
+        "What would you like to know more about?",
+        "Dig deeper, or try /sense brief for a new briefing",
     ],
 }
 
@@ -631,11 +873,19 @@ class FullScreenChat:
         store: SessionStore,
         stream: bool = True,
         show_banner: bool = False,
+        restart_ctx: dict | None = None,
     ):
         self._agent = agent
         self._store = store
         self._stream = stream
         self._show_banner = show_banner
+        self._restart_ctx = restart_ctx
+
+        # Update system state
+        self._update_info: VersionInfo | None = None
+        self._update_dismissed = False
+        self._pending_update_notification: VersionInfo | None = None
+        self._update_checker: BackgroundUpdateChecker | None = None
 
         # State
         self._busy = False
@@ -645,6 +895,7 @@ class FullScreenChat:
         self._spinner_text: FormattedText = FormattedText([])
         self._approval_pending: Optional[_ApprovalRequest] = None
         self._output_lock = threading.Lock()
+        self._raw_output = ""  # Raw text without word-wrap breaks
         self._last_model = ""
         self._last_tokens = ""
         self._last_cost = ""
@@ -653,6 +904,25 @@ class FullScreenChat:
         # Suggestion state — drives placeholder text in input bar
         self._suggestion_key = "welcome"
         self._suggestion_idx = 0
+
+        # Pending command suggestion — set when a fuzzy match is offered
+        self._pending_command: Optional[str] = None
+
+        # Input history (shell-style up/down cycling)
+        self._input_history: list[str] = []
+        self._history_idx: int = 0  # points past end when not browsing
+        self._history_stash: str = ""  # saves in-progress text when browsing
+
+        # Mermaid rendering — managed by M-O, auto-cleaned on process exit
+        self._mermaid_cache: dict[str, str | None] = {}
+        self._mermaid_dir: Path | None = None
+        if _MMDC_PATH:
+            self._mermaid_dir = acquire_dir("chat.mermaid", purpose="diagram SVG renders")
+
+        # Scroll metrics (captured by _ScrollMetricsCapture margin on output window)
+        self._scroll_content_height = 0
+        self._scroll_window_height = 0
+        self._scroll_vertical_scroll = 0
 
         # Spinner state (updated from spinner thread)
         self._spinner_label = "Thinking"
@@ -665,10 +935,14 @@ class FullScreenChat:
 
         # Build UI
         self._output_buffer = Buffer(read_only=True, name="output")
+
+        from tools.agents.chat.commands import get_slash_commands
+        slash_commands = list(get_slash_commands().keys())
         self._input_buffer = Buffer(
             name="input",
             accept_handler=self._on_accept,
-            multiline=False,
+            multiline=True,
+            completer=WordCompleter(slash_commands, sentence=True),
         )
         self._app = self._build_app()
 
@@ -676,28 +950,22 @@ class FullScreenChat:
 
     def _build_app(self) -> Application:
         kb = KeyBindings()
+        no_picker = Condition(lambda: self._picker is None)
 
         @kb.add("c-d")
         def _exit(event):
             event.app.exit()
 
-        @kb.add("c-c")
-        def _clear_or_cancel(event):
+        @kb.add("escape", "escape")
+        def _double_escape(event):
+            """Double-Esc: dismiss picker, interrupt, clear input, or exit."""
             if self._picker is not None:
                 self._dismiss_picker()
                 return
             if self._busy:
                 self._interrupted = True
-            else:
+            elif self._input_buffer.text:
                 self._input_buffer.reset()
-
-        @kb.add("escape")
-        def _escape(event):
-            if self._picker is not None:
-                self._dismiss_picker()
-                return
-            if self._busy:
-                self._interrupted = True
             else:
                 event.app.exit()
 
@@ -707,6 +975,328 @@ class FullScreenChat:
                 return
             self._mode_idx = (self._mode_idx + 1) % len(_MODES)
             event.app.invalidate()
+
+        # Multiline: Enter submits, Alt+Enter inserts newline
+        @kb.add("enter", filter=no_picker)
+        def _submit_input(event):
+            event.current_buffer.validate_and_handle()
+
+        @kb.add("escape", "enter", filter=no_picker)
+        def _newline_input(event):
+            event.current_buffer.insert_text("\n")
+
+        # -- macOS text navigation --
+        # Cmd+Left / Cmd+Right — line start/end
+        # (Terminal sends escape sequences for Cmd+arrows)
+        @kb.add("home")
+        @kb.add("c-a")
+        def _line_start(event):
+            buf = event.current_buffer
+            buf.selection_state = None
+            doc = buf.document
+            buf.cursor_position = doc.cursor_position - len(doc.current_line_before_cursor)
+
+        @kb.add("end")
+        @kb.add("c-e")
+        def _line_end(event):
+            buf = event.current_buffer
+            buf.selection_state = None
+            doc = buf.document
+            buf.cursor_position = doc.cursor_position + len(doc.current_line_after_cursor)
+
+        # Option+Left / Option+Right — word jump
+        # (Terminal sends escape+b / escape+f for Option+arrows)
+        @kb.add("escape", "b")
+        def _word_left(event):
+            buf = event.current_buffer
+            buf.selection_state = None
+            pos = buf.document.find_previous_word_beginning() or 0
+            buf.cursor_position += pos
+
+        @kb.add("escape", "f")
+        def _word_right(event):
+            buf = event.current_buffer
+            buf.selection_state = None
+            pos = buf.document.find_next_word_ending() or 0
+            buf.cursor_position += pos
+
+        # Option+Backspace — delete word backward
+        @kb.add("escape", "c-h")
+        def _delete_word_back(event):
+            buf = event.current_buffer
+            pos = buf.document.find_previous_word_beginning() or 0
+            if pos:
+                buf.delete_before_cursor(count=-pos)
+
+        # Cmd+Backspace — delete to line start
+        @kb.add("c-u")
+        def _delete_to_start(event):
+            buf = event.current_buffer
+            before = len(buf.document.current_line_before_cursor)
+            if before:
+                buf.delete_before_cursor(count=before)
+
+        # Ctrl+K — delete to line end
+        @kb.add("c-k")
+        def _delete_to_end(event):
+            buf = event.current_buffer
+            after = len(buf.document.current_line_after_cursor)
+            if after:
+                buf.delete(count=after)
+
+        # Option+D — delete word forward
+        @kb.add("escape", "d")
+        def _delete_word_forward(event):
+            buf = event.current_buffer
+            pos = buf.document.find_next_word_ending() or 0
+            if pos:
+                buf.delete(count=pos)
+
+        # -- Selection (Shift+arrow, Shift+Option+arrow, Shift+Cmd) --
+
+        def _start_or_extend_selection(buf, selection_type=SelectionType.CHARACTERS):
+            if buf.selection_state is None:
+                buf.selection_state = SelectionState(
+                    original_cursor_position=buf.cursor_position,
+                    type=selection_type,
+                )
+
+        # Shift+Left / Shift+Right — character selection
+        @kb.add("s-left")
+        def _sel_left(event):
+            buf = event.current_buffer
+            _start_or_extend_selection(buf)
+            buf.cursor_position -= 1
+
+        @kb.add("s-right")
+        def _sel_right(event):
+            buf = event.current_buffer
+            _start_or_extend_selection(buf)
+            buf.cursor_position += 1
+
+        # Shift+Up / Shift+Down — extend selection one line at a time
+        # On first line: select to start. On last line: select to end.
+        @kb.add("s-up")
+        def _sel_up(event):
+            buf = event.current_buffer
+            _start_or_extend_selection(buf)
+            if buf.document.cursor_position_row == 0:
+                buf.cursor_position = 0
+            else:
+                buf.cursor_up()
+
+        @kb.add("s-down")
+        def _sel_down(event):
+            buf = event.current_buffer
+            _start_or_extend_selection(buf)
+            if buf.document.cursor_position_row >= buf.document.line_count - 1:
+                buf.cursor_position = len(buf.text)
+            else:
+                buf.cursor_down()
+
+        # Shift+Option+Left/Right — word selection
+        # macOS Terminal sends \x1b[1;4D / \x1b[1;4C (Alt+Shift+arrow)
+        # which prompt_toolkit parses as escape + s-left / s-right.
+        # Also bind Esc+B/F for terminals that send those instead.
+        @kb.add("escape", "s-left")
+        @kb.add("escape", "B")
+        def _sel_word_left(event):
+            buf = event.current_buffer
+            _start_or_extend_selection(buf)
+            pos = buf.document.find_previous_word_beginning() or 0
+            buf.cursor_position += pos
+
+        @kb.add("escape", "s-right")
+        @kb.add("escape", "F")
+        def _sel_word_right(event):
+            buf = event.current_buffer
+            _start_or_extend_selection(buf)
+            pos = buf.document.find_next_word_ending() or 0
+            buf.cursor_position += pos
+
+        # Shift+Home — select to line start
+        @kb.add("s-home")
+        def _sel_line_start(event):
+            buf = event.current_buffer
+            _start_or_extend_selection(buf)
+            before = len(buf.document.current_line_before_cursor)
+            buf.cursor_position -= before
+
+        # Shift+End — select to line end
+        @kb.add("s-end")
+        def _sel_line_end(event):
+            buf = event.current_buffer
+            _start_or_extend_selection(buf)
+            after = len(buf.document.current_line_after_cursor)
+            buf.cursor_position += after
+
+        # Ctrl+Shift+A — select all (Cmd+A in most terminals)
+        @kb.add("c-a", "c-a")  # double tap as fallback
+        def _sel_all_double(event):
+            buf = event.current_buffer
+            buf.cursor_position = 0
+            buf.selection_state = SelectionState(
+                original_cursor_position=0,
+                type=SelectionType.CHARACTERS,
+            )
+            buf.cursor_position = len(buf.text)
+
+        # Plain movement clears selection (filtered out when picker is active)
+        @kb.add("left", filter=no_picker)
+        def _left(event):
+            buf = event.current_buffer
+            buf.selection_state = None
+            buf.cursor_position -= 1
+
+        @kb.add("right", filter=no_picker)
+        def _right(event):
+            buf = event.current_buffer
+            buf.selection_state = None
+            buf.cursor_position += 1
+
+        @kb.add("up", filter=no_picker)
+        def _up(event):
+            buf = event.current_buffer
+            buf.selection_state = None
+            # History cycling: if on first line, go to previous history entry
+            if buf.document.cursor_position_row == 0:
+                if self._input_history and self._history_idx > 0:
+                    # Stash current text on first browse
+                    if self._history_idx == len(self._input_history):
+                        self._history_stash = buf.text
+                    self._history_idx -= 1
+                    entry = self._input_history[self._history_idx]
+                    buf.set_document(Document(entry, len(entry)), bypass_readonly=False)
+                return
+            buf.cursor_up()
+
+        @kb.add("down", filter=no_picker)
+        def _down(event):
+            buf = event.current_buffer
+            buf.selection_state = None
+            # History cycling: if on last line, go to next history entry
+            if buf.document.cursor_position_row >= buf.document.line_count - 1:
+                if self._history_idx < len(self._input_history):
+                    self._history_idx += 1
+                    if self._history_idx == len(self._input_history):
+                        # Restore stashed in-progress text
+                        entry = self._history_stash
+                    else:
+                        entry = self._input_history[self._history_idx]
+                    buf.set_document(Document(entry, len(entry)), bypass_readonly=False)
+                return
+            buf.cursor_down()
+
+        # -- Clipboard (Ctrl+C/V/X map to system clipboard) --
+        # Note: Ctrl+C is already bound to cancel above, so we use it
+        # only when there IS a selection (copy), otherwise cancel.
+
+        # Override Ctrl+C: copy if selection exists, otherwise cancel
+        @kb.add("c-c", eager=True)
+        def _copy_or_cancel(event):
+            buf = event.current_buffer
+            if buf.selection_state is not None:
+                # Copy selection to clipboard
+                start = buf.selection_state.original_cursor_position
+                end = buf.cursor_position
+                if start > end:
+                    start, end = end, start
+                if start != end:
+                    selected_text = buf.text[start:end]
+                    event.app.clipboard.set_data(ClipboardData(selected_text))
+                buf.selection_state = None
+            else:
+                # Original cancel behavior
+                if self._picker is not None:
+                    self._dismiss_picker()
+                elif self._busy:
+                    self._interrupted = True
+                else:
+                    self._input_buffer.reset()
+
+        # Ctrl+V — paste
+        @kb.add("c-v", eager=True)
+        def _paste(event):
+            data = event.app.clipboard.get_data()
+            if data.text:
+                event.current_buffer.insert_text(data.text)
+
+        # Ctrl+X — cut
+        @kb.add("c-x", eager=True)
+        def _cut(event):
+            buf = event.current_buffer
+            if buf.selection_state is not None:
+                start = buf.selection_state.original_cursor_position
+                end = buf.cursor_position
+                if start > end:
+                    start, end = end, start
+                if start != end:
+                    selected_text = buf.text[start:end]
+                    event.app.clipboard.set_data(ClipboardData(selected_text))
+                    _delete_selection(buf)
+                else:
+                    buf.selection_state = None
+            # No selection → no-op (don't exit or anything drastic)
+
+        # Backspace/Delete with selection — delete selected text
+        def _delete_selection(buf):
+            """Remove selected text manually (more reliable than cut_selection)."""
+            if buf.selection_state is None:
+                return False
+            start = buf.selection_state.original_cursor_position
+            end = buf.cursor_position
+            if start > end:
+                start, end = end, start
+            if start == end:
+                buf.selection_state = None
+                return False
+            new_text = buf.text[:start] + buf.text[end:]
+            buf.selection_state = None
+            buf.set_document(Document(new_text, start), bypass_readonly=False)
+            return True
+
+        @kb.add("backspace", eager=True)
+        def _backspace(event):
+            buf = event.current_buffer
+            if not _delete_selection(buf):
+                buf.delete_before_cursor(count=1)
+
+        @kb.add("delete", eager=True)
+        def _delete(event):
+            buf = event.current_buffer
+            if not _delete_selection(buf):
+                buf.delete(count=1)
+
+        # -- Output scrolling (Page Up/Down while focus stays on input) --
+
+        def _scroll_output(lines: int) -> None:
+            """Scroll the output buffer cursor by `lines` (negative=up)."""
+            buf = self._output_buffer
+            doc = buf.document
+            target_row = max(0, min(
+                doc.cursor_position_row + lines,
+                doc.line_count - 1,
+            ))
+            new_pos = doc.translate_row_col_to_index(target_row, 0)
+            buf.set_document(
+                Document(doc.text, new_pos), bypass_readonly=True,
+            )
+
+        @kb.add("pageup", filter=no_picker)
+        def _page_up(event):
+            _scroll_output(-20)
+
+        @kb.add("pagedown", filter=no_picker)
+        def _page_down(event):
+            _scroll_output(20)
+
+        @kb.add("s-up", filter=no_picker)
+        def _scroll_up_line(event):
+            _scroll_output(-3)
+
+        @kb.add("s-down", filter=no_picker)
+        def _scroll_down_line(event):
+            _scroll_output(3)
 
         # -- Picker keybindings (active only when picker is open) --
         picker_kb = KeyBindings()
@@ -740,23 +1330,31 @@ class FullScreenChat:
             if self._picker is not None:
                 self._confirm_picker()
 
+        @picker_kb.add("tab")
+        def _picker_toggle_archived(event):
+            if self._picker is not None:
+                self._toggle_picker_archived()
+
         conditional_picker = ConditionalKeyBindings(
             picker_kb,
             filter=Condition(lambda: self._picker is not None),
         )
-        combined_kb = merge_key_bindings([kb, conditional_picker])
+        # Picker bindings first so they take priority over main up/down/enter
+        combined_kb = merge_key_bindings([conditional_picker, kb])
 
         # Output area — fills ALL remaining vertical space, pushing
         # the fixed-height bottom elements to the terminal floor.
         output_window = Window(
-            content=BufferControl(
+            content=_ScrollableBufferControl(
                 buffer=self._output_buffer,
-                focusable=False,
+                focusable=True,
                 lexer=_OutputLexer(),
             ),
             wrap_lines=True,
             height=D(min=1, weight=1),
+            right_margins=[_ScrollMetricsCapture(self)],
         )
+        self._output_window = output_window
 
         # Spinner bar — visible only when busy
         spinner_bar = ConditionalContainer(
@@ -782,7 +1380,9 @@ class FullScreenChat:
                     _PlaceholderProcessor(self._get_suggestion),
                 ],
             ),
-            height=1,
+            height=D(min=1, max=20),
+            wrap_lines=True,
+            dont_extend_height=True,
         )
 
         # Toolbar — mode switcher
@@ -803,25 +1403,45 @@ class FullScreenChat:
             height=1,
         )
 
-        layout = Layout(
-            HSplit([
-                output_window,
-                spinner_bar,
-                status_line,
-                border,
-                input_window,
-                bottom_border,
-                toolbar,
-                Window(height=1),
-            ]),
-            focused_element=input_window,
+        main_column = HSplit([
+            output_window,
+            spinner_bar,
+            status_line,
+            border,
+            input_window,
+            bottom_border,
+            toolbar,
+            Window(height=1),  # padding below toolbar
+        ])
+
+        # Full-height scrollbar column at the rightmost edge of the terminal.
+        # Uses scroll metrics captured by _ScrollMetricsCapture on the output window.
+        scrollbar_column = Window(
+            content=FormattedTextControl(self._get_scrollbar_fragments),
+            width=2,
         )
+
+        scrollbar_gutter = Window(width=1)  # padding between content and scrollbar
+        root_split = VSplit([main_column, scrollbar_gutter, scrollbar_column])
+
+        root = FloatContainer(
+            content=root_split,
+            floats=[
+                Float(
+                    xcursor=True,
+                    ycursor=True,
+                    content=CompletionsMenu(max_height=8),
+                ),
+            ],
+        )
+
+        layout = Layout(root, focused_element=input_window)
 
         return Application(
             layout=layout,
             key_bindings=combined_kb,
             full_screen=True,
-            mouse_support=False,
+            mouse_support=True,
             style=_STYLE,
         )
 
@@ -835,9 +1455,9 @@ class FullScreenChat:
 
     def _get_border_text(self) -> FormattedText:
         try:
-            width = self._app.output.get_size().columns
+            width = self._app.output.get_size().columns - 3  # scrollbar + gutter
         except Exception:
-            width = 80
+            width = 77
         return FormattedText([("class:border", "\u2500" * width)])
 
     def _get_toolbar_text(self) -> FormattedText:
@@ -846,20 +1466,26 @@ class FullScreenChat:
                 return FormattedText([
                     ("class:toolbar.dim",
                      " \u2191\u2193 navigate  \u00b7  Space toggle"
-                     "  \u00b7  Enter confirm  \u00b7  Esc cancel"),
+                     "  \u00b7  Tab archives"
+                     "  \u00b7  Enter confirm  \u00b7  Esc\u00b7Esc back"),
                 ])
             return FormattedText([
                 ("class:toolbar.dim",
-                 " \u2191\u2193 navigate  \u00b7  Enter to load"
-                 "  \u00b7  Esc cancel"),
+                 " \u2191\u2193 navigate  \u00b7  Tab archives"
+                 "  \u00b7  Enter to load"
+                 "  \u00b7  Esc\u00b7Esc back"),
             ])
         mode = _MODES[self._mode_idx]
         parts: list[tuple[str, str]] = [
             ("class:toolbar.arrow", " \u23f5\u23f5 "),
             ("class:toolbar.mode", f"{mode} mode"),
             ("class:toolbar.dim", "  (shift+tab to switch)"),
-            ("class:toolbar.dim", "  \u00b7  esc to exit"),
+            ("class:toolbar.dim",
+             "  \u00b7  option+return for newline" if sys.platform == "darwin"
+             else "  \u00b7  alt+enter for newline"),
         ]
+        if self._busy:
+            parts.append(("class:toolbar.dim", "  \u00b7  esc to interrupt"))
         if self._approval_pending:
             parts.append(
                 ("class:toolbar.approval",
@@ -868,23 +1494,88 @@ class FullScreenChat:
         return FormattedText(parts)
 
     def _get_status_text(self) -> FormattedText:
-        """Persistent status bar: model · tokens · cost, right-justified."""
+        """Persistent status bar: scroll position (left) · model · tokens (right)."""
+        # Scroll position indicator (left side)
+        buf = self._output_buffer
+        total = buf.document.line_count
+        at_end = buf.cursor_position >= len(buf.text) - 1
+        if total > 1 and not at_end:
+            row = buf.document.cursor_position_row
+            pct = int(row * 100 / max(total - 1, 1))
+            scroll_hint = f" \u2191 {pct}%"
+        else:
+            scroll_hint = ""
+
+        # Right-side pieces: model · tokens · cost · update indicator
         pieces: list[str] = []
+        if self._update_info and self._update_info.is_newer and not self._update_dismissed:
+            pieces.append("\u2191 update")
         if self._last_model:
             pieces.append(self._last_model)
         if self._last_tokens:
             pieces.append(self._last_tokens)
         if self._last_cost:
             pieces.append(self._last_cost)
-        if not pieces:
-            return FormattedText([("class:status", "")])
-        content = " \u00b7 ".join(pieces)
+
+        right = " \u00b7 ".join(pieces) if pieces else ""
         try:
-            width = self._app.output.get_size().columns
+            width = self._app.output.get_size().columns - 3  # scrollbar + gutter
         except Exception:
-            width = 80
-        padded = content.rjust(width)
-        return FormattedText([("class:status", padded)])
+            width = 77
+
+        gap = max(width - len(scroll_hint) - len(right), 1)
+        return FormattedText([
+            ("class:toolbar.dim", scroll_hint),
+            ("class:status", " " * gap + right),
+        ])
+
+    # -- Scrollbar column content -----------------------------------------------
+
+    def _get_scrollbar_fragments(self) -> FormattedText:
+        """Generate the full-height scrollbar column content.
+
+        Reads scroll metrics captured by _ScrollMetricsCapture on the output
+        window. Returns a 2-char-wide column: mostly empty (transparent) with
+        a small solid thumb block when the output content overflows.
+        """
+        ch = self._scroll_content_height
+        wh = self._scroll_window_height
+        vs = self._scroll_vertical_scroll
+
+        try:
+            rows = self._app.output.get_size().rows
+        except Exception:
+            rows = 24
+
+        # No scrollbar needed if content fits in the output window
+        if ch <= wh or wh <= 0:
+            parts: list[tuple[str, str]] = []
+            for i in range(rows):
+                parts.append(("", "  "))
+                if i < rows - 1:
+                    parts.append(("", "\n"))
+            return FormattedText(parts)
+
+        # Thumb size: small indicator (1/6 of proportional size, min 2 rows)
+        ratio = wh / ch
+        thumb_size = max(2, int(ratio * rows / 6))
+
+        # Thumb position: proportional to scroll offset
+        max_scroll = max(ch - wh, 1)
+        scroll_ratio = vs / max_scroll
+        max_pos = max(rows - thumb_size, 0)
+        pos = int(scroll_ratio * max_pos)
+        pos = max(0, min(pos, max_pos))
+
+        parts = []
+        for i in range(rows):
+            if pos <= i < pos + thumb_size:
+                parts.append(("class:scrollbar.thumb", "  "))
+            else:
+                parts.append(("", "  "))
+            if i < rows - 1:
+                parts.append(("", "\n"))
+        return FormattedText(parts)
 
     # -- Suggestion intelligence ----------------------------------------------
 
@@ -894,6 +1585,8 @@ class FullScreenChat:
             return ""
         if self._approval_pending:
             return "Type a/A/r/s to respond to the approval prompt"
+        if self._pending_command:
+            return f'Type "yes" to run {self._pending_command}, or keep typing'
         if self._busy:
             return ""
         entries = _SUGGESTIONS.get(self._suggestion_key, [])
@@ -914,11 +1607,11 @@ class FullScreenChat:
     # -- Thread-safe output --------------------------------------------------
 
     def _get_wrap_width(self) -> int:
-        """Terminal width available for output text."""
+        """Terminal width available for output text (minus scrollbar + gutter)."""
         try:
-            return self._app.output.get_size().columns - 1
+            return self._app.output.get_size().columns - 4  # 2 scrollbar + 1 gutter + 1 margin
         except Exception:
-            return 79
+            return 76
 
     def _word_wrap(self, text: str, width: int) -> str:
         """Word-wrap complete lines, preserving tables and indentation."""
@@ -946,9 +1639,11 @@ class FullScreenChat:
             else:
                 stripped = line.lstrip()
                 indent = line[: len(line) - len(stripped)]
+                # width is the total line width; textwrap accounts for
+                # the indent within that, so pass the full width.
                 wrapped = textwrap.fill(
                     stripped,
-                    width=max(width - len(indent), 20),
+                    width=max(width, 20),
                     initial_indent=indent,
                     subsequent_indent=indent + "  ",
                     break_long_words=False,
@@ -961,45 +1656,62 @@ class FullScreenChat:
     def _append_output(self, text: str) -> None:
         """Append text to the output buffer, word-wrapped (thread-safe).
 
-        Only complete lines (terminated by \\n) are word-wrapped.
-        Partial lines (streaming) are left for the Window's fallback
-        character wrap until the next newline finalises them.
+        Tracks raw (unwrapped) text separately so that word-wrap is always
+        computed from the original content — no "frozen" line breaks from
+        earlier partial wraps.
         """
         with self._output_lock:
             width = self._get_wrap_width()
-            old = self._output_buffer.text
-
-            # Pull the trailing partial line out of the buffer so we can
-            # re-wrap it together with the new text.
-            if old and not old.endswith("\n"):
-                last_nl = old.rfind("\n")
-                if last_nl >= 0:
-                    complete_old = old[: last_nl + 1]
-                    partial = old[last_nl + 1 :]
-                else:
-                    complete_old = ""
-                    partial = old
+            old_len = len(self._output_buffer.text)
+            old_cursor = self._output_buffer.cursor_position
+            # Auto-follow if cursor is at (or near) the end of the buffer
+            following = old_cursor >= old_len - 1
+            self._raw_output += text
+            wrapped = self._word_wrap(self._raw_output, width)
+            if following:
+                cursor = len(wrapped)
             else:
-                complete_old = old
-                partial = ""
-
-            combined = partial + text
-
-            if "\n" in combined:
-                last_nl = combined.rfind("\n")
-                to_wrap = combined[: last_nl + 1]
-                new_partial = combined[last_nl + 1 :]
-                wrapped = self._word_wrap(to_wrap, width)
-                new_text = complete_old + wrapped + new_partial
-            else:
-                # All partial — no wrapping yet
-                new_text = complete_old + combined
-
+                cursor = min(old_cursor, len(wrapped))
             self._output_buffer.set_document(
-                Document(new_text, len(new_text)),
+                Document(wrapped, cursor),
                 bypass_readonly=True,
             )
         self._app.invalidate()
+
+    def _rewrap_buffer(self) -> None:
+        """Re-word-wrap the entire output buffer from raw text.
+
+        Called after streaming completes and on terminal resize so that
+        all lines get proper word-level wrapping at the current width.
+        """
+        with self._output_lock:
+            width = self._get_wrap_width()
+            if not self._raw_output:
+                return
+            old_len = len(self._output_buffer.text)
+            old_cursor = self._output_buffer.cursor_position
+            following = old_cursor >= old_len - 1
+            wrapped = self._word_wrap(self._raw_output, width)
+            if wrapped != self._output_buffer.text:
+                cursor = len(wrapped) if following else min(old_cursor, len(wrapped))
+                self._output_buffer.set_document(
+                    Document(wrapped, cursor),
+                    bypass_readonly=True,
+                )
+        self._app.invalidate()
+
+    def _process_mermaid(self) -> None:
+        """Scan raw output for mermaid blocks, render to SVG, replace with placeholders."""
+        if not self._mermaid_dir:
+            return
+        with self._output_lock:
+            updated = _process_mermaid_blocks(
+                self._raw_output, self._mermaid_cache, self._mermaid_dir,
+            )
+            if updated != self._raw_output:
+                self._raw_output = updated
+        # Rewrap with the updated raw text (placeholder lines replace code blocks)
+        self._rewrap_buffer()
 
     # -- Input accept handler ------------------------------------------------
 
@@ -1012,14 +1724,36 @@ class FullScreenChat:
         if self._picker is not None:
             return True
 
+        # Snap to bottom so new response auto-scrolls
+        buf = self._output_buffer
+        buf.set_document(Document(buf.text, len(buf.text)), bypass_readonly=True)
         text = buff.text.strip()
         if not text:
             return True  # no-op, keep empty buffer
+
+        # Record in input history (avoid consecutive duplicates)
+        if not self._input_history or self._input_history[-1] != text:
+            self._input_history.append(text)
+        self._history_idx = len(self._input_history)
+        self._history_stash = ""
+
+        # Support """ wrapping as alternative multiline delimiter
+        if text.startswith('"""') and text.endswith('"""') and len(text) > 6:
+            text = text[3:-3].strip()
+            if not text:
+                return True
 
         # If we're waiting for an approval response
         if self._approval_pending:
             self._handle_approval_input(text)
             return False
+
+        # If we offered a command suggestion, check for affirmative
+        if self._pending_command:
+            if self._check_affirmative(text):
+                return False  # executed the suggestion
+            # Not affirmative — clear pending and fall through to normal flow
+            self._pending_command = None
 
         # Don't allow input while agent is working
         if self._busy:
@@ -1068,6 +1802,32 @@ class FullScreenChat:
             self._open_picker(PickerMode.MULTI)
             return
 
+        # Intercept unknown commands for fuzzy suggestion before
+        # delegating to cli._handle_slash_command — so we can track
+        # the pending state and accept "yes" on the next input.
+        from tools.agents.chat.commands import find_close_command, get_slash_commands
+        known_first_words = {c.split()[0] for c in get_slash_commands().keys()}
+        if cmd not in known_first_words:
+            suggestion = find_close_command(text)
+            if suggestion:
+                phrase = random.choice(_COMMAND_SUGGESTION_PHRASES).format(
+                    cmd=suggestion,
+                )
+                self._append_output(f"\n  Unknown command: {cmd}. {phrase}\n\n")
+                self._pending_command = suggestion
+                self._set_suggestion("after_slash")
+                return
+            self._append_output(
+                f"\n  Unknown command: {cmd}. Type /help for available commands.\n\n",
+            )
+            self._set_suggestion("after_slash")
+            return
+
+        # /update command — handled directly in TUI for restart support
+        if cmd == "/update":
+            self._handle_update_command(parts[1:] if len(parts) > 1 else [])
+            return
+
         from tools.agents.chat.cli import _handle_slash_command
         result = _handle_slash_command(text, self._agent, self._store)
         if result == "exit":
@@ -1078,21 +1838,157 @@ class FullScreenChat:
             self._append_output(clean + "\n")
         self._set_suggestion("after_slash")
 
+    # -- Update system -------------------------------------------------------
+
+    def _on_update_available(self, info: VersionInfo) -> None:
+        """Callback from BackgroundUpdateChecker (runs on background thread)."""
+        if self._update_dismissed:
+            return
+        self._update_info = info
+        if self._busy:
+            # Stash for later — show after current turn completes
+            self._pending_update_notification = info
+        else:
+            self._show_update_notification(info)
+
+    def _show_update_notification(self, info: VersionInfo) -> None:
+        """Inject an inline update notification into the output buffer."""
+        self._append_output(
+            f"\n  [system] Update available: {info.current} \u2192 {info.available}\n"
+            f"  Type /update to install, or /update later to defer.\n\n"
+        )
+
+    def _handle_update_command(self, args: list[str]) -> None:
+        """Handle /update [now|later|check]."""
+        subcmd = args[0].lower() if args else "now"
+
+        if subcmd == "later":
+            self._update_dismissed = True
+            self._pending_update_notification = None
+            self._append_output("\n  Update deferred for this session.\n\n")
+            self._set_suggestion("after_slash")
+            return
+
+        if subcmd == "check":
+            self._append_output("\n  Checking for updates...\n")
+            t = threading.Thread(
+                target=self._check_update_manual, daemon=True,
+            )
+            t.start()
+            return
+
+        # "now" (default) — save session, apply update, restart
+        self._perform_update_and_restart()
+
+    def _check_update_manual(self) -> None:
+        """Manually triggered version check (runs in background thread)."""
+        try:
+            from tools.update.version_check import VersionChecker
+            checker = VersionChecker()
+            info = checker.check_remote_version(timeout=10.0)
+            self._update_info = info
+            if info.is_newer:
+                self._show_update_notification(info)
+            else:
+                self._append_output(
+                    f"  Already up to date ({info.current}).\n\n"
+                )
+        except Exception as e:
+            self._append_output(f"  Could not check: {e}\n\n")
+
+    def _perform_update_and_restart(self) -> None:
+        """Save session, run update, and exec into new process."""
+        # Save session immediately
+        self._store.save(self._agent.session)
+        session_id = self._agent.session.session_id
+
+        self._append_output(
+            "\n  Saving session and updating...\n"
+        )
+
+        # Run update in a thread so the TUI stays responsive briefly
+        def _do_update():
+            try:
+                from tools.update.cli import Updater
+                updater = Updater()
+                # This calls os.execv and does not return on success
+                updater.update_and_restart(session_id, pull=True)
+            except Exception as e:
+                # If os.execv fails or update fails, show error
+                self._append_output(f"\n  [error] Update failed: {e}\n\n")
+                self._busy = False
+
+        self._busy = True
+        t = threading.Thread(target=_do_update, daemon=True)
+        t.start()
+
+    def _inject_restart_message(self) -> None:
+        """After resuming from an update restart, show a friendly summary."""
+        ctx = self._restart_ctx
+        if not ctx:
+            return
+
+        old_v = ctx.get("old_version", "?")
+        new_v = ctx.get("new_version", "?")
+
+        lines = [
+            "\u2500" * 42,
+            f"  Updated {old_v} \u2192 {new_v}.",
+            "",
+        ]
+
+        # Show changelog summary if available
+        try:
+            from tools.update.version_check import read_pending_changelog, clear_pending_changelog
+            changelog = read_pending_changelog()
+            if changelog:
+                categories = changelog.get("categories", {})
+                _labels = {
+                    "features": "New",
+                    "fixes": "Fixed",
+                    "improvements": "Improved",
+                }
+                for key, label in _labels.items():
+                    items = categories.get(key, [])
+                    for item in items[:3]:
+                        lines.append(f"    - {item}")
+                if any(categories.values()):
+                    lines.append("")
+                clear_pending_changelog()
+        except Exception:
+            pass
+
+        lines.extend([
+            "  Your conversation is right where you left it.",
+            "\u2500" * 42,
+            "",
+        ])
+
+        self._append_output("\n".join(lines) + "\n")
+        self._restart_ctx = None  # Only show once
+
+    def _check_affirmative(self, text: str) -> bool:
+        """Check if text is an affirmative response to a pending command.
+
+        If affirmative, echo the command and execute it.
+        Returns True if the suggestion was accepted and executed.
+        """
+        cmd = self._pending_command
+        if cmd is None:
+            return False
+
+        if text.lower().strip() in _AFFIRMATIVES:
+            self._pending_command = None
+            self._append_output(f"you> {cmd}\n\n")
+            self._handle_slash_command(cmd)
+            return True
+        return False
+
     # -- Session picker ------------------------------------------------------
 
     def _open_picker(self, mode: PickerMode) -> None:
         """Open the interactive session picker overlay."""
-        session_ids = self._store.list_sessions()
-        if not session_ids:
-            self._append_output("\n  No saved sessions.\n\n")
-            return
-
-        items: list[dict[str, Any]] = []
-        for sid in session_ids[:20]:
-            meta = self._store.load_meta(sid)
-            if meta:
-                items.append(meta)
-
+        items = self._load_picker_items(include_archived=False)
         if not items:
             self._append_output("\n  No saved sessions.\n\n")
             return
@@ -1106,7 +2002,29 @@ class FullScreenChat:
             cursor=0,
             checked=set(),
             saved_output=saved,
+            include_archived=False,
         )
+        self._render_picker()
+
+    def _load_picker_items(self, include_archived: bool) -> list[dict[str, Any]]:
+        """Load session metadata for the picker."""
+        session_ids = self._store.list_sessions(include_archived=include_archived)
+        items: list[dict[str, Any]] = []
+        for sid in session_ids[:30]:
+            meta = self._store.load_meta(sid)
+            if meta:
+                items.append(meta)
+        return items
+
+    def _toggle_picker_archived(self) -> None:
+        """Toggle the 'include archived' flag and reload picker items."""
+        p = self._picker
+        if p is None:
+            return
+        p.include_archived = not p.include_archived
+        p.items = self._load_picker_items(include_archived=p.include_archived)
+        p.cursor = 0
+        p.checked.clear()
         self._render_picker()
 
     def _render_picker(self) -> None:
@@ -1116,6 +2034,9 @@ class FullScreenChat:
             return
 
         lines: list[str] = [p.saved_output.rstrip("\n"), ""]
+
+        archive_toggle = "[x]" if p.include_archived else "[ ]"
+        archive_hint = f"  {archive_toggle} include archived (Tab to toggle)"
 
         if p.mode == PickerMode.MULTI:
             lines.append(
@@ -1129,6 +2050,7 @@ class FullScreenChat:
                 " (\u2191\u2193 navigate \u00b7 Enter to load"
                 " \u00b7 Esc cancel)"
             )
+        lines.append(archive_hint)
         lines.append("")
 
         for i, item in enumerate(p.items):
@@ -1138,6 +2060,7 @@ class FullScreenChat:
                 title = title[:27] + "..."
             msg_count = item.get("message_count", 0)
             updated = _relative_time(item.get("updated_at", ""))
+            archived_tag = " (archived)" if item.get("archived") else ""
 
             pointer = " > " if i == p.cursor else "   "
 
@@ -1145,12 +2068,12 @@ class FullScreenChat:
                 check = "[x]" if i in p.checked else "[ ]"
                 lines.append(
                     f"{pointer}{check} {sid}  {title:<30s}"
-                    f"  {msg_count:>3d} msgs  {updated}"
+                    f"  {msg_count:>3d} msgs  {updated}{archived_tag}"
                 )
             else:
                 lines.append(
                     f"{pointer}{sid}  {title:<30s}"
-                    f"  {msg_count:>3d} msgs  {updated}"
+                    f"  {msg_count:>3d} msgs  {updated}{archived_tag}"
                 )
 
         lines.append("")
@@ -1163,21 +2086,42 @@ class FullScreenChat:
             )
         self._app.invalidate()
 
+    def _render_session_history(self) -> None:
+        """Render the loaded session's messages into the output buffer."""
+        session = self._agent.session
+        if not session.messages:
+            return
+        title = session.title or "(untitled)"
+        header = f"  Session {session.session_id[:12]} — {title}\n\n"
+        self._append_output(header)
+        for msg in session.messages:
+            if msg.role == "user":
+                self._append_output(f"you> {msg.content}\n\n")
+            elif msg.role == "assistant" and msg.content:
+                self._append_output(msg.content + "\n\n")
+
     def _confirm_picker(self) -> None:
         """Handle Enter in the picker — resume or archive selected sessions."""
         p = self._picker
         if p is None:
             return
 
-        from tools.agents.chat.commands import cmd_resume, cmd_archive
+        from tools.agents.chat.commands import cmd_resume
 
         if p.mode == PickerMode.SELECT:
             item = p.items[p.cursor]
             sid = item["id"]
-            self._dismiss_picker()
+            # Close picker and clear output for the new session
+            self._picker = None
+            with self._output_lock:
+                self._raw_output = ""
+                self._output_buffer.set_document(
+                    Document("", 0), bypass_readonly=True,
+                )
             result = cmd_resume(sid, self._store, self._agent)
             clean = _strip_ansi(result)
             self._append_output(clean + "\n")
+            self._render_session_history()
         elif p.mode == PickerMode.MULTI:
             checked = sorted(p.checked)
             if not checked:
@@ -1186,10 +2130,16 @@ class FullScreenChat:
                 return
             sids = [p.items[i]["id"] for i in checked]
             self._dismiss_picker()
+            archived = []
             for sid in sids:
-                result = cmd_archive(sid, self._store, self._agent)
-                clean = _strip_ansi(result)
-                self._append_output(clean + "\n")
+                if self._store.archive(sid):
+                    archived.append(sid)
+            if archived:
+                n = len(archived)
+                summary = f"  Archived {n} session{'s' if n != 1 else ''}."
+                summary += "\n  Archived sessions are kept in sessions/archive/"
+                summary += " and can be restored with /resume <id>.\n"
+                self._append_output(summary)
 
         self._set_suggestion("after_slash")
 
@@ -1214,9 +2164,9 @@ class FullScreenChat:
             self._start_spinner("Thinking")
 
             if self._stream and self._agent.gateway.available:
-                response = self._agent.turn(text, stream=True)
+                self._agent.turn(text, stream=True)
             else:
-                response = self._agent.turn(text, stream=False)
+                self._agent.turn(text, stream=False)
 
             self._stop_spinner()
             self._append_output("\n")
@@ -1241,6 +2191,10 @@ class FullScreenChat:
             self._set_suggestion("after_error")
         finally:
             self._busy = False
+            # Show deferred update notification if one arrived mid-turn
+            if self._pending_update_notification and not self._update_dismissed:
+                self._show_update_notification(self._pending_update_notification)
+                self._pending_update_notification = None
             self._app.invalidate()
 
     # -- Spinner -------------------------------------------------------------
@@ -1348,17 +2302,33 @@ class FullScreenChat:
             show_banner=self._show_banner,
         )
 
+        # If resuming from an update restart, inject the friendly message
+        if self._restart_ctx:
+            self._inject_restart_message()
+
+        # Start background update checker
+        self._update_checker = BackgroundUpdateChecker(
+            on_update_available=self._on_update_available,
+        )
+        self._update_checker.start()
+
         # Suppress direnv noise when the fullscreen app exits and the
         # terminal restores (direnv re-evaluates .envrc on every cd/exec).
         old_log = os.environ.get("DIRENV_LOG_FORMAT")
         os.environ["DIRENV_LOG_FORMAT"] = ""
         try:
+            # Clear terminal so shell scrollback doesn't show behind the TUI
+            sys.stdout.write("\033[2J\033[H")
+            sys.stdout.flush()
             self._app.run()
         finally:
+            if self._update_checker:
+                self._update_checker.stop()
             if old_log is None:
                 os.environ.pop("DIRENV_LOG_FORMAT", None)
             else:
                 os.environ["DIRENV_LOG_FORMAT"] = old_log
+            # Mermaid scratch cleanup handled by M-O on process exit
 
 
 # ---------------------------------------------------------------------------
@@ -1401,6 +2371,12 @@ class _TuiRenderProvider(RenderProvider):
                 self._tui._stop_spinner()
                 if accumulated and not accumulated.endswith("\n"):
                     self._tui._append_output("\n")
+                # Render any mermaid blocks to SVG and replace with placeholders
+                self._tui._process_mermaid()
+                # Re-wrap the full buffer now that streaming is complete —
+                # partial lines accumulated during streaming only had
+                # character-level wrapping from the Window.
+                self._tui._rewrap_buffer()
                 break
 
         return accumulated
@@ -1410,7 +2386,6 @@ class _TuiRenderProvider(RenderProvider):
     ) -> None:
         from importlib.metadata import version as pkg_version
         from pathlib import Path
-        import subprocess
 
         # ASCII mascot — always shown
         mascot = (
@@ -1427,37 +2402,15 @@ class _TuiRenderProvider(RenderProvider):
         except Exception:
             ver = "dev"
 
-        # Model
-        model_name = "no LLM configured"
-        if gateway and gateway.active_provider:
-            model_name = gateway.active_provider.model
-
         # Project path
         cwd = Path.cwd()
 
-        # Git commit
-        git_hash = ""
-        try:
-            result = subprocess.run(
-                ["git", "rev-parse", "--short", "HEAD"],
-                capture_output=True, text=True, cwd=str(cwd),
-                timeout=2,
-            )
-            if result.returncode == 0:
-                git_hash = result.stdout.strip()
-        except Exception:
-            pass
-
         lines = [mascot]
-        lines.append(f"  Neut v{ver} — Neutron OS interactive agent\n")
+        lines.append(f"  Neut v{ver} — Neutron OS Agent & CLI\n")
+        lines.append("  UT Nuclear Engineering and Radiation\n")
+        lines.append(f"  {cwd}\n")
 
-        meta_parts = [f"model: {model_name}"]
-        if git_hash:
-            meta_parts.append(f"commit: {git_hash}")
-        lines.append(f"  {' | '.join(meta_parts)}\n")
-
-        lines.append(f"  cwd: {cwd}\n")
-        lines.append(f"\n  Type /help for commands, ctrl+d to exit.\n\n")
+        lines.append("\n  Type /help for commands, ctrl+d to exit.\n\n")
 
         self._tui._append_output("".join(lines))
 

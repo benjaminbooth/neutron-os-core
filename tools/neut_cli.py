@@ -59,6 +59,43 @@ def _load_dotenv():
 _load_dotenv()
 
 
+def _show_pending_changelog() -> None:
+    """Display pending changelog from a recent update, then clear it."""
+    try:
+        from tools.update.version_check import read_pending_changelog, clear_pending_changelog
+        changelog = read_pending_changelog()
+        if not changelog or changelog.get("shown"):
+            return
+
+        old_v = changelog.get("old_version", "?")
+        new_v = changelog.get("new_version", "?")
+        categories = changelog.get("categories", {})
+        count = changelog.get("commit_count", 0)
+
+        print(f"\n  Updated {old_v} \u2192 {new_v} ({count} commits)")
+        print("  " + "\u2500" * 38)
+
+        _LABELS = {
+            "features": "New",
+            "fixes": "Fixed",
+            "improvements": "Improved",
+            "other": "Other",
+        }
+        for key, label in _LABELS.items():
+            items = categories.get(key, [])
+            if items:
+                print(f"  {label}:")
+                for item in items[:5]:
+                    print(f"    - {item}")
+                if len(items) > 5:
+                    print(f"    ... and {len(items) - 5} more")
+
+        print()
+        clear_pending_changelog()
+    except Exception:
+        pass  # Never crash the CLI for changelog display
+
+
 SUBCOMMANDS = {
     "setup": "tools.agents.setup.cli",
     "sense": "tools.agents.sense.cli",
@@ -279,7 +316,6 @@ def _llm_diagnose(diagnostics: dict, error_context: str | None = None) -> str | 
                 pass
 
         # Build diagnostic summary
-        issues = [c for c in diagnostics["checks"] if not c["ok"]]
         diag_text = "Environment Diagnostics:\n"
         for check in diagnostics["checks"]:
             status = "OK" if check["ok"] else "ISSUE"
@@ -526,6 +562,19 @@ def main():
         argcomplete.autocomplete(parser)
     except ImportError:
         pass  # argcomplete not installed — no completion, no crash
+
+    # --version / -V flag
+    if len(sys.argv) >= 2 and sys.argv[1] in ("--version", "-V"):
+        try:
+            from importlib.metadata import version
+            v = version("neutron-os")
+        except Exception:
+            v = "unknown"
+        print(f"neut {v}")
+        sys.exit(0)
+
+    # Show pending changelog from a recent update
+    _show_pending_changelog()
 
     if len(sys.argv) < 2:
         if sys.stdin.isatty() and sys.stdout.isatty():

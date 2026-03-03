@@ -11,10 +11,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -152,7 +154,7 @@ class Updater:
                 timeout=10,
             )
 
-            result = subprocess.run(
+            subprocess.run(
                 ["git", "status", "-uno", "--porcelain"],
                 cwd=self.repo_root,
                 capture_output=True,
@@ -248,7 +250,7 @@ class Updater:
 
             # Parse dry-run output for packages that would be installed
             lines = result.stdout.split('\n') + result.stderr.split('\n')
-            would_install = [l for l in lines if "Would install" in l]
+            would_install = [line for line in lines if "Would install" in line]
 
             if would_install:
                 self.results.append(UpdateResult(
@@ -391,6 +393,162 @@ class Updater:
                 message=f"Validation failed: {e}",
             ))
 
+    # -- Changelog & restart helpers ----------------------------------------
+
+    def _get_changelog_between(
+        self, old_ref: str, new_ref: str = "HEAD",
+    ) -> list[dict[str, str]]:
+        """Return commits between two refs as dicts with 'hash', 'subject', 'body'."""
+        try:
+            result = subprocess.run(
+                [
+                    "git", "log",
+                    f"{old_ref}..{new_ref}",
+                    "--pretty=format:%h\x1f%s\x1f%b\x1e",
+                ],
+                cwd=self.repo_root,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode != 0:
+                return []
+
+            commits = []
+            for entry in result.stdout.split("\x1e"):
+                entry = entry.strip()
+                if not entry:
+                    continue
+                parts = entry.split("\x1f", 2)
+                if len(parts) >= 2:
+                    commits.append({
+                        "hash": parts[0].strip(),
+                        "subject": parts[1].strip(),
+                        "body": parts[2].strip() if len(parts) > 2 else "",
+                    })
+            return commits
+        except Exception:
+            return []
+
+    def _categorize_commits(
+        self, commits: list[dict[str, str]],
+    ) -> dict[str, list[str]]:
+        """Group commits by conventional-commit prefix.
+
+        Returns: {"features": [...], "fixes": [...], "improvements": [...], "other": [...]}
+        """
+        categories: dict[str, list[str]] = {
+            "features": [],
+            "fixes": [],
+            "improvements": [],
+            "other": [],
+        }
+
+        for commit in commits:
+            subject = commit["subject"]
+            lower = subject.lower()
+
+            if lower.startswith(("feat", "add")):
+                # Strip prefix: "feat: foo" -> "foo", "feat(scope): foo" -> "foo"
+                clean = _strip_conventional_prefix(subject)
+                categories["features"].append(clean)
+            elif lower.startswith("fix"):
+                clean = _strip_conventional_prefix(subject)
+                categories["fixes"].append(clean)
+            elif lower.startswith(("refactor", "perf", "improve", "ui", "chore")):
+                clean = _strip_conventional_prefix(subject)
+                categories["improvements"].append(clean)
+            else:
+                categories["other"].append(subject)
+
+        # Remove empty categories
+        return {k: v for k, v in categories.items() if v}
+
+    def _stash_changelog(
+        self,
+        old_version: str,
+        new_version: str,
+        commits: list[dict[str, str]],
+    ) -> None:
+        """Write categorized changelog to .neut/pending-changelog.json."""
+        from tools.update.version_check import CHANGELOG_FILE, NEUT_DIR
+
+        categorized = self._categorize_commits(commits)
+        data = {
+            "old_version": old_version,
+            "new_version": new_version,
+            "categories": categorized,
+            "commit_count": len(commits),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "shown": False,
+        }
+        try:
+            NEUT_DIR.mkdir(parents=True, exist_ok=True)
+            CHANGELOG_FILE.write_text(
+                json.dumps(data, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+
+    def update_and_restart(
+        self,
+        session_id: str,
+        pull: bool = True,
+    ) -> None:
+        """Run update, stash changelog, exec into a new process with --resume.
+
+        This replaces the current process via os.execv — it does not return.
+        """
+        from tools.update.version_check import (
+            VersionChecker,
+            write_restart_state,
+        )
+
+        checker = VersionChecker(self.repo_root)
+        old_version = checker.get_current_version()
+
+        # Get current git ref before updating
+        old_ref = self._get_git_head()
+
+        # Run the actual update
+        if pull:
+            self._git_pull()
+        self._update_deps()
+        self._run_migrations()
+
+        # Get new version and changelog
+        new_version = checker.get_current_version()
+        new_ref = self._get_git_head()
+
+        if old_ref and new_ref and old_ref != new_ref:
+            commits = self._get_changelog_between(old_ref, new_ref)
+            if commits:
+                self._stash_changelog(old_version, new_version, commits)
+
+        # Write restart state for auto-resume
+        write_restart_state(session_id, old_version, new_version)
+
+        # Replace current process
+        os.execv(
+            sys.executable,
+            [sys.executable, "-m", "tools.neut_cli", "chat", "--resume", session_id],
+        )
+
+    def _get_git_head(self) -> Optional[str]:
+        """Return current HEAD commit hash, or None."""
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=self.repo_root,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return result.stdout.strip() if result.returncode == 0 else None
+        except Exception:
+            return None
+
     def summary(self) -> str:
         """Generate summary of update results."""
         if not self.results:
@@ -423,6 +581,15 @@ class Updater:
             lines.append("✅ Everything up to date")
 
         return '\n'.join(lines)
+
+
+def _strip_conventional_prefix(subject: str) -> str:
+    """Strip conventional-commit prefix: 'feat(scope): foo' -> 'foo'."""
+    import re
+    m = re.match(r'^[a-zA-Z]+(?:\([^)]*\))?\s*:\s*', subject)
+    if m:
+        return subject[m.end():]
+    return subject
 
 
 def build_parser() -> argparse.ArgumentParser:

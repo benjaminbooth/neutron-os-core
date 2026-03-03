@@ -197,6 +197,23 @@ def _handle_slash_command(
     if cmd == "/usage":
         return cmd_usage(agent)
 
+    if cmd == "/update":
+        subcmd = parts[1].lower() if len(parts) > 1 else "check"
+        if subcmd == "check":
+            try:
+                from tools.update.version_check import VersionChecker
+                checker = VersionChecker()
+                info = checker.check_remote_version(timeout=10.0)
+                if info.is_newer:
+                    return (
+                        f"\n  Update available: {info.current} \u2192 {info.available}\n"
+                        f"  Run 'neut update --pull' to update.\n"
+                    )
+                return f"\n  Already up to date ({info.current}).\n"
+            except Exception as e:
+                return f"\n  Could not check: {e}\n"
+        return "\n  /update is fully supported in the fullscreen TUI.\n  Use 'neut update --pull' from the command line.\n"
+
     # --- CLI commands (forwarded to actual CLI) ---
     if cmd in ("/sense", "/doc", "/docflow"):
         return _execute_cli_command(command)
@@ -309,9 +326,36 @@ def _is_fullscreen_available() -> bool:
         return False
 
 
+def _check_restart_state() -> Optional[dict]:
+    """Check for restart state from a recent /update restart."""
+    try:
+        from tools.update.version_check import read_restart_state
+        return read_restart_state(max_age_seconds=60.0)
+    except Exception:
+        return None
+
+
+def _clear_restart_state() -> None:
+    """Clean up restart state file."""
+    try:
+        from tools.update.version_check import clear_restart_state
+        clear_restart_state()
+    except Exception:
+        pass
+
+
 def main():
     parser = get_parser()
     args = parser.parse_args()
+
+    # Auto-resume from restart state (e.g. after /update)
+    restart_ctx: Optional[dict] = None
+    if not args.resume:
+        restart_state = _check_restart_state()
+        if restart_state:
+            args.resume = restart_state["session_id"]
+            restart_ctx = restart_state
+            _clear_restart_state()
 
     store = SessionStore()
     gateway = Gateway()
@@ -351,6 +395,7 @@ def main():
             from tools.agents.chat.fullscreen import FullScreenChat
             tui = FullScreenChat(
                 agent, store, stream=stream, show_banner=args.bare,
+                restart_ctx=restart_ctx,
             )
             try:
                 tui.run()
