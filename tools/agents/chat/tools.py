@@ -240,9 +240,17 @@ def _load_module_from_path(mod_name: str, mod_path: Path):
 
 
 def get_all_tools() -> dict[str, ToolDef]:
-    """Return built-in + extension tools. Called each turn."""
+    """Return built-in + core extension + user extension tools. Called each turn."""
     all_tools = dict(BUILTIN_TOOLS)
     all_tools.update(_scan_extensions())
+    # Scan user-space extensions (from .neut/extensions/ and ~/.neut/extensions/)
+    try:
+        from tools.extensions.discovery import discover_and_load_chat_tools
+
+        for tool_def in discover_and_load_chat_tools():
+            all_tools[tool_def.name] = tool_def
+    except Exception as e:
+        logger.debug("User extension scan skipped: %s", e)
     return all_tools
 
 
@@ -274,7 +282,7 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
 
     Checks extension tools first, then falls back to built-in handlers.
     """
-    # Check extension tools
+    # Check core extension tools (tools_ext/)
     ext_tools = _scan_extensions()
     if name in ext_tools:
         mod_name = None
@@ -292,6 +300,16 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
                     return handler(name, params)
                 except Exception as e:
                     return {"error": f"Extension tool {name} failed: {e}"}
+
+    # Check user-space extension tools
+    try:
+        from tools.extensions.discovery import execute_extension_tool
+
+        result = execute_extension_tool(name, params)
+        if result is not None:
+            return result
+    except Exception as e:
+        logger.debug("User extension execution skipped: %s", e)
 
     # Built-in tool handlers (lazy imports)
     if name == "query_docs":

@@ -26,6 +26,7 @@ Installation:
 import argparse
 import sys
 import os
+from pathlib import Path
 
 # Ensure repo root is on sys.path so imports resolve
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -110,8 +111,29 @@ SUBCOMMANDS = {
     "status": "tools.status.cli",  # System health dashboard
     "mo": "tools.mo.cli",  # M-O resource steward
     "serve-mcp": "tools.mcp_server.server",
+    "ext": "tools.extensions.cli",  # Extension management
+    "demo": "tools.demo.cli",  # Guided demonstrations
     "doctor": None,  # Built-in, handled specially
 }
+
+
+def _merge_extension_commands() -> dict[str, str]:
+    """Discover CLI commands from user-space extensions.
+
+    Returns dict mapping noun -> module path for dynamic dispatch.
+    Extension commands are loaded from file paths, not Python packages.
+    """
+    try:
+        from tools.extensions.discovery import discover_cli_commands
+
+        ext_cmds = discover_cli_commands()
+        return {
+            noun: info["module"]
+            for noun, info in ext_cmds.items()
+            if noun not in SUBCOMMANDS  # Core commands take precedence
+        }
+    except Exception:
+        return {}
 
 
 def cmd_doctor(error_context: str | None = None):
@@ -370,6 +392,8 @@ _SUBCOMMAND_HELP = {
     "status": "System health dashboard",
     "mo": "M-O resource steward (scratch, vitals, cleanup)",
     "serve-mcp": "Start the MCP server for IDE integration",
+    "ext": "Manage user-space extensions",
+    "demo": "Guided demonstrations and walkthroughs",
     "doctor": "AI-powered environment diagnostics",
 }
 
@@ -531,6 +555,8 @@ def print_usage(show_all: bool = False):
         print("  chat      Interactive agent with tool calling")
         print("  code      Interactive agent with tool calling (alias for chat)")
         print("  mo        M-O resource steward (scratch, vitals, cleanup)")
+        print("  ext       Manage user-space extensions")
+        print("  demo      Guided demonstrations and walkthroughs")
         print()
         print("Infrastructure:")
         print("  db        PostgreSQL + pgvector database management")
@@ -539,6 +565,14 @@ def print_usage(show_all: bool = False):
         print("Development:")
         print("  test      Test orchestration")
         print("  serve-mcp Start the MCP server for IDE integration")
+
+        # Show extension commands if any
+        ext_cmds = _merge_extension_commands()
+        if ext_cmds:
+            print()
+            print("Extensions:")
+            for noun, module in sorted(ext_cmds.items()):
+                print(f"  {noun:<12}{module}")
     else:
         print()
         print("Type 'neut' with no args for interactive mode.")
@@ -611,8 +645,17 @@ def main():
         sys.exit(cmd_doctor(error_context))
 
     module_path = SUBCOMMANDS.get(subcommand)
+
+    # Check extension commands if not a core command
+    ext_cmd_info = None
     if not module_path:
-        suggestion = _suggest_command(subcommand, list(SUBCOMMANDS.keys()))
+        ext_cmds = _merge_extension_commands()
+        if subcommand in ext_cmds:
+            ext_cmd_info = ext_cmds[subcommand]
+
+    if not module_path and not ext_cmd_info:
+        all_cmds = list(SUBCOMMANDS.keys()) + list(_merge_extension_commands().keys())
+        suggestion = _suggest_command(subcommand, all_cmds)
         print(f"neut: unknown subcommand '{subcommand}'")
         if suggestion:
             print(f"\nDid you mean: neut {suggestion}?")
@@ -622,16 +665,50 @@ def main():
     # Remove the subcommand from argv so the handler sees only its own args
     sys.argv = [f"neut {subcommand}"] + sys.argv[2:]
 
-    try:
-        import importlib
-        module = importlib.import_module(module_path)
-        module.main()
-    except ImportError as e:
-        print(f"neut: failed to load {subcommand} handler: {e}")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        print()
-        sys.exit(130)
+    if ext_cmd_info:
+        # Extension CLI command — load from file path
+        try:
+            from tools.extensions.discovery import discover_cli_commands
+            cmd_info = discover_cli_commands().get(subcommand, {})
+            ext_root = Path(cmd_info.get("root", ""))
+            mod_rel = cmd_info.get("module", "")
+            mod_file = ext_root / mod_rel.replace(".", "/")
+            # Try as .py file or as package
+            if mod_file.with_suffix(".py").exists():
+                mod_file = mod_file.with_suffix(".py")
+            elif (mod_file / "__init__.py").exists():
+                mod_file = mod_file / "__init__.py"
+            else:
+                print(f"neut: extension module not found: {mod_rel}")
+                sys.exit(1)
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                f"neut_ext.{subcommand}", str(mod_file)
+            )
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                mod.main()
+            else:
+                print(f"neut: cannot load extension module: {mod_file}")
+                sys.exit(1)
+        except KeyboardInterrupt:
+            print()
+            sys.exit(130)
+        except Exception as e:
+            print(f"neut: extension command '{subcommand}' failed: {e}")
+            sys.exit(1)
+    else:
+        try:
+            import importlib
+            module = importlib.import_module(module_path)
+            module.main()
+        except ImportError as e:
+            print(f"neut: failed to load {subcommand} handler: {e}")
+            sys.exit(1)
+        except KeyboardInterrupt:
+            print()
+            sys.exit(130)
 
 
 if __name__ == "__main__":
