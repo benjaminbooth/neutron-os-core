@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from tools.agents.setup import renderer
+from tools.setup import renderer
 
 
 @dataclass

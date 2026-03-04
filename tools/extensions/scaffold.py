@@ -132,7 +132,7 @@ Example chat tool — modify this for your own data sources.
 """
 
 from tools.agents.chat.tools import ToolDef
-from tools.agents.orchestrator.actions import ActionCategory
+from tools.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [
     ToolDef(
@@ -339,7 +339,7 @@ from pathlib import Path
 class ReactorLogExtractor:
     """Sense extractor for reactor operation logs.
 
-    Implements the same contract as tools.agents.sense.extractors.base.BaseExtractor
+    Implements the same contract as tools.pipelines.sense.extractors.base.BaseExtractor
     without importing it (keeps extension dependency-free).
     """
 

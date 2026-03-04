@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 
-from tools.agents.orchestrator.session import Session, SessionStore, Message
+from tools.infra.orchestrator.session import Session, SessionStore, Message
 
 
 class TestSession:

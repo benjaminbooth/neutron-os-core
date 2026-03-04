@@ -5,8 +5,8 @@ import pytest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tools.agents.sense.router import Router, Endpoint, TransitRecord
-from tools.agents.sense.models import Signal
+from tools.pipelines.sense.router import Router, Endpoint, TransitRecord
+from tools.pipelines.sense.models import Signal
 
 
 class TestEndpoint:

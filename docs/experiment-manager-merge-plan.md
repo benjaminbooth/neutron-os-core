@@ -24,7 +24,7 @@ find docs/meeting-notes -name "*.md" -exec grep -l "Experiment Manager" {} \;
 
 # Use notes.py extractor
 python -c "
-from tools.agents.sense.extractors.notes import NotesExtractor
+from tools.pipelines.sense.extractors.notes import NotesExtractor
 extractor = NotesExtractor()
 extraction = extractor.extract('docs/meeting-notes/2026-02-25-team-sync.md')
 "
@@ -43,7 +43,7 @@ extraction = extractor.extract('docs/meeting-notes/2026-02-25-team-sync.md')
 **How to Process**:
 ```bash
 # Process voice memos
-python tools/agents/sense/extractors/voice.py \
+python tools/pipelines/sense/extractors/voice.py \
     --input ~/voice-memos/experiment-manager/ \
     --output signals/voice-memos-extraction.json
 ```
@@ -68,7 +68,7 @@ python tools/gitlab_tracker_export.py \
 
 # Extract signals
 python -c "
-from tools.agents.sense.extractors.gitlab_diff import GitLabExtractor
+from tools.pipelines.sense.extractors.gitlab_diff import GitLabExtractor
 extractor = GitLabExtractor()
 extraction = extractor.extract('signals/gitlab-export.json')
 "
@@ -88,7 +88,7 @@ extraction = extractor.extract('signals/gitlab-export.json')
 ```bash
 # Extract from Teams chat export
 python -c "
-from tools.agents.sense.extractors.teams_chat import TeamsChatExtractor
+from tools.pipelines.sense.extractors.teams_chat import TeamsChatExtractor
 extractor = TeamsChatExtractor()
 extraction = extractor.extract('signals/teams-export.json')
 "
@@ -135,8 +135,8 @@ extraction = extractor.extract('signals/teams-export.json')
 
 ### 2.1 Run Sense Synthesizer
 ```python
-from tools.agents.sense.models import Signal
-from tools.agents.sense.synthesizer import Synthesizer
+from tools.pipelines.sense.models import Signal
+from tools.pipelines.sense.synthesizer import Synthesizer
 import json
 from pathlib import Path
 
@@ -228,7 +228,7 @@ with open('external/experiment-manager-prd-sp.docx', 'wb') as f:
 
 ### 3.2 Extract Changes & Comments
 ```python
-from tools.agents.sense.extractors.docflow_review import DocFlowReviewExtractor
+from tools.pipelines.sense.extractors.docflow_review import DocFlowReviewExtractor
 from pathlib import Path
 
 extractor = DocFlowReviewExtractor()
@@ -531,8 +531,8 @@ If < 2, either create dummy commit or manually set version.
 
 - **Test Infrastructure**: `tests/integration/test_docflow_merge_scenario.py`
 - **Merge Guide**: `docs/merge-scenario-guide.md`
-- **Signal Models**: `tools/agents/sense/models.py`
-- **Synthesizer**: `tools/agents/sense/synthesizer.py`
+- **Signal Models**: `tools/pipelines/sense/models.py`
+- **Synthesizer**: `tools/pipelines/sense/synthesizer.py`
 - **Publish Script**: `tools/docflow/scripts/publish.py`
 
 ---

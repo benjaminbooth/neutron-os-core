@@ -329,7 +329,7 @@ Each `.py` file in the `tools_ext/` directory exports:
 
 ```python
 from tools.agents.chat.tools import ToolDef
-from tools.agents.orchestrator.actions import ActionCategory
+from tools.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [
     ToolDef(
@@ -473,12 +473,12 @@ See `tools/docflow/providers/base.py` for all five provider ABCs.
 
 ## 5. Extractor Contract
 
-Extractors inherit from `tools.agents.sense.extractors.base.BaseExtractor`:
+Extractors inherit from `tools.pipelines.sense.extractors.base.BaseExtractor`:
 
 ```python
 from pathlib import Path
-from tools.agents.sense.extractors.base import BaseExtractor
-from tools.agents.sense.models import Extraction, Signal
+from tools.pipelines.sense.extractors.base import BaseExtractor
+from tools.pipelines.sense.models import Extraction, Signal
 
 class ReactorLogExtractor(BaseExtractor):
     @property

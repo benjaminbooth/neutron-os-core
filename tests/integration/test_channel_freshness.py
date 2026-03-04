@@ -199,7 +199,7 @@ class TestChannelAccessibility:
     
     def test_teams_chat_accessible(self, ms_graph_creds):
         """Teams chat channel is configured."""
-        from tools.agents.sense.extractors.teams_chat import TeamsChatExtractor
+        from tools.pipelines.sense.extractors.teams_chat import TeamsChatExtractor
         extractor = TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
@@ -208,7 +208,7 @@ class TestChannelAccessibility:
     
     def test_outlook_calendar_accessible(self, ms_graph_creds):
         """Outlook calendar channel is configured."""
-        from tools.agents.sense.calendar_context import OutlookCalendarProvider
+        from tools.pipelines.sense.calendar_context import OutlookCalendarProvider
         provider = OutlookCalendarProvider(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
@@ -221,7 +221,7 @@ class TestChannelAccessibility:
     
     def test_github_accessible(self, github_token):
         """GitHub channel is configured."""
-        from tools.agents.sense.extractors.github import GitHubExtractor
+        from tools.pipelines.sense.extractors.github import GitHubExtractor
         extractor = GitHubExtractor(token=github_token)
         assert extractor.is_available()
 
@@ -270,7 +270,7 @@ class TestChannelSyncValidation:
         self, github_token, channel_freshness_state
     ):
         """GitHub sync updates freshness state."""
-        from tools.agents.sense.extractors.github import GitHubExtractor
+        from tools.pipelines.sense.extractors.github import GitHubExtractor
         
         extractor = GitHubExtractor(token=github_token)
         
@@ -296,7 +296,7 @@ class TestChannelSyncValidation:
         self, ms_graph_creds, channel_freshness_state
     ):
         """Teams Chat sync updates freshness state."""
-        from tools.agents.sense.extractors.teams_chat import TeamsChatExtractor
+        from tools.pipelines.sense.extractors.teams_chat import TeamsChatExtractor
         
         extractor = TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],

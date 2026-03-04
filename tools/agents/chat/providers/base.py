@@ -11,8 +11,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Iterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tools.agents.orchestrator.actions import Action
-    from tools.agents.sense.gateway import StreamChunk
+    from tools.infra.orchestrator.actions import Action
+    from tools.infra.gateway import StreamChunk
 
 
 class RenderProvider(ABC):

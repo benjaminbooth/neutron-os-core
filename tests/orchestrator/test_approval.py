@@ -2,13 +2,13 @@
 
 import pytest
 
-from tools.agents.orchestrator.actions import (
+from tools.infra.orchestrator.actions import (
     Action,
     ActionCategory,
     ActionStatus,
     create_action,
 )
-from tools.agents.orchestrator.approval import ApprovalGate
+from tools.infra.orchestrator.approval import ApprovalGate
 
 
 class TestApprovalGate:

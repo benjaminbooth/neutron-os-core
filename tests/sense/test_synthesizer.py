@@ -3,8 +3,8 @@
 import pytest
 from pathlib import Path
 
-from tools.agents.sense.models import Signal, Changelog
-from tools.agents.sense.synthesizer import Synthesizer
+from tools.pipelines.sense.models import Signal, Changelog
+from tools.pipelines.sense.synthesizer import Synthesizer
 
 
 @pytest.fixture
@@ -192,7 +192,7 @@ class TestStrategicOrdering:
 
     def test_higher_weight_first(self, tmp_path):
         """Initiatives with higher strategic weight appear first."""
-        from tools.agents.sense.correlator import Correlator, Initiative
+        from tools.pipelines.sense.correlator import Correlator, Initiative
 
         # Create a correlator with known weights
         correlator = Correlator.__new__(Correlator)
@@ -317,7 +317,7 @@ class TestBeneficiaryTagging:
 
     def test_action_items_get_beneficiary_tag(self, tmp_path):
         """Action items include '— Benefits: owners' when correlator is provided."""
-        from tools.agents.sense.correlator import Correlator, Initiative
+        from tools.pipelines.sense.correlator import Correlator, Initiative
 
         correlator = Correlator.__new__(Correlator)
         correlator.config_dir = tmp_path
@@ -344,7 +344,7 @@ class TestBeneficiaryTagging:
 
     def test_progress_no_beneficiary_tag(self, tmp_path):
         """Progress entries do NOT get beneficiary tags."""
-        from tools.agents.sense.correlator import Correlator, Initiative
+        from tools.pipelines.sense.correlator import Correlator, Initiative
 
         correlator = Correlator.__new__(Correlator)
         correlator.config_dir = tmp_path
@@ -375,7 +375,7 @@ class TestWeeklySummaryAnnotations:
 
     def test_paused_initiative_annotation(self, tmp_path):
         """Initiatives with pause_reason show '(Paused: reason)'."""
-        from tools.agents.sense.correlator import Correlator, Initiative
+        from tools.pipelines.sense.correlator import Correlator, Initiative
 
         correlator = Correlator.__new__(Correlator)
         correlator.config_dir = tmp_path
@@ -406,7 +406,7 @@ class TestWeeklySummaryAnnotations:
 
     def test_stale_initiative_needs_attention(self, tmp_path):
         """Stale initiatives without pause_reason show '(Needs attention)'."""
-        from tools.agents.sense.correlator import Correlator, Initiative
+        from tools.pipelines.sense.correlator import Correlator, Initiative
 
         correlator = Correlator.__new__(Correlator)
         correlator.config_dir = tmp_path
@@ -433,7 +433,7 @@ class TestWeeklySummaryAnnotations:
 
     def test_structural_only_flag(self, tmp_path):
         """Initiatives with only structural signals get needs-context flag."""
-        from tools.agents.sense.correlator import Correlator, Initiative
+        from tools.pipelines.sense.correlator import Correlator, Initiative
 
         correlator = Correlator.__new__(Correlator)
         correlator.config_dir = tmp_path
@@ -460,7 +460,7 @@ class TestWeeklySummaryAnnotations:
 
     def test_blocker_section_in_summary(self, tmp_path):
         """Active blockers section appears before initiative sections."""
-        from tools.agents.sense.blocker_tracker import BlockerTracker
+        from tools.pipelines.sense.blocker_tracker import BlockerTracker
 
         tracker = BlockerTracker(state_path=tmp_path / "state" / "blocker_state.json")
         blocker_signals = [

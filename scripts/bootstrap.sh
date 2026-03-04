@@ -421,7 +421,7 @@ if command -v docker &>/dev/null; then
                 echo "○ Creating neut-local cluster with PostgreSQL..."
                 # Run neut infra to set up the cluster
                 python -m tools.neut_cli infra --no-cluster 2>/dev/null || true
-                python -c "from tools.agents.sense.pgvector_store import k3d_up; k3d_up()" 2>/dev/null || {
+                python -c "from tools.pipelines.sense.pgvector_store import k3d_up; k3d_up()" 2>/dev/null || {
                     echo "  (Run 'neut infra' to complete setup)"
                 }
             fi

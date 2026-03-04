@@ -165,7 +165,7 @@ class TestDevelopmentSetup:
 
         if venv_python.exists():
             result = subprocess.run(
-                [str(venv_python), "-m", "tools.agents.sense.cli", "status"],
+                [str(venv_python), "-m", "tools.pipelines.sense.cli", "status"],
                 capture_output=True,
                 text=True,
                 cwd=str(REPO_ROOT),

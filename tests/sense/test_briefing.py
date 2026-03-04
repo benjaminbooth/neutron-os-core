@@ -5,7 +5,7 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from tools.agents.sense.briefing import (
+from tools.pipelines.sense.briefing import (
     BriefingService,
     BriefingTopic,
     ConsumptionEvent,
@@ -13,7 +13,7 @@ from tools.agents.sense.briefing import (
     Briefing,
     TOPIC_KEYWORDS,
 )
-from tools.agents.sense.models import Signal
+from tools.pipelines.sense.models import Signal
 
 
 class TestBriefingTopic:

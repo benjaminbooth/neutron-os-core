@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from tools.agents.chat.tools import ToolDef
-from tools.agents.orchestrator.actions import ActionCategory
+from tools.infra.orchestrator.actions import ActionCategory
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _DRAFTS_DIR = _REPO_ROOT / "tools" / "agents" / "drafts" / "approved"

@@ -70,8 +70,8 @@ and environment context. Your job:
 
 ## Constraints
 
-- You can only edit files in: tools/agents/sense/, tools/agents/chat/, tests/
-- You CANNOT edit: tools/agents/doctor/, tools/agents/orchestrator/, tools/neut_cli.py
+- You can only edit files in: tools/pipelines/sense/, tools/agents/chat/, tests/
+- You CANNOT edit: tools/agents/doctor/, tools/infra/orchestrator/, tools/neut_cli.py
 - Max 3 files edited per session, max 50 lines changed per edit
 - You get {max_rounds} tool-use rounds total. Be efficient.
 - If you cannot fix the bug, explain your diagnosis clearly — that's still valuable.

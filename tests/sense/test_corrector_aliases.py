@@ -40,7 +40,7 @@ def people_md_with_aliases(tmp_path):
 @pytest.fixture
 def corrector_with_aliases(people_md_with_aliases):
     """Create a TranscriptCorrector instance with alias-aware people config."""
-    from tools.agents.sense.corrector import TranscriptCorrector
+    from tools.pipelines.sense.corrector import TranscriptCorrector
     
     corrector = TranscriptCorrector(config_dir=people_md_with_aliases)
     return corrector
@@ -117,7 +117,7 @@ class TestParagraphBreaks:
         initiatives_md = config_dir / "initiatives.md"
         initiatives_md.write_text("| ID | Name |\n|----|------|\n| 1 | Test |\n")
         
-        from tools.agents.sense.corrector import TranscriptCorrector
+        from tools.pipelines.sense.corrector import TranscriptCorrector
         return TranscriptCorrector(config_dir=config_dir)
     
     def test_preserves_existing_breaks(self, corrector):
@@ -150,7 +150,7 @@ class TestGlossaryMerging:
         initiatives_md.write_text("| ID | Name |\n|----|------|\n")
         
         # Create user glossary that overrides a domain term
-        from tools.agents.sense.corrector import TranscriptCorrector
+        from tools.pipelines.sense.corrector import TranscriptCorrector
         
         # Create corrector first
         corrector = TranscriptCorrector(config_dir=config_dir)
@@ -185,7 +185,7 @@ class TestEdgeCases:
         initiatives_md = config_dir / "initiatives.md"
         initiatives_md.write_text("| ID | Name |\n|----|------|\n")
         
-        from tools.agents.sense.corrector import TranscriptCorrector
+        from tools.pipelines.sense.corrector import TranscriptCorrector
         corrector = TranscriptCorrector(config_dir=config_dir)
         
         # Should load without error
@@ -208,7 +208,7 @@ class TestEdgeCases:
         initiatives_md = config_dir / "initiatives.md"
         initiatives_md.write_text("| ID | Name |\n|----|------|\n")
         
-        from tools.agents.sense.corrector import TranscriptCorrector
+        from tools.pipelines.sense.corrector import TranscriptCorrector
         # Should not raise
         corrector = TranscriptCorrector(config_dir=config_dir)
         assert corrector._glossary is not None
@@ -219,7 +219,7 @@ class TestCorrectionResult:
     
     def test_correction_result_creation(self):
         """CorrectionResult can be created with defaults."""
-        from tools.agents.sense.corrector import CorrectionResult
+        from tools.pipelines.sense.corrector import CorrectionResult
         
         result = CorrectionResult(transcript_path="test.md")
         
@@ -229,7 +229,7 @@ class TestCorrectionResult:
     
     def test_correction_dataclass(self):
         """Correction dataclass works correctly."""
-        from tools.agents.sense.corrector import Correction
+        from tools.pipelines.sense.corrector import Correction
         
         correction = Correction(
             original="new tronics",

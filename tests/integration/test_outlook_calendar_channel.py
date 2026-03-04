@@ -28,7 +28,7 @@ class TestOutlookCalendarProvider:
     @pytest.fixture
     def provider(self, ms_graph_creds):
         """Create provider with real credentials."""
-        from tools.agents.sense.calendar_context import OutlookCalendarProvider
+        from tools.pipelines.sense.calendar_context import OutlookCalendarProvider
         return OutlookCalendarProvider(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
@@ -46,7 +46,7 @@ class TestCalendarContext:
     @pytest.fixture
     def calendar_context(self, ms_graph_creds):
         """Create CalendarContext with Outlook provider."""
-        from tools.agents.sense.calendar_context import (
+        from tools.pipelines.sense.calendar_context import (
             CalendarContext, 
             OutlookCalendarProvider,
         )
@@ -67,7 +67,7 @@ class TestCalendarEventCorrelation:
     
     @pytest.fixture
     def calendar_context(self, ms_graph_creds):
-        from tools.agents.sense.calendar_context import (
+        from tools.pipelines.sense.calendar_context import (
             CalendarContext, 
             OutlookCalendarProvider,
         )
@@ -80,7 +80,7 @@ class TestCalendarEventCorrelation:
     
     def test_event_format(self, calendar_context):
         """Verify calendar events have expected format."""
-        from tools.agents.sense.calendar_context import CalendarEvent
+        from tools.pipelines.sense.calendar_context import CalendarEvent
         
         # Create a mock event to test structure
         event = CalendarEvent(
@@ -105,7 +105,7 @@ class TestOutlookCalendarFreshness:
     
     @pytest.fixture
     def provider(self, ms_graph_creds):
-        from tools.agents.sense.calendar_context import OutlookCalendarProvider
+        from tools.pipelines.sense.calendar_context import OutlookCalendarProvider
         return OutlookCalendarProvider(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
@@ -144,8 +144,8 @@ class TestCalendarSignalEnrichment:
     
     def test_signal_meeting_correlation(self, ms_graph_creds, tmp_path):
         """Signals can be correlated with nearby meetings."""
-        from tools.agents.sense.calendar_context import CalendarEvent
-        from tools.agents.sense.models import Signal
+        from tools.pipelines.sense.calendar_context import CalendarEvent
+        from tools.pipelines.sense.models import Signal
         
         # Create a signal from a voice memo
         signal = Signal(
@@ -188,7 +188,7 @@ class TestMultiProviderCalendar:
     
     def test_provider_fallback(self, ms_graph_creds):
         """CalendarContext gracefully handles provider failures."""
-        from tools.agents.sense.calendar_context import (
+        from tools.pipelines.sense.calendar_context import (
             CalendarContext,
             ICalFileProvider,
         )

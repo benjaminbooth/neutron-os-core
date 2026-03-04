@@ -1,11 +1,11 @@
-"""Tests for tools.agents.setup.state."""
+"""Tests for tools.setup.state."""
 
 import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from tools.agents.setup.state import (
+from tools.setup.state import (
     SetupState,
     clear_state,
     load_state,

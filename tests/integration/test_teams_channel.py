@@ -42,7 +42,7 @@ class TestTeamsTranscriptProcessing:
 
     def test_vtt_file_recognized(self, tmp_path):
         """Transcript extractor recognizes .vtt files in a teams directory."""
-        from tools.agents.sense.extractors.transcript import TranscriptExtractor
+        from tools.pipelines.sense.extractors.transcript import TranscriptExtractor
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -59,8 +59,8 @@ class TestTeamsTranscriptProcessing:
 
     def test_extract_signals_from_transcript(self, tmp_path):
         """Extract signals from a meeting transcript without LLM."""
-        from tools.agents.sense.extractors.transcript import TranscriptExtractor
-        from tools.agents.sense.correlator import Correlator
+        from tools.pipelines.sense.extractors.transcript import TranscriptExtractor
+        from tools.pipelines.sense.correlator import Correlator
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -81,7 +81,7 @@ class TestTeamsTranscriptProcessing:
         import json
         import threading
         import urllib.request
-        from tools.agents.sense.serve import create_server
+        from tools.pipelines.sense.serve import create_server
 
         inbox = tmp_path / "inbox" / "raw"
         inbox.mkdir(parents=True)
@@ -131,5 +131,5 @@ class TestTeamsChannelsText:
         pytest.skip(
             "Teams channel text extractor not yet implemented. "
             "Needs: MS Graph API + Teams.Read scope + new extractor in "
-            "tools/agents/sense/extractors/teams_chat.py"
+            "tools/pipelines/sense/extractors/teams_chat.py"
         )

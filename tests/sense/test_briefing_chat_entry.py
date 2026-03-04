@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from tools.agents.chat.entry import _format_briefing_context, enter_chat
-from tools.agents.orchestrator.session import Session
+from tools.infra.orchestrator.session import Session
 
 
 # ---------------------------------------------------------------------------

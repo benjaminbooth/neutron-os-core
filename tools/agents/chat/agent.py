@@ -15,14 +15,14 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Iterator, Optional
 
-from tools.agents.orchestrator.actions import (
+from tools.infra.orchestrator.actions import (
     ActionCategory,
     ActionStatus,
     create_action,
 )
-from tools.agents.orchestrator.approval import ApprovalGate
-from tools.agents.orchestrator.bus import EventBus
-from tools.agents.orchestrator.session import Session
+from tools.infra.orchestrator.approval import ApprovalGate
+from tools.infra.orchestrator.bus import EventBus
+from tools.infra.orchestrator.session import Session
 from tools.agents.chat.tools import (
     execute_tool,
     get_all_tools,
@@ -30,7 +30,7 @@ from tools.agents.chat.tools import (
 )
 from tools.agents.chat.providers.base import RenderProvider
 from tools.agents.chat.usage import UsageTracker, TurnUsage
-from tools.agents.sense.gateway import (
+from tools.infra.gateway import (
     Gateway,
     CompletionResponse,
     StreamChunk,
@@ -272,7 +272,7 @@ class ChatAgent:
         if thinking_parts and self._render:
             self._render.render_thinking("".join(thinking_parts))
 
-        from tools.agents.sense.gateway import ToolUseBlock
+        from tools.infra.gateway import ToolUseBlock
         tool_use_list = []
         for tid, info in tool_blocks.items():
             try:
@@ -351,7 +351,7 @@ class ChatAgent:
 
     def _parse_legacy_tool_calls(self, text: str) -> list:
         """Extract tool calls from legacy [tool: name] {params} format."""
-        from tools.agents.sense.gateway import ToolUseBlock
+        from tools.infra.gateway import ToolUseBlock
         calls = []
         for line in text.splitlines():
             line = line.strip()

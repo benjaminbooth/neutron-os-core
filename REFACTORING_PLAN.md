@@ -31,10 +31,10 @@ Refactor NeutronOS to follow **monorepo hygiene best practices** with:
 |-------|----------|----------|--------|
 | **Dual docflow tests** | `tests/docflow/` (10) + `docs/_tools/docflow/tests/` (4) | 🔴 Critical | Duplication, unclear authority, maintenance burden |
 | **Loose test files** | `tools/test_gitlab_tracker_export.py`, `tools/cost_estimation_tool/test_scenarios.py` | 🔴 Critical | Not discovered by standard pytest; inconsistent placement |
-| **Split sense tests** | `tools/agents/sense/tests/` (2) + `tests/sense/` (13) | 🔴 Critical | Requires dual testpaths config; discovery friction |
+| **Split sense tests** | `tools/pipelines/sense/tests/` (2) + `tests/sense/` (13) | 🔴 Critical | Requires dual testpaths config; discovery friction |
 | **No conftest hierarchy** | Only 2 conftest files total | 🟡 Medium | Limited fixture isolation by subsuite |
 | **No coverage enforcement** | No coverage thresholds in config | 🟡 Medium | No quality gate; hard to track regression |
-| **Under-tested modules** | `tests/serve/` (1 file), `tools/agents/sense/tests/` (2 files) | 🟡 Medium | Risk areas for bugs |
+| **Under-tested modules** | `tests/serve/` (1 file), `tools/pipelines/sense/tests/` (2 files) | 🟡 Medium | Risk areas for bugs |
 | **Empty structural dirs** | `packages/`, `services/`, `plugins/` | 🟢 Minor | Confusion about intended modularization |
 
 ### Current Test Stats
@@ -56,7 +56,7 @@ Refactor NeutronOS to follow **monorepo hygiene best practices** with:
 
 ```toml
 [tool.pytest.ini_options]
-testpaths = ["tests", "tools/agents/sense/tests"]
+testpaths = ["tests", "tools/pipelines/sense/tests"]
 pythonpath = ["."]
 markers = [
     "integration",
@@ -90,7 +90,7 @@ tools/
 │   │   └── tests/
 │   ├── sense/
 │   │   ├── src/
-│   │   └── tests/         (moved from tools/agents/sense/tests/)
+│   │   └── tests/         (moved from tools/pipelines/sense/tests/)
 │   ├── sessions/
 │   ├── setup/
 │   └── inbox/
@@ -187,7 +187,7 @@ Elaborate DocFlow system (~7,300 lines) in `docs/_tools/docflow/` duplicates Sen
 |-----------|--------|-----------|
 | `deploy/terraform/modules/` | **SALVAGE** → `infra/terraform/modules/` | Real infrastructure value |
 | `deploy/helm/docflow/` | **SALVAGE** → `infra/helm/charts/neutron-os/` | Adapt for unified chart |
-| `src/docflow/diagrams/` | **SALVAGE** → `tools/agents/sense/providers/diagrams/` | Unique Sense capability |
+| `src/docflow/diagrams/` | **SALVAGE** → `tools/pipelines/sense/providers/diagrams/` | Unique Sense capability |
 | `src/docflow/embedding/` | **DISCARD** | Duplicates Sense embedding |
 | `src/docflow/rag/` | **DISCARD** | Duplicates Sense RAG |
 | `src/docflow/agent/` | **DISCARD** | Duplicates Sense agent |
@@ -203,7 +203,7 @@ docs/_tools/docflow/deploy/helm/docflow/      → infra/helm/charts/neutron-os/ 
 
 ##### 0.2 Merge Diagram Provider into Sense
 ```
-docs/_tools/docflow/src/docflow/diagrams/ → tools/agents/sense/providers/diagrams/
+docs/_tools/docflow/src/docflow/diagrams/ → tools/pipelines/sense/providers/diagrams/
 ```
 
 Update Sense to register diagram provider for:
@@ -265,15 +265,15 @@ rm -rf docs/_tools/docflow/  # After extraction complete
 ---
 
 ### Step 3: Unify Sense Test Location
-- **Action**: Merge `tools/agents/sense/tests/` into root `tests/sense/`
+- **Action**: Merge `tools/pipelines/sense/tests/` into root `tests/sense/`
 - **Files to move**:
-  - `tools/agents/sense/tests/test_bootstrap.py` → `tests/sense/test_bootstrap.py`
-  - `tools/agents/sense/tests/test_correction_errors.py` → `tests/sense/test_correction_errors.py`
-- **Delete**: `tools/agents/sense/tests/` directory
+  - `tools/pipelines/sense/tests/test_bootstrap.py` → `tests/sense/test_bootstrap.py`
+  - `tools/pipelines/sense/tests/test_correction_errors.py` → `tests/sense/test_correction_errors.py`
+- **Delete**: `tools/pipelines/sense/tests/` directory
 
 **Files affected**:
 - `tests/sense/` (add 2 files)
-- `tools/agents/sense/tests/` (delete)
+- `tools/pipelines/sense/tests/` (delete)
 
 ---
 
@@ -317,7 +317,7 @@ rm -rf docs/_tools/docflow/  # After extraction complete
 - **Changes**:
   ```toml
   [tool.pytest.ini_options]
-  testpaths = ["tests"]  # ← Single path, not ["tests", "tools/agents/sense/tests"]
+  testpaths = ["tests"]  # ← Single path, not ["tests", "tools/pipelines/sense/tests"]
   pythonpath = ["."]
   addopts = "--cov=tools --cov-report=term-missing --cov-report=html --cov-fail-under=70"
   markers = [
@@ -350,7 +350,7 @@ rm -rf docs/_tools/docflow/  # After extraction complete
 
 **Verification**:
 - [ ] `pytest --co -q` lists only tests from `tests/` directory
-- [ ] No reference to `tools/agents/sense/tests` in config
+- [ ] No reference to `tools/pipelines/sense/tests` in config
 
 ---
 
@@ -425,7 +425,7 @@ tests/
 ### Colocated Tests (Future)
 Tools with complex test suites will have local `tests/` subdirectories:
 ```
-tools/agents/sense/
+tools/pipelines/sense/
 ├── src/
 ├── tests/
 │   ├── conftest.py
@@ -666,8 +666,8 @@ No structural changes needed for Bazel readiness.
 - `COVERAGE_BASELINE.md`
 
 ### Move
-- `tools/agents/sense/tests/test_bootstrap.py` → `tests/sense/test_bootstrap.py`
-- `tools/agents/sense/tests/test_correction_errors.py` → `tests/sense/test_correction_errors.py`
+- `tools/pipelines/sense/tests/test_bootstrap.py` → `tests/sense/test_bootstrap.py`
+- `tools/pipelines/sense/tests/test_correction_errors.py` → `tests/sense/test_correction_errors.py`
 - `tools/test_gitlab_tracker_export.py` → `tools/tracker/tests/test_gitlab_tracker_export.py`
 - `tools/cost_estimation_tool/test_scenarios.py` → `tools/cost_estimation_tool/tests/test_scenarios.py`
 - `docs/_tools/docflow/tests/*` → `tests/docflow/` (consolidate)
@@ -678,7 +678,7 @@ No structural changes needed for Bazel readiness.
 - `DIR_INTENTS.md` (update with directory purposes)
 
 ### Delete
-- `tools/agents/sense/tests/` (directory)
+- `tools/pipelines/sense/tests/` (directory)
 - `docs/_tools/docflow/tests/` (directory)
 
 ---
@@ -700,7 +700,7 @@ No structural changes needed for Bazel readiness.
   - [ ] Update imports in moved files
 - [ ] Step 3: Unify sense tests
   - [ ] Move 2 files to `tests/sense/`
-  - [ ] Delete `tools/agents/sense/tests/`
+  - [ ] Delete `tools/pipelines/sense/tests/`
 - [ ] Step 4: Create conftest hierarchy
   - [ ] Extract integration fixtures
   - [ ] Create 3 new conftest files

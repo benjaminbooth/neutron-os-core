@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from tools.agents.chat.tools import ToolDef
-from tools.agents.orchestrator.actions import ActionCategory
+from tools.infra.orchestrator.actions import ActionCategory
 from tools.review.models import (
     ReviewDecision,
     ReviewSession,

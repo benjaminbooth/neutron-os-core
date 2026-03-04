@@ -13,8 +13,8 @@ from typing import Any, Iterator, TYPE_CHECKING
 from tools.agents.chat.providers.base import RenderProvider
 
 if TYPE_CHECKING:
-    from tools.agents.orchestrator.actions import Action
-    from tools.agents.sense.gateway import StreamChunk
+    from tools.infra.orchestrator.actions import Action
+    from tools.infra.gateway import StreamChunk
 
 try:
     from rich.console import Console
@@ -144,7 +144,7 @@ class RichRenderProvider(RenderProvider):
 
     def render_welcome(self, gateway=None, show_banner: bool = False) -> None:
         if show_banner:
-            from tools.agents.setup.renderer import _BANNER
+            from tools.setup.renderer import _BANNER
             banner_text = Text(_BANNER.strip("\n"), style="bold #00cfff")
             self.console.print(banner_text)
         else:
@@ -218,7 +218,7 @@ class RichRenderProvider(RenderProvider):
                 self.console.print("  Choose [a]pprove, [A]lways allow, [r]eject, or [s]kip")
 
     def render_action_result(self, action: Action) -> None:
-        from tools.agents.orchestrator.actions import ActionStatus
+        from tools.infra.orchestrator.actions import ActionStatus
         if action.status == ActionStatus.COMPLETED:
             result = action.result or {}
             if "error" in result:

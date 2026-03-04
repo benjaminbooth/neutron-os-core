@@ -23,9 +23,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tools.agents.sense.models import Signal, Extraction, Changelog, ChangelogEntry
-from tools.agents.sense.synthesizer import Synthesizer
-from tools.agents.sense.extractors.docflow_review import (
+from tools.pipelines.sense.models import Signal, Extraction, Changelog, ChangelogEntry
+from tools.pipelines.sense.synthesizer import Synthesizer
+from tools.pipelines.sense.extractors.docflow_review import (
     ExternalChange,
     ChangeType,
     DivergenceReport,

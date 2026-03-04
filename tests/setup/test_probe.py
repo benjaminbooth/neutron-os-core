@@ -1,4 +1,4 @@
-"""Tests for tools.agents.setup.probe."""
+"""Tests for tools.setup.probe."""
 
 import json
 import os
@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tools.agents.setup.probe import (
+from tools.setup.probe import (
     DepStatus,
     ProbeResult,
     _check_python_module,
@@ -161,7 +161,7 @@ class TestCrossPlatformProbe:
     def test_linux_probe_system(self):
         """Simulate running on Linux."""
         result = ProbeResult()
-        with patch("tools.agents.setup.probe.platform") as mock_platform:
+        with patch("tools.setup.probe.platform") as mock_platform:
             mock_platform.system.return_value = "Linux"
             mock_platform.release.return_value = "6.1.0-generic"
             mock_platform.python_version.return_value = "3.11.0"
@@ -180,11 +180,11 @@ class TestCrossPlatformProbe:
     def test_windows_probe_system(self):
         """Simulate running on Windows — memory falls back gracefully."""
         result = ProbeResult()
-        with patch("tools.agents.setup.probe.platform") as mock_platform:
+        with patch("tools.setup.probe.platform") as mock_platform:
             mock_platform.system.return_value = "Windows"
             mock_platform.release.return_value = "10"
             mock_platform.python_version.return_value = "3.11.0"
-            with patch("tools.agents.setup.probe.os") as mock_os:
+            with patch("tools.setup.probe.os") as mock_os:
                 mock_os.cpu_count.return_value = 8
                 mock_os.environ = {"COMSPEC": "cmd.exe"}
                 _probe_system(result)
@@ -214,7 +214,7 @@ class TestCrossPlatformProbe:
 
     def test_git_not_on_path(self, tmp_path):
         """On a system without git, probe still completes."""
-        with patch("tools.agents.setup.probe.shutil.which", return_value=None):
+        with patch("tools.setup.probe.shutil.which", return_value=None):
             found, version = _check_tool("git", ["git", "--version"])
         assert found is False
         assert version == ""

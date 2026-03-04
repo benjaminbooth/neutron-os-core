@@ -23,7 +23,7 @@ def _fixture_exists(name: str) -> bool:
 def _check_sense_status() -> bool:
     """Validate that sense pipeline has some data."""
     try:
-        from tools.agents.sense.cli import INBOX_RAW, DRAFTS_DIR
+        from tools.pipelines.sense.cli import INBOX_RAW, DRAFTS_DIR
 
         has_inbox = INBOX_RAW.exists() and any(INBOX_RAW.rglob("*"))
         has_drafts = DRAFTS_DIR.exists() and any(DRAFTS_DIR.glob("*.md"))

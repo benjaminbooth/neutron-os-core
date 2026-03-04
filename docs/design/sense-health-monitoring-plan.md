@@ -270,7 +270,7 @@ For agent-based interaction, health data is queryable:
 ### Structured Queries
 
 ```python
-from tools.agents.sense.health import HealthStore
+from tools.pipelines.sense.health import HealthStore
 
 health = HealthStore()
 
@@ -495,17 +495,17 @@ def generate_actions(health: HealthState) -> list[SuggestedAction]:
 
 ### New Files
 ```
-tools/agents/sense/health.py           # HealthStore, metrics collection
-tools/agents/sense/health_probes.py    # Active health probes
+tools/pipelines/sense/health.py           # HealthStore, metrics collection
+tools/pipelines/sense/health_probes.py    # Active health probes
 tools/agents/config/health.yaml        # Probe schedules, thresholds
 inbox/state/health.json                # Health state persistence
 ```
 
 ### Modified Files
 ```
-tools/agents/sense/cli.py              # Add `neut health` commands
-tools/agents/sense/serve.py            # Add /system-status, /api/health
-tools/agents/sense/correlator.py       # Health update on ingest
+tools/pipelines/sense/cli.py              # Add `neut health` commands
+tools/pipelines/sense/serve.py            # Add /system-status, /api/health
+tools/pipelines/sense/correlator.py       # Health update on ingest
 tools/docflow/engine.py                # Health update on publish/pull
 tools/mcp_server/server.py             # Add health MCP tools
 ```

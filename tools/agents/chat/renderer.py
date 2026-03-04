@@ -1,6 +1,6 @@
 """Terminal rendering for chat: streaming, markdown, approval prompts.
 
-Reuses color infrastructure from tools.agents.setup.renderer and adds
+Reuses color infrastructure from tools.setup.renderer and adds
 streaming display, basic markdown formatting, and spinners.
 """
 
@@ -13,11 +13,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, TYPE_CHECKING
 
-from tools.agents.orchestrator.actions import Action, ActionStatus
-from tools.agents.setup.renderer import _c, _Colors, _use_color
+from tools.infra.orchestrator.actions import Action, ActionStatus
+from tools.setup.renderer import _c, _Colors, _use_color
 
 if TYPE_CHECKING:
-    from tools.agents.sense.gateway import StreamChunk
+    from tools.infra.gateway import StreamChunk
 
 
 # ---------------------------------------------------------------------------
@@ -30,7 +30,7 @@ _INLINE_CODE_RE = re.compile(r"`([^`]+)`")
 _LIST_RE = re.compile(r"^(\s*)-\s+(.+)$")
 
 # File path patterns for clickable links
-# Matches paths like: docs/foo.md, ./tools/bar.py, tools/agents/sense/cli.py:123
+# Matches paths like: docs/foo.md, ./tools/bar.py, tools/pipelines/sense/cli.py:123
 _FILE_PATH_RE = re.compile(
     r'`([a-zA-Z0-9_./-]+\.[a-zA-Z]+(?::\d+)?)`'  # backticked paths with extension
     r'|'
@@ -293,7 +293,7 @@ def render_message(role: str, content: str) -> None:
 def render_welcome(gateway=None, show_banner: bool = False) -> None:
     """Print the chat welcome message with gateway status."""
     if show_banner:
-        from tools.agents.setup.renderer import banner as mascot_banner
+        from tools.setup.renderer import banner as mascot_banner
         mascot_banner()
     else:
         print()

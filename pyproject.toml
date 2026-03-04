@@ -48,7 +48,7 @@ build-backend = "hatchling.build"
 packages = ["tools"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "tools/agents/sense/tests"]
+testpaths = ["tests", "tools/pipelines/sense/tests"]
 pythonpath = ["."]
 markers = [
     "integration: marks tests that hit external services (deselect with '-m \"not integration\"')",

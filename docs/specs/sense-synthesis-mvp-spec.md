@@ -307,7 +307,7 @@ neut sense status
 ## File Structure (Phase 0)
 
 ```
-tools/agents/sense/
+tools/pipelines/sense/
 ├── __init__.py
 ├── cli.py                      # CLI entry point (extend existing)
 ├── models.py                   # Signal dataclass (extend existing)
@@ -542,10 +542,10 @@ End with a "Source Signals" section listing signal IDs for traceability.
 ## Dependencies
 
 ### Existing Code (Leverage)
-- `tools/agents/sense/extractors/voice.py` — Whisper transcription
-- `tools/agents/sense/extractors/teams.py` — Teams parsing  
-- `tools/agents/sense/models.py` — Signal dataclass
-- `tools/agents/sense/cli.py` — CLI framework
+- `tools/pipelines/sense/extractors/voice.py` — Whisper transcription
+- `tools/pipelines/sense/extractors/teams.py` — Teams parsing  
+- `tools/pipelines/sense/models.py` — Signal dataclass
+- `tools/pipelines/sense/cli.py` — CLI framework
 
 ### External
 - OpenAI Whisper API or local whisper.cpp
@@ -553,13 +553,13 @@ End with a "Source Signals" section listing signal IDs for traceability.
 - Python 3.11+
 
 ### New Files to Create
-- `tools/agents/sense/extractors/calendar.py`
-- `tools/agents/sense/extractors/notes.py`
-- `tools/agents/sense/clustering/prd_clusterer.py`
-- `tools/agents/sense/synthesis/prd_updater.py`
-- `tools/agents/sense/synthesis/briefing_generator.py`
-- `tools/agents/sense/prompts/prd_synthesis_v1.py`
-- `tools/agents/sense/prompts/briefing_v1.py`
+- `tools/pipelines/sense/extractors/calendar.py`
+- `tools/pipelines/sense/extractors/notes.py`
+- `tools/pipelines/sense/clustering/prd_clusterer.py`
+- `tools/pipelines/sense/synthesis/prd_updater.py`
+- `tools/pipelines/sense/synthesis/briefing_generator.py`
+- `tools/pipelines/sense/prompts/prd_synthesis_v1.py`
+- `tools/pipelines/sense/prompts/briefing_v1.py`
 
 ---
 

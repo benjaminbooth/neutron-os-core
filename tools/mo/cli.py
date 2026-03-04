@@ -312,7 +312,7 @@ def _cmd_diagnose(args) -> int:
     print("=" * 50)
 
     try:
-        from tools.agents.sense.gateway import Gateway
+        from tools.infra.gateway import Gateway
         gateway = Gateway()
         if not gateway.available:
             print("No LLM gateway available. Configure ANTHROPIC_API_KEY or OPENAI_API_KEY.")

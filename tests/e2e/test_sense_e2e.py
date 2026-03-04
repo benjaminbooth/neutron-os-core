@@ -148,8 +148,8 @@ class TestSenseIngestPipeline:
 
     def test_gitlab_ingest_single_export(self, workspace):
         """Ingest a single GitLab export — produces signals."""
-        from tools.agents.sense.extractors.gitlab_diff import GitLabDiffExtractor
-        from tools.agents.sense.correlator import Correlator
+        from tools.pipelines.sense.extractors.gitlab_diff import GitLabDiffExtractor
+        from tools.pipelines.sense.correlator import Correlator
 
         export_data = self._make_gitlab_export("2026-02-17", [
             {
@@ -176,7 +176,7 @@ class TestSenseIngestPipeline:
 
     def test_gitlab_diff_ingest(self, workspace):
         """Diff two GitLab exports — detects new commits and issues."""
-        from tools.agents.sense.extractors.gitlab_diff import GitLabDiffExtractor
+        from tools.pipelines.sense.extractors.gitlab_diff import GitLabDiffExtractor
 
         old = self._make_gitlab_export("2026-02-10", [
             {
@@ -232,8 +232,8 @@ class TestSenseIngestPipeline:
 
     def test_freetext_ingest(self, workspace):
         """Drop a text file in inbox/raw → freetext extractor picks it up."""
-        from tools.agents.sense.extractors.freetext import FreetextExtractor
-        from tools.agents.sense.correlator import Correlator
+        from tools.pipelines.sense.extractors.freetext import FreetextExtractor
+        from tools.pipelines.sense.correlator import Correlator
 
         note = workspace / "agents" / "inbox" / "raw" / "meeting-notes.md"
         note.write_text(
@@ -260,7 +260,7 @@ class TestSenseIngestPipeline:
 
     def test_transcript_ingest(self, workspace):
         """Place a transcript file in inbox/raw/teams → transcript extractor processes it."""
-        from tools.agents.sense.extractors.transcript import TranscriptExtractor
+        from tools.pipelines.sense.extractors.transcript import TranscriptExtractor
 
         transcript = workspace / "agents" / "inbox" / "raw" / "teams" / "standup_transcript.md"
         transcript.write_text(
@@ -282,8 +282,8 @@ class TestSenseDraftPipeline:
 
     def test_synthesize_from_signals(self, tmp_path):
         """Given raw signals, synthesizer produces changelog and summary files."""
-        from tools.agents.sense.models import Signal
-        from tools.agents.sense.synthesizer import Synthesizer
+        from tools.pipelines.sense.models import Signal
+        from tools.pipelines.sense.synthesizer import Synthesizer
 
         signals = [
             Signal(
@@ -346,10 +346,10 @@ class TestSenseDraftPipeline:
 
     def test_full_ingest_to_draft_pipeline(self, tmp_path):
         """Complete pipeline: export → ingest → save signals → load → synthesize → files."""
-        from tools.agents.sense.extractors.gitlab_diff import GitLabDiffExtractor
-        from tools.agents.sense.correlator import Correlator
-        from tools.agents.sense.models import Signal
-        from tools.agents.sense.synthesizer import Synthesizer
+        from tools.pipelines.sense.extractors.gitlab_diff import GitLabDiffExtractor
+        from tools.pipelines.sense.correlator import Correlator
+        from tools.pipelines.sense.models import Signal
+        from tools.pipelines.sense.synthesizer import Synthesizer
 
         # 1. Set up config
         config_dir = tmp_path / "config"
@@ -449,8 +449,8 @@ class TestSenseRealData:
         if not exports:
             pytest.skip("No real GitLab exports found")
 
-        from tools.agents.sense.extractors.gitlab_diff import GitLabDiffExtractor
-        from tools.agents.sense.correlator import Correlator
+        from tools.pipelines.sense.extractors.gitlab_diff import GitLabDiffExtractor
+        from tools.pipelines.sense.correlator import Correlator
 
         extractor = GitLabDiffExtractor()
         correlator = Correlator()

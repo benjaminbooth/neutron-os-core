@@ -83,7 +83,7 @@ class TestRichRenderProvider:
         assert isinstance(rich_provider, RenderProvider)
 
     def test_stream_text(self, rich_provider):
-        from tools.agents.sense.gateway import StreamChunk
+        from tools.infra.gateway import StreamChunk
         chunks = iter([
             StreamChunk(type="text", text="Hello world!"),
             StreamChunk(type="done"),
@@ -112,7 +112,7 @@ class TestRichRenderProvider:
         rich_provider.render_tool_result("query_docs", {"documents": []}, 0.3)
 
     def test_render_action_result(self, rich_provider):
-        from tools.agents.orchestrator.actions import Action
+        from tools.infra.orchestrator.actions import Action
         action = Action(name="query_docs", params={})
         action.complete({"documents": []})
         rich_provider.render_action_result(action)

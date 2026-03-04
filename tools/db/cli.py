@@ -30,7 +30,7 @@ def _mask_url(url: str) -> str:
 
 def cmd_up(args: argparse.Namespace) -> int:
     """Start local K3D cluster with PostgreSQL + pgvector."""
-    from tools.agents.sense.pgvector_store import k3d_up
+    from tools.pipelines.sense.pgvector_store import k3d_up
 
     print("🚀 Starting local PostgreSQL + pgvector (K3D)...\n")
     success = k3d_up()
@@ -47,7 +47,7 @@ def cmd_up(args: argparse.Namespace) -> int:
 
 def cmd_down(args: argparse.Namespace) -> int:
     """Stop local K3D cluster (preserves data)."""
-    from tools.agents.sense.pgvector_store import k3d_down
+    from tools.pipelines.sense.pgvector_store import k3d_down
 
     print("⏸️  Stopping local cluster...\n")
     success = k3d_down()
@@ -56,7 +56,7 @@ def cmd_down(args: argparse.Namespace) -> int:
 
 def cmd_delete(args: argparse.Namespace) -> int:
     """Delete local K3D cluster and all data."""
-    from tools.agents.sense.pgvector_store import k3d_delete
+    from tools.pipelines.sense.pgvector_store import k3d_delete
 
     if not args.confirm:
         print("⚠️  This will DELETE the local cluster and ALL data!")
@@ -71,7 +71,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
 
 def cmd_status(args: argparse.Namespace) -> int:
     """Show cluster and database status."""
-    from tools.agents.sense.pgvector_store import k3d_status, VectorDB
+    from tools.pipelines.sense.pgvector_store import k3d_status, VectorDB
 
     db_url = os.environ.get("NEUT_DB_URL", DEFAULT_LOCAL_URL)
     masked_url = _mask_url(db_url)
@@ -135,7 +135,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_migrate(args: argparse.Namespace) -> int:
     """Run Alembic database schema migrations."""
-    from tools.agents.sense.migrations import (
+    from tools.pipelines.sense.migrations import (
         run_migrations,
         check_migrations,
         verify_schema,
@@ -263,7 +263,7 @@ def _print_migrate_help():
 
 def cmd_bootstrap(args: argparse.Namespace) -> int:
     """Full database setup from scratch."""
-    from tools.agents.sense.bootstrap import Bootstrap, BootstrapConfig, BootstrapStep
+    from tools.pipelines.sense.bootstrap import Bootstrap, BootstrapConfig, BootstrapStep
 
     config = BootstrapConfig(
         non_interactive=args.non_interactive,

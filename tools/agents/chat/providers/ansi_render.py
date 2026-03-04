@@ -10,11 +10,11 @@ import sys
 from typing import Any, Iterator, TYPE_CHECKING
 
 from tools.agents.chat.providers.base import RenderProvider
-from tools.agents.setup.renderer import _c, _Colors, _use_color
+from tools.setup.renderer import _c, _Colors, _use_color
 
 if TYPE_CHECKING:
-    from tools.agents.orchestrator.actions import Action
-    from tools.agents.sense.gateway import StreamChunk
+    from tools.infra.orchestrator.actions import Action
+    from tools.infra.gateway import StreamChunk
 
 
 # Markdown regexes (duplicated from renderer.py to keep this self-contained)
@@ -204,7 +204,7 @@ class AnsiRenderProvider(RenderProvider):
 
     def render_welcome(self, gateway=None, show_banner: bool = False) -> None:
         if show_banner:
-            from tools.agents.setup.renderer import banner as mascot_banner
+            from tools.setup.renderer import banner as mascot_banner
             mascot_banner()
         else:
             print()
@@ -266,7 +266,7 @@ class AnsiRenderProvider(RenderProvider):
                 print("  Choose [a]pprove, [A]lways allow, [r]eject, or [s]kip")
 
     def render_action_result(self, action: Action) -> None:
-        from tools.agents.orchestrator.actions import ActionStatus
+        from tools.infra.orchestrator.actions import ActionStatus
         if action.status == ActionStatus.COMPLETED:
             result = action.result or {}
             if "error" in result:

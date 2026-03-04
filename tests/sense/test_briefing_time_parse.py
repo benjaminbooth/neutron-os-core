@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from tools.agents.sense.briefing import _parse_since
+from tools.pipelines.sense.briefing import _parse_since
 
 
 # --- ISO passthrough ---
