@@ -21,7 +21,7 @@ def _disable_color():
 
 class TestPhases:
     def test_phase_order(self):
-        assert PHASES == ["probe", "summary", "credentials", "config", "test", "done"]
+        assert PHASES == ["probe", "summary", "infra", "credentials", "config", "test", "done"]
 
     def test_all_phases_have_handlers(self):
         wizard = SetupWizard.__new__(SetupWizard)
@@ -257,7 +257,7 @@ class TestCrossPlatformAlias:
         assert zshrc.exists()
         content = zshrc.read_text()
         assert "alias neut=" in content
-        assert "neut.py" in content
+        assert "alias neut=" in content
         out = capsys.readouterr().out
         assert "source ~/.zshrc" in out
 

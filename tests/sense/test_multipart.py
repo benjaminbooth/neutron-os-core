@@ -190,10 +190,10 @@ class TestMultipartDetector:
         assert len(groups) == 0
 
     def test_minimum_parts_threshold(self, tmp_path):
-        # Single part should not form a group
+        # Single part should not form a group (only groups with 2+ parts returned)
         (tmp_path / "solo part 1.m4a").touch()
-        
-        detector = MultipartDetector(tmp_path, min_parts=2)
+
+        detector = MultipartDetector(tmp_path)
         groups = detector.find_groups()
-        
+
         assert len(groups) == 0

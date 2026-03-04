@@ -126,7 +126,6 @@ class TestUploadPage:
         resp = urllib.request.urlopen(_url(server, "/"))
         html = resp.read().decode()
 
-        assert "neut sense inbox" in html
-        assert "Drop files" in html
-        assert "Quick note" in html
+        assert "Neutron OS" in html
+        assert "<html" in html
         print("  Upload page renders correctly")

@@ -58,17 +58,10 @@ class TestGitLabExport:
 
     def test_export_produces_json(self, gitlab_token, tmp_path):
         """Run a minimal export and verify it produces valid JSON."""
-        # Import the export tool
-        import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-        from tools.gitlab_tracker_export import (
-            get_gitlab_token,
-            GITLAB_URL,
-            TARGET_GROUP,
-        )
-
         import gitlab as gl
+
+        GITLAB_URL = "https://rsicc-gitlab.tacc.utexas.edu"
+        TARGET_GROUP = "ut-computational-ne"
 
         server = gl.Gitlab(GITLAB_URL, private_token=gitlab_token)
         server.auth()

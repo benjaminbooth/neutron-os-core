@@ -34,8 +34,8 @@ class TestCLISubprocess:
         )
         assert result.returncode == 0
         assert "neut" in result.stdout.lower()
-        assert "sense" in result.stdout
-        assert "doc" in result.stdout
+        assert "status" in result.stdout
+        assert "doctor" in result.stdout
 
     def test_neut_unknown_subcommand(self):
         """neut <unknown> exits non-zero."""

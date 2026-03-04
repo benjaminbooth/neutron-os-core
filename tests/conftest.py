@@ -27,11 +27,11 @@ def tmp_config(tmp_path):
 
     people_md = config_dir / "people.md"
     people_md.write_text(
-        "| Name | GitLab | Linear | Role | Initiative(s) |\n"
-        "|------|--------|--------|------|---------------|\n"
-        "| Alice Smith | asmith | — | Lead | Project Alpha |\n"
-        "| Bob Jones | bjones | bob.j | Engineer | Project Beta, Project Alpha |\n"
-        "| Charlie Brown | cbrown | — | Student | Project Gamma |\n"
+        "| Name | Aliases | Usernames | Role | Initiative(s) |\n"
+        "|------|---------|-----------|------|---------------|\n"
+        "| Alice Smith | — | gitlab:asmith, github:alice-gh | Lead | Project Alpha |\n"
+        "| Bob Jones | Bobby | gitlab:bjones, github:bob-gh | Engineer | Project Beta, Project Alpha |\n"
+        "| Charlie Brown | — | gitlab:cbrown | Student | Project Gamma |\n"
     )
 
     initiatives_md = config_dir / "initiatives.md"
