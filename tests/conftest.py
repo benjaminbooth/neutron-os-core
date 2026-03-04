@@ -36,11 +36,11 @@ def tmp_config(tmp_path):
 
     initiatives_md = config_dir / "initiatives.md"
     initiatives_md.write_text(
-        "| ID | Name | Status | Owners | GitLab Repos |\n"
-        "|----|------|--------|--------|-------------|\n"
-        "| 1 | Project Alpha | Active | Smith, Jones | alpha_project/* |\n"
-        "| 2 | Project Beta | Active | Jones | beta_project/* |\n"
-        "| 3 | Project Gamma | Stale | Brown | gamma_project/* |\n"
+        "| ID | Name | Status | Owners | GitLab Repos | Weight | Pause Reason |\n"
+        "|----|------|--------|--------|-------------|--------|-------------|\n"
+        "| 1 | Project Alpha | Active | Smith, Jones | alpha_project/* | 5 | |\n"
+        "| 2 | Project Beta | Active | Jones | beta_project/* | 3 | |\n"
+        "| 3 | Project Gamma | Stale | Brown | gamma_project/* | 2 | |\n"
     )
 
     return config_dir
