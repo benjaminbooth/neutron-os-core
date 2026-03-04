@@ -1,4 +1,4 @@
-"""Static credential guides for neut setup.
+"""Static credential guides for neut config.
 
 Pre-written walkthrough text for each credential. No LLM needed —
 all guidance is static until a user's first LLM key is validated,
@@ -59,6 +59,11 @@ def _is_openai_key(v: str) -> bool:
     return v.startswith("sk-") and len(v) > 15
 
 
+def _is_github_token(v: str) -> bool:
+    """GitHub personal access tokens start with ghp_ or github_pat_."""
+    return (v.startswith("ghp_") or v.startswith("github_pat_")) and len(v) > 10
+
+
 def _is_linear_key(v: str) -> bool:
     """Linear keys start with lin_api_."""
     return v.startswith("lin_api_") and len(v) > 12
@@ -111,6 +116,22 @@ CREDENTIAL_GUIDES: list[CredentialGuide] = [
         ],
         url="https://rsicc-gitlab.tacc.utexas.edu/-/user_settings/personal_access_tokens",
         validator=_is_gitlab_token,
+    ),
+    CredentialGuide(
+        env_var="GITHUB_TOKEN",
+        display_name="GitHub access key",
+        description="Lets Neut read your GitHub repositories and track activity.",
+        required=False,
+        steps=[
+            "Go to GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens",
+            'Click "Generate new token" — name it something like "neutron-os"',
+            "Under Resource owner, select your org (e.g. UT-Computational-NE)",
+            "Set Repository access to All repositories (or select specific ones)",
+            "Under Permissions → Repository, enable read-only for: Contents, Issues, Pull requests, Metadata",
+            "Copy the token — it starts with github_pat_",
+        ],
+        url="https://github.com/settings/tokens?type=beta",
+        validator=_is_github_token,
     ),
     CredentialGuide(
         env_var="MS_GRAPH_CLIENT_ID",

@@ -1,9 +1,9 @@
-"""Interactive onboarding wizard for neut setup.
+"""Interactive onboarding wizard for neut config.
 
 Orchestrates the 6-phase flow:
   PROBE → SUMMARY → CREDENTIALS → CONFIG → TEST → DONE
 
-Each phase auto-saves progress so users can resume with `neut setup`.
+Each phase auto-saves progress so users can resume with `neut config`.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class SetupWizard:
             renderer.info("Setup already complete. Showing current status.\n")
             self.show_status()
             renderer.blank()
-            renderer.info("Run 'neut setup --reset' to start over.")
+            renderer.info("Run 'neut config --reset' to start over.")
             return
 
         if start_idx > 0:
@@ -291,7 +291,7 @@ class SetupWizard:
         renderer.text("  This needs 3 values from the Azure Portal.\n")
 
         if not renderer.prompt_yn("Set up Microsoft 365 now?", default=False):
-            renderer.info("Skipped — you can set this up later with: neut setup --fix ms_graph_client_id")
+            renderer.info("Skipped — you can set this up later with: neut config --set ms_graph_client_id")
             for g in guides:
                 self.state.credentials_configured[g.env_var] = False
             save_state(self.state, self.root)
@@ -339,7 +339,7 @@ class SetupWizard:
         renderer.text(f"  {guide.description}\n")
 
         if not renderer.prompt_yn(f"Set up {guide.display_name} now?", default=False):
-            renderer.info("Skipped — you can set this up later with: neut setup --fix "
+            renderer.info("Skipped — you can set this up later with: neut config --set "
                           f"{guide.env_var.lower()}")
             self.state.credentials_configured[guide.env_var] = False
             save_state(self.state, self.root)
@@ -730,6 +730,32 @@ class SetupWizard:
     # Status display (non-interactive)
     # ------------------------------------------------------------------
 
+    def _show_repo_sources(self) -> None:
+        """Probe configured repo sources and display status."""
+        renderer.heading("Repository Sources")
+        try:
+            from tools.repo_sensing.config import detect_sources
+            sources = detect_sources()
+            if not sources:
+                renderer.warning("No repo sources detected (set GITLAB_TOKEN or GITHUB_TOKEN)")
+                return
+            for source in sources:
+                # Try to authenticate
+                try:
+                    from tools.repo_sensing.orchestrator import _create_provider
+                    provider = _create_provider(source)
+                    ok = provider.authenticate()
+                except Exception:
+                    ok = False
+                label = f"{source.provider.title()}  {source.group_or_org} ({source.token_env})"
+                if ok:
+                    renderer.success(label)
+                else:
+                    renderer.error(f"{label} — auth failed")
+            renderer.text(f"\n  {len(sources)} repo source(s) detected")
+        except Exception as exc:
+            renderer.warning(f"Could not probe repo sources: {exc}")
+
     def show_status(self) -> None:
         """Display current configuration status without entering wizard."""
         renderer.heading("Neutron OS Configuration Status")
@@ -744,6 +770,9 @@ class SetupWizard:
                 renderer.success(f"{name} — configured")
             else:
                 renderer.warning(f"{name} — not set")
+
+        # Repo sources
+        self._show_repo_sources()
 
         # Config files
         renderer.heading("Configuration Files")
@@ -793,4 +822,4 @@ class SetupWizard:
 
         renderer.heading(f"Reconfigure: {guide.display_name}")
         self._configure_credential(guide)
-        renderer.success("Done. Run 'neut setup --status' to verify.")
+        renderer.success("Done. Run 'neut config --status' to verify.")

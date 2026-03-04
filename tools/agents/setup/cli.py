@@ -1,10 +1,10 @@
-"""CLI handler for neut setup.
+"""CLI handler for neut config.
 
 Usage:
-    neut setup                Run full wizard (or resume if state exists)
-    neut setup --status       Show current configuration status
-    neut setup --fix <name>   Reconfigure a specific connection
-    neut setup --reset        Clear state and start over
+    neut config                Run full wizard (or resume if state exists)
+    neut config --status       Show current configuration status
+    neut config --set <name>   Configure a specific connection
+    neut config --reset        Clear state and start over
 """
 
 from __future__ import annotations
@@ -23,17 +23,17 @@ def get_parser() -> argparse.ArgumentParser:
     Exposed for CLI registry introspection and argcomplete.
     """
     parser = argparse.ArgumentParser(
-        prog="neut setup",
+        prog="neut config",
         description="Interactive onboarding wizard",
     )
     parser.add_argument("--status", action="store_true", help="Show configuration status")
-    parser.add_argument("--fix", metavar="NAME", help="Reconfigure a specific connection")
+    parser.add_argument("--set", metavar="NAME", help="Configure a specific connection")
     parser.add_argument("--reset", action="store_true", help="Clear state and start over")
     return parser
 
 
 def main() -> None:
-    """Entry point for `neut setup`."""
+    """Entry point for `neut config`."""
     args = sys.argv[1:]
 
     if "--help" in args or "-h" in args:
@@ -42,7 +42,7 @@ def main() -> None:
 
     if "--reset" in args:
         clear_state()
-        print("  Setup state cleared. Run 'neut setup' to start fresh.")
+        print("  Setup state cleared. Run 'neut config' to start fresh.")
         return
 
     wizard = SetupWizard()
@@ -51,31 +51,31 @@ def main() -> None:
         wizard.show_status()
         return
 
-    if "--fix" in args:
-        idx = args.index("--fix")
+    if "--set" in args:
+        idx = args.index("--set")
         if idx + 1 < len(args):
             wizard.fix(args[idx + 1])
         else:
-            print("  Usage: neut setup --fix <connection-name>")
-            print("  Example: neut setup --fix gitlab_token")
+            print("  Usage: neut config --set <connection-name>")
+            print("  Example: neut config --set github_token")
         return
 
     # Default: run the full wizard
     try:
         wizard.run()
     except KeyboardInterrupt:
-        print("\n\n  Setup paused. Run 'neut setup' to resume.\n")
+        print("\n\n  Setup paused. Run 'neut config' to resume.\n")
         sys.exit(130)
 
 
 def _print_help() -> None:
-    print("neut setup — Interactive onboarding wizard")
+    print("neut config — Interactive onboarding wizard")
     print()
     print("Usage:")
-    print("  neut setup              Run full wizard (or resume)")
-    print("  neut setup --status     Show current configuration status")
-    print("  neut setup --fix NAME   Reconfigure a specific connection")
-    print("  neut setup --reset      Clear state and start over")
+    print("  neut config              Run full wizard (or resume)")
+    print("  neut config --status     Show current configuration status")
+    print("  neut config --set NAME   Configure a specific connection")
+    print("  neut config --reset      Clear state and start over")
     print()
     print("Connections:")
     from tools.agents.setup.guides import CREDENTIAL_GUIDES

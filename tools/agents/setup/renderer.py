@@ -1,4 +1,4 @@
-"""Jargon-free terminal output for neut setup.
+"""Jargon-free terminal output for neut config.
 
 Centralizes all user-facing text so technical terms never leak to the user.
 Uses ANSI escape codes with automatic fallback when color is unsupported.
@@ -17,6 +17,7 @@ import sys
 JARGON_MAP: dict[str, str] = {
     # Environment variable names → display names
     "GITLAB_TOKEN": "GitLab access key",
+    "GITHUB_TOKEN": "GitHub access key",
     "MS_GRAPH_CLIENT_ID": "Microsoft 365 app ID",
     "MS_GRAPH_CLIENT_SECRET": "Microsoft 365 app secret",
     "MS_GRAPH_TENANT_ID": "Microsoft 365 tenant ID",
@@ -92,6 +93,8 @@ class _Colors:
     BLUE = "\033[34m"
     BRIGHT_BLUE = "\033[94m"
     MAGENTA = "\033[35m"
+    # Cherenkov radiation blue — the light-blue glow from reactor pools
+    CHERENKOV = "\033[38;2;0;207;255m"
 
 
 def _c(code: str, text: str) -> str:
@@ -118,14 +121,14 @@ _BANNER = """
 def banner() -> None:
     """Print the Neut mascot banner in brand blue."""
     for line in _BANNER.strip("\n").splitlines():
-        print(_c(_Colors.BOLD + _Colors.BRIGHT_BLUE, line))
+        print(_c(_Colors.BOLD + _Colors.CHERENKOV, line))
     print()
 
 
 def heading(text: str) -> None:
     """Print a section heading."""
     print()
-    print(_c(_Colors.BOLD + _Colors.BRIGHT_BLUE, f"  {text}"))
+    print(_c(_Colors.BOLD + _Colors.CHERENKOV, f"  {text}"))
     print(_c(_Colors.DIM, "  " + "─" * len(text)))
 
 
@@ -153,7 +156,7 @@ def divider() -> None:
 
 def info(text: str) -> None:
     """Print an informational message."""
-    print(f"  {_c(_Colors.BRIGHT_BLUE, 'ℹ')} {text}")
+    print(f"  {_c(_Colors.CHERENKOV, 'ℹ')} {text}")
 
 
 def success(text: str) -> None:

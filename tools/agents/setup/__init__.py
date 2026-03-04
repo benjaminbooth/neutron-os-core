@@ -1,1 +1,1 @@
-"""neut setup — Interactive onboarding wizard for Neutron OS."""
+"""neut config — Interactive onboarding wizard for Neutron OS."""

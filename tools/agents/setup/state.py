@@ -1,4 +1,4 @@
-"""Setup progress persistence for neut setup.
+"""Setup progress persistence for neut config.
 
 Saves wizard progress to .neut/setup-state.json so users can resume
 an interrupted session. State older than 30 days is discarded as stale.

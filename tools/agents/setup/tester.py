@@ -1,4 +1,4 @@
-"""Live channel verification for neut setup.
+"""Live channel verification for neut config.
 
 Each test is independent, has a 10-second timeout, and returns a TestResult
 with plain-language success/failure messages.

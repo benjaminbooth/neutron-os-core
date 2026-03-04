@@ -1,4 +1,4 @@
-"""System discovery for neut setup.
+"""System discovery for neut config.
 
 Gathers everything discoverable without user input: OS, Python, deps,
 existing config, network. All stdlib — no external dependencies.
@@ -288,6 +288,7 @@ def _probe_dependencies(result: ProbeResult) -> None:
 # Env vars to check (bool only, never expose values)
 _ENV_VARS = [
     "GITLAB_TOKEN",
+    "GITHUB_TOKEN",
     "MS_GRAPH_CLIENT_ID",
     "MS_GRAPH_CLIENT_SECRET",
     "MS_GRAPH_TENANT_ID",

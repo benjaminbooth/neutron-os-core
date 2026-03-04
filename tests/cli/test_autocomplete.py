@@ -68,13 +68,12 @@ class TestTopLevelCompletion:
         assert "sense" in completions
         assert "doc" in completions
         assert "chat" in completions
-        assert "setup" in completions
+        assert "config" in completions
         assert "doctor" in completions
 
     def test_partial_subcommand(self):
         completions = _get_completions("neut se")
         assert "sense" in completions
-        assert "setup" in completions
         # Should NOT include unrelated commands
         assert "doc" not in completions
 
@@ -125,11 +124,11 @@ class TestChatCompletion:
         assert "--bare" not in completions
 
 
-class TestSetupCompletion:
-    """Test `neut setup --<TAB>` shows setup flags."""
+class TestConfigCompletion:
+    """Test `neut config --<TAB>` shows config flags."""
 
-    def test_setup_flags(self):
-        completions = _get_completions("neut setup --")
+    def test_config_flags(self):
+        completions = _get_completions("neut config --")
         assert "--status" in completions
-        assert "--fix" in completions
+        assert "--set" in completions
         assert "--reset" in completions
