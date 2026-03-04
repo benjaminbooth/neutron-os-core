@@ -49,7 +49,11 @@ Neutron_OS/
   packages/                 # Shared libraries (planned)
   frontend/                 # Web UI (planned)
   tools/
-    agents/                 # Agentic sensing pipeline (neut sense)
+    agents/                 # True agents only (chat, doctor)
+    pipelines/              # Data processing flows (sense)
+    infra/                  # Shared infrastructure (orchestrator, gateway)
+    setup/                  # Config wizard
+    mo/                     # M-O resource steward
     exports/                # GitLab weekly data exports
     tracker/                # Program tracker build tools
     cost_estimation/        # Infrastructure cost models
@@ -205,7 +209,7 @@ Each noun has its own verb set. See `docs/prd/neut-cli-prd.md` for full spec.
 
 ---
 
-## Agent Development (`neut sense`)
+## Sense Pipeline (`neut sense`)
 
 The `sense` noun handles proactive program awareness — ingesting signals from
 multiple sources, extracting structured information, and maintaining program state.
@@ -215,7 +219,7 @@ multiple sources, extracting structured information, and maintaining program sta
 ```
 Sources (voice memos, Teams, GitLab, Linear, freetext)
   → Inbox (tools/agents/inbox/raw/)
-  → Extractors (tools/agents/extractors/)
+  → Extractors (tools/pipelines/sense/extractors/)
   → Correlator (maps to people, initiatives, issues)
   → Synthesizer (merges into weekly draft)
   → Review gate (human approval)
@@ -224,11 +228,11 @@ Sources (voice memos, Teams, GitLab, Linear, freetext)
 
 ### Key Files
 
-- `tools/agents/gateway.py` — Model-agnostic LLM routing
-- `tools/agents/extractors/` — Source-specific signal extraction
-- `tools/agents/correlator.py` — Entity resolution
-- `tools/agents/synthesizer.py` — Cross-source signal merging
-- `tools/agents/publisher.py` — Multi-target publishing
+- `tools/infra/gateway.py` — Model-agnostic LLM routing
+- `tools/pipelines/sense/extractors/` — Source-specific signal extraction
+- `tools/pipelines/sense/correlator.py` — Entity resolution
+- `tools/pipelines/sense/synthesizer.py` — Cross-source signal merging
+- `tools/pipelines/sense/publisher.py` — Multi-target publishing
 ### Design Principles
 - **Human-in-the-loop:** All writes require explicit approval
 - **Model-agnostic:** Gateway routes to any OpenAI-compatible endpoint
@@ -330,7 +334,7 @@ pytest tests/sense/ -v
 
 If you need to bypass the entry point:
 ```bash
-python -m tools.agents.sense.cli status
+python -m tools.pipelines.sense.cli status
 python -m tools.neut_cli sense status
 ```
 

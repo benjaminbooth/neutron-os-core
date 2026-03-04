@@ -78,9 +78,9 @@ from tools.agents.chat.pulse_spinner import (
 
 if TYPE_CHECKING:
     from tools.agents.chat.agent import ChatAgent
-    from tools.agents.orchestrator.actions import Action
-    from tools.agents.orchestrator.session import SessionStore
-    from tools.agents.sense.gateway import StreamChunk
+    from tools.infra.orchestrator.actions import Action
+    from tools.infra.orchestrator.session import SessionStore
+    from tools.infra.gateway import StreamChunk
 
 from tools.update.background import BackgroundUpdateChecker
 from tools.update.version_check import VersionInfo
@@ -2816,7 +2816,7 @@ class _TuiRenderProvider(RenderProvider):
         return req.choice
 
     def render_action_result(self, action: Action) -> None:
-        from tools.agents.orchestrator.actions import ActionStatus
+        from tools.infra.orchestrator.actions import ActionStatus
 
         if action.status == ActionStatus.COMPLETED:
             result = action.result or {}

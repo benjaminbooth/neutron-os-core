@@ -1,8 +1,8 @@
-"""Tests for tools.agents.setup.guides."""
+"""Tests for tools.setup.guides."""
 
 import pytest
 
-from tools.agents.setup.guides import (
+from tools.setup.guides import (
     CREDENTIAL_GUIDES,
     CredentialGuide,
     get_guide,

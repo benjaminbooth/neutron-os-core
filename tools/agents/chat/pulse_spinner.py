@@ -16,7 +16,7 @@ import threading
 import time
 from dataclasses import dataclass
 
-from tools.agents.setup.renderer import _use_color
+from tools.setup.renderer import _use_color
 
 
 # ---------------------------------------------------------------------------

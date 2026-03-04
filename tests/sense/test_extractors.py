@@ -4,12 +4,12 @@ import json
 import pytest
 from pathlib import Path
 
-from tools.agents.sense.extractors.gitlab_diff import GitLabDiffExtractor
-from tools.agents.sense.extractors.freetext import FreetextExtractor
-from tools.agents.sense.extractors.voice import VoiceExtractor
-from tools.agents.sense.extractors.transcript import TranscriptExtractor
-from tools.agents.sense.correlator import Correlator
-from tools.agents.sense.gateway import Gateway
+from tools.pipelines.sense.extractors.gitlab_diff import GitLabDiffExtractor
+from tools.pipelines.sense.extractors.freetext import FreetextExtractor
+from tools.pipelines.sense.extractors.voice import VoiceExtractor
+from tools.pipelines.sense.extractors.transcript import TranscriptExtractor
+from tools.pipelines.sense.correlator import Correlator
+from tools.infra.gateway import Gateway
 
 
 def _make_export(

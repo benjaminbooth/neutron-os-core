@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from tools.agents.setup.renderer import set_color_enabled
+from tools.setup.renderer import set_color_enabled
 from tools.agents.chat.commands import (
     cmd_help,
     cmd_status,
@@ -44,8 +44,8 @@ class TestSlashCommands:
     def test_cmd_status(self):
         from tools.agents.chat.agent import ChatAgent
         from tools.agents.chat.usage import UsageTracker
-        from tools.agents.orchestrator.session import Session
-        from tools.agents.sense.gateway import Gateway
+        from tools.infra.orchestrator.session import Session
+        from tools.infra.gateway import Gateway
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session()
@@ -62,8 +62,8 @@ class TestSlashCommands:
     def test_cmd_status_with_provider(self):
         from tools.agents.chat.agent import ChatAgent
         from tools.agents.chat.usage import UsageTracker
-        from tools.agents.orchestrator.session import Session
-        from tools.agents.sense.gateway import Gateway
+        from tools.infra.orchestrator.session import Session
+        from tools.infra.gateway import Gateway
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session()
@@ -83,7 +83,7 @@ class TestSlashCommands:
         assert "Neut Sense Status" in result
 
     def test_cmd_sessions_empty(self):
-        from tools.agents.orchestrator.session import SessionStore
+        from tools.infra.orchestrator.session import SessionStore
         store = MagicMock(spec=SessionStore)
         store.list_sessions.return_value = []
 
@@ -91,7 +91,7 @@ class TestSlashCommands:
         assert "No saved sessions" in result
 
     def test_cmd_sessions_with_data(self):
-        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.infra.orchestrator.session import SessionStore, Session
         store = MagicMock(spec=SessionStore)
         store.list_sessions.return_value = ["abc123", "def456"]
 
@@ -105,7 +105,7 @@ class TestSlashCommands:
         assert "def456" in result
 
     def test_cmd_resume_found(self):
-        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.infra.orchestrator.session import SessionStore, Session
         from tools.agents.chat.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
@@ -121,7 +121,7 @@ class TestSlashCommands:
         assert agent.session == session
 
     def test_cmd_resume_not_found(self):
-        from tools.agents.orchestrator.session import SessionStore
+        from tools.infra.orchestrator.session import SessionStore
         from tools.agents.chat.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
@@ -132,7 +132,7 @@ class TestSlashCommands:
         assert "not found" in result.lower()
 
     def test_cmd_new(self):
-        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.infra.orchestrator.session import SessionStore, Session
         from tools.agents.chat.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
@@ -188,7 +188,7 @@ class TestSlashCommandDispatch:
         assert "Usage" in result
 
     def test_dispatch_resume_with_arg(self):
-        from tools.agents.orchestrator.session import Session
+        from tools.infra.orchestrator.session import Session
 
         agent = MagicMock()
         store = MagicMock()
@@ -203,7 +203,7 @@ class TestSessionsSubcommands:
     """Test /sessions rename and /sessions archive subcommand dispatch."""
 
     def test_dispatch_sessions_rename(self):
-        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.infra.orchestrator.session import SessionStore, Session
         from tools.agents.chat.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
@@ -215,7 +215,7 @@ class TestSessionsSubcommands:
         assert agent.session.title == "My Title"
 
     def test_dispatch_sessions_archive(self):
-        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.infra.orchestrator.session import SessionStore, Session
         from tools.agents.chat.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
@@ -236,7 +236,7 @@ class TestSessionsSubcommands:
         assert "foobar" in result
 
     def test_rename_backward_compat(self):
-        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.infra.orchestrator.session import SessionStore, Session
         from tools.agents.chat.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
@@ -248,7 +248,7 @@ class TestSessionsSubcommands:
         assert agent.session.title == "My Title"
 
     def test_archive_backward_compat(self):
-        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.infra.orchestrator.session import SessionStore, Session
         from tools.agents.chat.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
@@ -268,7 +268,7 @@ class TestSessionsSubcommands:
         assert "/sessions archive" in all_commands
 
     def test_bare_sessions_lists(self):
-        from tools.agents.orchestrator.session import SessionStore
+        from tools.infra.orchestrator.session import SessionStore
 
         store = MagicMock(spec=SessionStore)
         store.list_sessions.return_value = []

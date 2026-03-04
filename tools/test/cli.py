@@ -217,7 +217,7 @@ class TestRunner:
 
         # Find test directories that exist
         test_dirs = []
-        for d in ["tests/", "tools/agents/sense/tests/", "tools/cost_estimation_tool/"]:
+        for d in ["tests/", "tools/pipelines/sense/tests/", "tools/cost_estimation_tool/"]:
             if (self.repo_root / d).exists():
                 test_dirs.append(d)
 
@@ -284,7 +284,7 @@ class TestRunner:
 import sys
 sys.path.insert(0, '.')
 
-from tools.agents.sense.migrations import (
+from tools.pipelines.sense.migrations import (
     run_migrations,
     check_migrations,
     verify_schema,

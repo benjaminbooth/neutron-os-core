@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.agents.sense.feedback import (
+from tools.pipelines.sense.feedback import (
     FeedbackCollector,
     FeedbackRequest,
     SignalFeedback,
@@ -15,7 +15,7 @@ from tools.agents.sense.feedback import (
     PENDING_REQUESTS,
     FEEDBACK_LOG,
 )
-from tools.agents.sense.models import Signal
+from tools.pipelines.sense.models import Signal
 
 
 class TestFeedbackTypes:
@@ -125,7 +125,7 @@ class TestFeedbackCollector:
         self._orig_dir = FEEDBACK_DIR
         self._orig_pending = PENDING_REQUESTS
         self._orig_log = FEEDBACK_LOG
-        import tools.agents.sense.feedback as fb_mod
+        import tools.pipelines.sense.feedback as fb_mod
         fb_mod.FEEDBACK_DIR = feedback_dir
         fb_mod.PENDING_REQUESTS = pending_path
         fb_mod.FEEDBACK_LOG = log_path
@@ -134,7 +134,7 @@ class TestFeedbackCollector:
     @pytest.fixture(autouse=True)
     def _restore_paths(self):
         yield
-        import tools.agents.sense.feedback as fb_mod
+        import tools.pipelines.sense.feedback as fb_mod
         if hasattr(self, '_orig_dir'):
             fb_mod.FEEDBACK_DIR = self._orig_dir
             fb_mod.PENDING_REQUESTS = self._orig_pending

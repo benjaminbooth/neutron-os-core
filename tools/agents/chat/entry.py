@@ -24,9 +24,9 @@ from tools.agents.chat.agent import ChatAgent
 from tools.agents.chat.cli import run_repl
 from tools.agents.chat.fullscreen import FullScreenChat, _SUGGESTIONS
 from tools.agents.chat.provider_factory import create_render_provider, create_input_provider
-from tools.agents.orchestrator.bus import EventBus
-from tools.agents.orchestrator.session import SessionStore
-from tools.agents.sense.gateway import Gateway
+from tools.infra.orchestrator.bus import EventBus
+from tools.infra.orchestrator.session import SessionStore
+from tools.infra.gateway import Gateway
 
 
 def _format_briefing_context(briefing_data: dict) -> str:

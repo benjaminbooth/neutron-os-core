@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from tools.agents.setup.renderer import set_color_enabled
+from tools.setup.renderer import set_color_enabled
 from tools.agents.chat.providers.base import RenderProvider, InputProvider
 from tools.agents.chat.providers.ansi_render import AnsiRenderProvider
 from tools.agents.chat.providers.basic_input import BasicInputProvider
@@ -11,7 +11,7 @@ from tools.agents.chat.provider_factory import (
     create_render_provider,
     create_input_provider,
 )
-from tools.agents.sense.gateway import StreamChunk
+from tools.infra.gateway import StreamChunk
 
 
 @pytest.fixture(autouse=True)
@@ -197,7 +197,7 @@ class TestAnsiRenderProvider:
         assert "5 messages" in captured.out
 
     def test_render_action_result_completed(self, capsys):
-        from tools.agents.orchestrator.actions import Action, ActionStatus
+        from tools.infra.orchestrator.actions import Action, ActionStatus
         p = AnsiRenderProvider()
         action = Action(name="query_docs", params={})
         action.complete({"documents": []})
@@ -206,7 +206,7 @@ class TestAnsiRenderProvider:
         assert "No tracked documents" in captured.out
 
     def test_render_action_result_rejected(self, capsys):
-        from tools.agents.orchestrator.actions import Action, ActionStatus
+        from tools.infra.orchestrator.actions import Action, ActionStatus
         p = AnsiRenderProvider()
         action = Action(name="doc_publish", params={})
         action.reject("Not ready")

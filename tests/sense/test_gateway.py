@@ -4,7 +4,7 @@ import json
 import pytest
 from unittest.mock import MagicMock
 
-from tools.agents.sense.gateway import (
+from tools.infra.gateway import (
     Gateway,
     GatewayResponse,
     LLMProvider,

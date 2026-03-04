@@ -62,7 +62,7 @@ class TestGuidedCorrectionReview:
     @pytest.fixture
     def guided_review(self, temp_dirs):
         """Create isolated GuidedCorrectionReview instance."""
-        from tools.agents.sense.correction_review_guided import (
+        from tools.pipelines.sense.correction_review_guided import (
             GuidedCorrectionReview,
             CLIPS_DIR,
             REVIEW_STATE_FILE,
@@ -82,7 +82,7 @@ class TestGuidedCorrectionReview:
             review._clips = {}
             
             # Patch module-level constants for testing
-            import tools.agents.sense.correction_review_guided as guided_module
+            import tools.pipelines.sense.correction_review_guided as guided_module
             self._original_clips_dir = guided_module.CLIPS_DIR
             guided_module.CLIPS_DIR = temp_dirs["clips_dir"]
             
@@ -108,11 +108,11 @@ class TestGuidedCorrectionReview:
     
     def test_extract_audio_clip_no_ffmpeg(self, temp_dirs):
         """Test clip extraction falls back when ffmpeg unavailable."""
-        from tools.agents.sense.correction_review_guided import GuidedCorrectionReview
+        from tools.pipelines.sense.correction_review_guided import GuidedCorrectionReview
         
         # Create a real instance for this test
-        with patch("tools.agents.sense.correction_review_guided.CLIPS_DIR", temp_dirs["clips_dir"]):
-            with patch("tools.agents.sense.correction_review_guided.REVIEW_STATE_FILE", temp_dirs["corrections_dir"] / "state.json"):
+        with patch("tools.pipelines.sense.correction_review_guided.CLIPS_DIR", temp_dirs["clips_dir"]):
+            with patch("tools.pipelines.sense.correction_review_guided.REVIEW_STATE_FILE", temp_dirs["corrections_dir"] / "state.json"):
                 with patch("shutil.which", return_value=None):  # No ffmpeg
                     review = GuidedCorrectionReview()
                     
@@ -146,16 +146,16 @@ class TestCorrectionPropagation:
     @pytest.fixture  
     def propagator(self, temp_propagation_dir):
         """Create isolated CorrectionPropagator."""
-        from tools.agents.sense.correction_propagation import (
+        from tools.pipelines.sense.correction_propagation import (
             CorrectionPropagator,
             PROPAGATION_QUEUE,
             PROPAGATION_LOG,
             USER_GLOSSARY,
         )
         
-        with patch("tools.agents.sense.correction_propagation.PROPAGATION_QUEUE", temp_propagation_dir / "queue.json"):
-            with patch("tools.agents.sense.correction_propagation.PROPAGATION_LOG", temp_propagation_dir / "log.jsonl"):
-                with patch("tools.agents.sense.correction_propagation.USER_GLOSSARY", temp_propagation_dir / "glossary.json"):
+        with patch("tools.pipelines.sense.correction_propagation.PROPAGATION_QUEUE", temp_propagation_dir / "queue.json"):
+            with patch("tools.pipelines.sense.correction_propagation.PROPAGATION_LOG", temp_propagation_dir / "log.jsonl"):
+                with patch("tools.pipelines.sense.correction_propagation.USER_GLOSSARY", temp_propagation_dir / "glossary.json"):
                     return CorrectionPropagator()
     
     def test_propagate_approval_creates_jobs(self, propagator, temp_propagation_dir):
@@ -179,7 +179,7 @@ class TestCorrectionPropagation:
         """Test that approval adds term to glossary."""
         glossary_path = temp_propagation_dir / "glossary.json"
         
-        with patch("tools.agents.sense.correction_propagation.USER_GLOSSARY", glossary_path):
+        with patch("tools.pipelines.sense.correction_propagation.USER_GLOSSARY", glossary_path):
             propagator.propagate_approval(
                 correction_id="test_456",
                 original="covertilla",
@@ -235,7 +235,7 @@ class TestDownstreamUpdates:
     
     def test_glossary_add_handler(self, tmp_path):
         """Test glossary add handler creates correct entries."""
-        from tools.agents.sense.correction_propagation import (
+        from tools.pipelines.sense.correction_propagation import (
             CorrectionPropagator,
             PropagationJob,
             PropagationType,
@@ -243,7 +243,7 @@ class TestDownstreamUpdates:
         
         glossary_path = tmp_path / "glossary.json"
         
-        with patch("tools.agents.sense.correction_propagation.USER_GLOSSARY", glossary_path):
+        with patch("tools.pipelines.sense.correction_propagation.USER_GLOSSARY", glossary_path):
             propagator = CorrectionPropagator()
             
             job = PropagationJob(
@@ -265,7 +265,7 @@ class TestDownstreamUpdates:
     
     def test_glossary_person_category(self, tmp_path):
         """Test that person names go to people section."""
-        from tools.agents.sense.correction_propagation import (
+        from tools.pipelines.sense.correction_propagation import (
             CorrectionPropagator,
             PropagationJob,
             PropagationType,
@@ -273,7 +273,7 @@ class TestDownstreamUpdates:
         
         glossary_path = tmp_path / "glossary.json"
         
-        with patch("tools.agents.sense.correction_propagation.USER_GLOSSARY", glossary_path):
+        with patch("tools.pipelines.sense.correction_propagation.USER_GLOSSARY", glossary_path):
             propagator = CorrectionPropagator()
             
             job = PropagationJob(
@@ -295,12 +295,12 @@ class TestDownstreamUpdates:
     
     def test_notification_logged(self, tmp_path):
         """Test notifications are written to log."""
-        from tools.agents.sense.correction_propagation import (
+        from tools.pipelines.sense.correction_propagation import (
             CorrectionPropagator,
             PropagationJob,
             PropagationType,
         )
-        import tools.agents.sense.correction_propagation as prop_module
+        import tools.pipelines.sense.correction_propagation as prop_module
         
         # Create inbox dir
         inbox_dir = tmp_path / "inbox"
@@ -334,7 +334,7 @@ class TestPatternMatching:
     @pytest.fixture
     def system_with_patterns(self, tmp_path):
         """Create CorrectionReviewSystem with test corrections."""
-        from tools.agents.sense.correction_review import CorrectionReviewSystem
+        from tools.pipelines.sense.correction_review import CorrectionReviewSystem
         
         # Create isolated corrections dir
         corrections_dir = tmp_path / "corrections"

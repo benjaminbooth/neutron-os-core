@@ -52,7 +52,7 @@ neut config
 # Follow prompts; select "yes" for infrastructure setup
 ```
 
-This uses `tools/agents/setup/infra.py` to:
+This uses `tools/setup/infra.py` to:
 - Start Docker if not running
 - Create K3D cluster "neut"
 - Deploy PostgreSQL with pgvector
@@ -179,4 +179,4 @@ externalDatabase:
 
 - [Intelligence Amplification Pillar](../docs/strategy/intelligence-amplification-pillar.md)
 - [Design Loop Architecture](../docs/specs/design-loop-architecture.md)
-- [Setup Infrastructure Code](../tools/agents/setup/infra.py)
+- [Setup Infrastructure Code](../tools/setup/infra.py)

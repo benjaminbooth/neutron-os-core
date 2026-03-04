@@ -4,7 +4,7 @@ import json
 import pytest
 from pathlib import Path
 
-from tools.agents.orchestrator.bus import EventBus, Event
+from tools.infra.orchestrator.bus import EventBus, Event
 
 
 class TestEventBus:

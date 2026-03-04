@@ -36,7 +36,7 @@ class TestExtensionDiscovery:
         (pkg_dir / "__init__.py").touch()
         (pkg_dir / "my_tool.py").write_text(
             'from tools.agents.chat.tools import ToolDef\n'
-            'from tools.agents.orchestrator.actions import ActionCategory\n'
+            'from tools.infra.orchestrator.actions import ActionCategory\n'
             '\n'
             'TOOLS = [ToolDef(name="my_tool", description="Test tool", '
             'category=ActionCategory.READ, parameters={"type": "object", "properties": {}})]\n'

@@ -6,7 +6,7 @@ Supports the existing triple-quote multi-line toggle.
 from __future__ import annotations
 
 from tools.agents.chat.providers.base import InputProvider
-from tools.agents.setup.renderer import _c, _Colors, _use_color
+from tools.setup.renderer import _c, _Colors, _use_color
 
 
 class BasicInputProvider(InputProvider):

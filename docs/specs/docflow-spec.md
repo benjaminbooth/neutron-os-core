@@ -689,7 +689,7 @@ DocFlow does NOT rewrite this from scratch. Instead:
 
 • The existing script can continue working independently — DocFlow is additive
 
-tools/agents/sense/gateway.py (shared)
+tools/infra/gateway.py (shared)
 
 DocFlow's analyze_feedback action (Phase 2) uses the same LLM gateway as Neut Sense. This avoids duplicate LLM configuration.
 

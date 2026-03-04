@@ -487,8 +487,8 @@ Every merge decision is recorded:
 
 ## References
 
-- **Neut Sense Pipeline**: `tools/agents/sense/` (extractors, synthesizer, models)
-- **DocFlow Review Extractor**: `tools/agents/sense/extractors/docflow_review.py`
+- **Neut Sense Pipeline**: `tools/pipelines/sense/` (extractors, synthesizer, models)
+- **DocFlow Review Extractor**: `tools/pipelines/sense/extractors/docflow_review.py`
 - **Semantic Versioning**: `tools/docflow/scripts/publish.py` (version logic)
 - **State Management**: `tools/docflow/state.py` (DocumentState, PublicationRecord)
 

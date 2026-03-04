@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from typing import Optional, TYPE_CHECKING
 
-from tools.agents.setup.renderer import _c, _Colors
+from tools.setup.renderer import _c, _Colors
 
 if TYPE_CHECKING:
     from tools.agents.chat.agent import ChatAgent
-    from tools.agents.orchestrator.session import SessionStore
+    from tools.infra.orchestrator.session import SessionStore
 
 
 def cmd_help() -> str:
@@ -311,7 +311,7 @@ def _get_cli_commands() -> dict[str, str]:
 
     # Import CLI modules and get their COMMANDS
     try:
-        from tools.agents.sense.cli import COMMANDS as sense_commands
+        from tools.pipelines.sense.cli import COMMANDS as sense_commands
         for name, help_text in sense_commands.items():
             cli_commands[f"/sense {name}"] = help_text
     except ImportError:

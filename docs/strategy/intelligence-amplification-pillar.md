@@ -70,7 +70,7 @@ Mission-critical systems (nuclear reactors, medical isotope production, research
 
 **Key Capability: Media Library**
 
-The [Media Library](../../tools/agents/sense/media_library.py) indexes all recorded audio/video:
+The [Media Library](../../tools/pipelines/sense/media_library.py) indexes all recorded audio/video:
 - Hybrid search (keyword + semantic with auto-detection)
 - Participant detection (maps speakers to people registry)
 - Segment extraction for sharing in PRDs
@@ -255,7 +255,7 @@ Intelligence Amplification uses the NeutronOS Provider/Factory pattern for exten
 ### Issue Tracking Provider
 
 ```python
-# tools/agents/sense/providers/issue_tracking/base.py
+# tools/pipelines/sense/providers/issue_tracking/base.py
 class IssueTrackingProvider(ABC):
     @abstractmethod
     def create_issue(self, title: str, body: str, labels: list[str]) -> str: ...

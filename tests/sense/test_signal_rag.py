@@ -5,14 +5,14 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from tools.agents.sense.signal_rag import (
+from tools.pipelines.sense.signal_rag import (
     SignalRAG,
     SignalChunk,
     VectorStore,
     RetrievalResult,
     KeywordEmbeddings,
 )
-from tools.agents.sense.models import Signal
+from tools.pipelines.sense.models import Signal
 
 
 class TestSignalChunk:

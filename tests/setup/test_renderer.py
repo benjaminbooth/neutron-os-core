@@ -1,11 +1,11 @@
-"""Tests for tools.agents.setup.renderer."""
+"""Tests for tools.setup.renderer."""
 
 import io
 import sys
 
 import pytest
 
-from tools.agents.setup.renderer import (
+from tools.setup.renderer import (
     JARGON_MAP,
     _Colors,
     _c,

@@ -3,11 +3,11 @@
 neut — Neutron OS CLI dispatcher (Python prototype)
 
 Routes subcommands to their respective handlers:
-  neut sense ...     → tools/agents/sense/cli.py
+  neut sense ...     → tools/pipelines/sense/cli.py
   neut doc ...       → tools/docflow/cli.py
   neut docflow ...   → tools/docflow/cli.py  (alias)
   neut db ...        → tools/db/cli.py
-  neut infra ...     → tools/agents/setup/infra.py (Docker, K3D setup)
+  neut infra ...     → tools/setup/infra.py (Docker, K3D setup)
   neut test ...      → tools/test/cli.py
   neut update ...    → tools/update/cli.py
   neut status ...    → tools/status/cli.py
@@ -97,14 +97,14 @@ def _show_pending_changelog() -> None:
 
 
 SUBCOMMANDS = {
-    "config": "tools.agents.setup.cli",
-    "sense": "tools.agents.sense.cli",
+    "config": "tools.setup.cli",
+    "sense": "tools.pipelines.sense.cli",
     "doc": "tools.docflow.cli",
     "docflow": "tools.docflow.cli",
     "chat": "tools.agents.chat.cli",
     "code": "tools.agents.chat.cli",  # Alias for chat
     "db": "tools.db.cli",  # PostgreSQL + pgvector infrastructure
-    "infra": "tools.agents.setup.infra",  # Infrastructure setup (Docker, K3D)
+    "infra": "tools.setup.infra",  # Infrastructure setup (Docker, K3D)
     "test": "tools.test.cli",  # Test orchestration
     "update": "tools.update.cli",  # Dependency and migration updates
     "status": "tools.status.cli",  # System health dashboard
@@ -250,7 +250,7 @@ def _gather_diagnostics() -> dict:
     gateway_ok = False
     gateway_status = "Not configured"
     try:
-        from tools.agents.sense.gateway import Gateway
+        from tools.infra.gateway import Gateway
         gw = Gateway()
         if gw.available:
             gateway_ok = True
@@ -291,7 +291,7 @@ def _gather_diagnostics() -> dict:
 def _llm_diagnose(diagnostics: dict, error_context: str | None = None) -> str | None:
     """Use LLM with project context to diagnose issues intelligently."""
     try:
-        from tools.agents.sense.gateway import Gateway
+        from tools.infra.gateway import Gateway
         from pathlib import Path
 
         gateway = Gateway()

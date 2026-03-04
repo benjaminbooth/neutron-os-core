@@ -76,15 +76,15 @@ Database lifecycle commands move out of the user-facing CLI:
 
 ### Negative
 
-- Existing code in `tools/agents/sense/pgvector_store.py` and
-  `tools/agents/sense/media_library.py` needs to move to `tools/media/`
+- Existing code in `tools/pipelines/sense/pgvector_store.py` and
+  `tools/pipelines/sense/media_library.py` needs to move to `tools/media/`
 - Tests referencing `sense.media` and `sense.db` need updated imports
 - Two-phase migration: old paths work during transition, removed later
 
 ### Mitigations
 
 - Use Python re-exports during transition (`from tools.media import X` works,
-  old `from tools.agents.sense.media_library import X` emits deprecation warning)
+  old `from tools.pipelines.sense.media_library import X` emits deprecation warning)
 - Create a migration checklist in the media PRD
 - Single PR for the move, with mechanical import updates
 

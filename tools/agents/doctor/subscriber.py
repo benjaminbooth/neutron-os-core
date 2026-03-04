@@ -187,7 +187,7 @@ def doctor_handler(topic: str, data: dict[str, Any]) -> None:
         return
 
     try:
-        from tools.agents.gateway import Gateway
+        from tools.infra.gateway import Gateway
         gateway = Gateway()
         if not gateway.available:
             if _bus:
@@ -228,7 +228,7 @@ def doctor_handler(topic: str, data: dict[str, Any]) -> None:
 def review_handler(topic: str, data: dict[str, Any]) -> None:
     """Subscribes to 'doctor.patch_ready' — independent review."""
     try:
-        from tools.agents.gateway import Gateway
+        from tools.infra.gateway import Gateway
         gateway = Gateway()
     except Exception:
         # No gateway — auto-approve (tests already passed)
@@ -310,7 +310,7 @@ def retry_handler(topic: str, data: dict[str, Any]) -> None:
     _rollback_from_backup(data.get("files_changed", []))
 
     try:
-        from tools.agents.gateway import Gateway
+        from tools.infra.gateway import Gateway
         gateway = Gateway()
     except Exception:
         if _bus:

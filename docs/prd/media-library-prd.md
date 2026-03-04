@@ -377,7 +377,7 @@ This separation means:
 ## Migration from Neut Sense
 
 Per [ADR-009](../adr/009-promote-media-internalize-db.md), the following code
-moves from `tools/agents/sense/` to `tools/media/`:
+moves from `tools/pipelines/sense/` to `tools/media/`:
 
 | Current Location | New Location |
 |-----------------|--------------|

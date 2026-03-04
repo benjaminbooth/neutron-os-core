@@ -8,7 +8,7 @@ from tools.agents.chat.tools import (
     get_tool_definitions,
     execute_tool,
 )
-from tools.agents.orchestrator.actions import ActionCategory
+from tools.infra.orchestrator.actions import ActionCategory
 
 
 class TestToolRegistry:
@@ -62,7 +62,7 @@ class TestToolExecution:
         """Write a note to a temp inbox."""
         # Patch INBOX_RAW at the source module (deferred import in execute_tool)
         monkeypatch.setattr(
-            "tools.agents.sense.cli.INBOX_RAW",
+            "tools.pipelines.sense.cli.INBOX_RAW",
             tmp_path,
         )
         result = execute_tool("write_inbox_note", {"text": "Test note content"})

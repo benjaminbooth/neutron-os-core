@@ -38,10 +38,10 @@ from tools.agents.chat.commands import (
 )
 from tools.agents.chat.provider_factory import create_render_provider, create_input_provider
 from tools.agents.chat.providers.base import RenderProvider, InputProvider
-from tools.agents.orchestrator.bus import EventBus
-from tools.agents.orchestrator.session import Session, SessionStore
-from tools.agents.sense.gateway import Gateway
-from tools.agents.setup.renderer import _c, _Colors
+from tools.infra.orchestrator.bus import EventBus
+from tools.infra.orchestrator.session import Session, SessionStore
+from tools.infra.gateway import Gateway
+from tools.setup.renderer import _c, _Colors
 
 
 def _input_border() -> str:

@@ -308,7 +308,7 @@ class Updater:
 
         # Run migrations
         try:
-            from tools.agents.sense.migrations import run_migrations, check_migrations
+            from tools.pipelines.sense.migrations import run_migrations, check_migrations
 
             status = check_migrations()
             if status.get("up_to_date"):
@@ -339,7 +339,7 @@ class Updater:
     def _check_migrations(self) -> None:
         """Check if migrations are pending."""
         try:
-            from tools.agents.sense.migrations import check_migrations
+            from tools.pipelines.sense.migrations import check_migrations
 
             status = check_migrations()
             if status.get("up_to_date"):

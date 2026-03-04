@@ -32,14 +32,14 @@ _LOG_PATH = _AGENTS_DIR / "logs" / "cli_events.jsonl"
 # --- Safety constants ---
 
 ALLOWED_EDIT_PREFIXES = [
-    "tools/agents/sense/",
+    "tools/pipelines/sense/",
     "tools/agents/chat/",
     "tests/",
 ]
 
 BLOCKED_EDIT_PREFIXES = [
     "tools/agents/doctor/",
-    "tools/agents/orchestrator/",
+    "tools/infra/orchestrator/",
     "tools/neut_cli.py",
 ]
 

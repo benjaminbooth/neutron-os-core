@@ -3,8 +3,8 @@
 import pytest
 from pathlib import Path
 
-from tools.agents.sense.models import Signal, Changelog
-from tools.agents.sense.synthesizer import Synthesizer
+from tools.pipelines.sense.models import Signal, Changelog
+from tools.pipelines.sense.synthesizer import Synthesizer
 
 
 @pytest.fixture

@@ -158,7 +158,7 @@ class TestCorrectorIdGeneration:
     
     def test_corrector_generates_deterministic_ids(self):
         """Test that TranscriptCorrector generates deterministic IDs."""
-        from tools.agents.sense.corrector import TranscriptCorrector, Correction, CorrectionResult
+        from tools.pipelines.sense.corrector import TranscriptCorrector, Correction, CorrectionResult
         
         corrector = TranscriptCorrector()
         
@@ -181,7 +181,7 @@ class TestCorrectorIdGeneration:
         captured_ids = []
         
         # Patch where CorrectionReviewSystem is imported (inside the method)
-        with patch("tools.agents.sense.correction_review.CorrectionReviewSystem") as MockReview:
+        with patch("tools.pipelines.sense.correction_review.CorrectionReviewSystem") as MockReview:
             mock_instance = MagicMock()
             MockReview.return_value = mock_instance
             

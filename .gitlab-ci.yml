@@ -146,13 +146,13 @@ test:migrations:
   script:
     # Test 1: Fresh migration applies cleanly
     - echo "Testing fresh migration..."
-    - python -c "from tools.agents.sense.migrations import run_migrations, ensure_pgvector_extension; ensure_pgvector_extension(); run_migrations('upgrade', 'head')"
+    - python -c "from tools.pipelines.sense.migrations import run_migrations, ensure_pgvector_extension; ensure_pgvector_extension(); run_migrations('upgrade', 'head')"
     
     # Test 2: Migration status is up-to-date
     - echo "Checking migration status..."
     - |
       python -c "
-      from tools.agents.sense.migrations import check_migrations
+      from tools.pipelines.sense.migrations import check_migrations
       status = check_migrations()
       assert status['up_to_date'], f'Migrations not up to date: {status}'
       print('✓ All migrations applied')
@@ -162,7 +162,7 @@ test:migrations:
     - echo "Verifying schema..."
     - |
       python -c "
-      from tools.agents.sense.migrations import verify_schema
+      from tools.pipelines.sense.migrations import verify_schema
       result = verify_schema()
       assert result['valid'], f'Schema invalid: {result}'
       assert result['has_pgvector'], 'pgvector extension missing'
@@ -172,8 +172,8 @@ test:migrations:
     
     # Test 4: Downgrade and upgrade cycle
     - echo "Testing downgrade/upgrade cycle..."
-    - python -c "from tools.agents.sense.migrations import run_migrations; run_migrations('downgrade', 'base')"
-    - python -c "from tools.agents.sense.migrations import run_migrations; run_migrations('upgrade', 'head')"
+    - python -c "from tools.pipelines.sense.migrations import run_migrations; run_migrations('downgrade', 'base')"
+    - python -c "from tools.pipelines.sense.migrations import run_migrations; run_migrations('upgrade', 'head')"
     - echo "✓ Downgrade/upgrade cycle successful"
     
     # Test 5: SQLAlchemy models match schema
@@ -181,7 +181,7 @@ test:migrations:
     - |
       python -c "
       from sqlalchemy import create_engine, inspect
-      from tools.agents.sense.db_models import Base, Signal, Media, Participant, Person
+      from tools.pipelines.sense.db_models import Base, Signal, Media, Participant, Person
       import os
       
       engine = create_engine(os.environ['NEUT_DB_URL'])
@@ -198,9 +198,9 @@ test:migrations:
   rules:
     - if: $CI_PIPELINE_SOURCE == "push"
       changes:
-        - tools/agents/sense/migrations/**/*
-        - tools/agents/sense/db_models.py
-        - tools/agents/sense/pgvector_store.py
+        - tools/pipelines/sense/migrations/**/*
+        - tools/pipelines/sense/db_models.py
+        - tools/pipelines/sense/pgvector_store.py
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH == "main"
   allow_failure: true  # Requires Docker executor for postgres service

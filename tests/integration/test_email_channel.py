@@ -30,7 +30,7 @@ class TestOutlookEmail:
         pytest.skip(
             "Outlook email extractor not yet implemented. "
             "Needs: MS Graph API + Mail.Read scope + new extractor in "
-            "tools/agents/sense/extractors/email.py. "
+            "tools/pipelines/sense/extractors/email.py. "
             "Enable in facility.toml: [sense.sources] email_forwarding = true"
         )
 
