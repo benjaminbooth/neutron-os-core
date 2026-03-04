@@ -1,0 +1,39 @@
+{
+  "session_id": "1915c3850673",
+  "title": "tell me a dark nuclear engineering joke.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "tell me a dark nuclear engineering joke.",
+      "timestamp": "2026-02-27T01:38:36.443212+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Here's a dark nuclear engineering joke for you:\n\nWhy don't nuclear engineers ever get invited to parties?\n\nBecause every time someone asks them to \"lighten up,\" they start calculating the critical mass needed for spontaneous fission, and by the time they finish explaining why you can't actually make plutonium glow like in the movies, everyone's already gone home.\n\n*Bonus reactor operator dark humor:*\n\n\"What's the difference between a nuclear engineer and a reactor operator? The engineer calculates exactly how many ways things can go wrong. The operator has seen three of them happen on the same shift.\"\n\n---\n\n*Note: As someone working in nuclear engineering myself (through the Neutron OS project), I appreciate that our field has a unique brand of gallows humor - usually involving criticality calculations, decay chains, or the gap between theoretical predictions and real-world reactor behavior!*",
+      "timestamp": "2026-02-27T01:38:42.503064+00:00"
+    },
+    {
+      "role": "user",
+      "content": "Try again but make it shorter",
+      "timestamp": "2026-02-27T01:39:11.657796+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Why don't nuclear engineers tell bedtime stories?\n\nBecause they all start with \"Once upon a time, assuming steady-state conditions...\" and end with \"...and then everyone died from radiation poisoning.\"\n\n---\n\n*Alternative:*\n\nWhat's a nuclear engineer's favorite pickup line?\n\n\"Are you U-235? Because you're causing an uncontrolled reaction in my core.\"",
+      "timestamp": "2026-02-27T01:39:14.962492+00:00"
+    },
+    {
+      "role": "user",
+      "content": "those aren't half bad :)",
+      "timestamp": "2026-02-27T01:40:11.623808+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Thanks! I have to admit, working on nuclear facility software has given me an appreciation for the field's... particular sense of humor. \n\nThere's something uniquely dark about an industry where \"going critical\" is both the goal AND the thing you never want to happen unexpectedly. Plus, spending time reading reactor operation logs and safety procedures definitely gives you material for gallows humor.\n\nThe uranium pickup line might actually work at an ANS conference... or get you reported to security. 50/50 odds.",
+      "timestamp": "2026-02-27T01:40:16.462988+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-27T01:38:01.070127+00:00",
+  "updated_at": "2026-02-27T01:40:16.463007+00:00"
+}

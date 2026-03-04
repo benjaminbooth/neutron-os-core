@@ -1,0 +1,25 @@
+{
+  "session_id": "dceb190b43bd",
+  "title": "Briefing: executive",
+  "messages": [],
+  "context": {
+    "context_markdown": "# Executive Briefing\n\n**Time window:** 2026-02-27T04:20:45.554814+00:00 \u2192 2026-02-27T07:23:07.202482+00:00\n**Signals analyzed:** 0\n**Confidence:** 70%\n\n## Summary\n\nNo new signals to report. All quiet on the western front.",
+    "context_data": {
+      "briefing_id": "a154422f9612",
+      "generated_at": "2026-02-27T07:23:07.222878+00:00",
+      "time_window_start": "2026-02-27T04:20:45.554814+00:00",
+      "time_window_end": "2026-02-27T07:23:07.202482+00:00",
+      "summary": "No new signals to report. All quiet on the western front.",
+      "signal_count": 0,
+      "signals_by_type": {},
+      "key_signals": [],
+      "topic": "general",
+      "topic_query": "",
+      "confidence": 0.7,
+      "time_window_reason": "Since last briefing was generated (3 hours ago) \u2014 assuming you reviewed it"
+    },
+    "source": "neut_sense_brief"
+  },
+  "created_at": "2026-02-27T07:23:27.139253+00:00",
+  "updated_at": ""
+}

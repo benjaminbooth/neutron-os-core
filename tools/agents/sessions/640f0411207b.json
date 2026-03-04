@@ -1,0 +1,29 @@
+{
+  "session_id": "640f0411207b",
+  "title": "tell me a Haiku",
+  "messages": [
+    {
+      "role": "user",
+      "content": "tell me a Haiku",
+      "timestamp": "2026-02-27T08:57:43.123117+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Here's a haiku for you:\n\n```\nNeutrons dance within\nDigital twins hum with data\u2014\nCode bridges atoms\n```\n\nThis reflects the essence of your work on Neutron OS, where the physical world of nuclear reactors meets the digital realm of simulation and data management!",
+      "timestamp": "2026-02-27T08:57:45.926244+00:00"
+    },
+    {
+      "role": "user",
+      "content": "col",
+      "timestamp": "2026-02-27T09:45:28.055974+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "I'm not sure what you mean by \"col\" - could you clarify? Are you looking for:\n\n- Column information from a file or data structure?\n- Something related to collaboration?\n- A specific command or tool?\n- Something else entirely?\n\nLet me know what you'd like help with!",
+      "timestamp": "2026-02-27T09:45:30.638079+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-27T08:57:18.260776+00:00",
+  "updated_at": "2026-02-27T09:45:30.638108+00:00"
+}

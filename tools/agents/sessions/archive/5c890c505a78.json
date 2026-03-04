@@ -1,0 +1,19 @@
+{
+  "session_id": "5c890c505a78",
+  "title": "yes",
+  "messages": [
+    {
+      "role": "user",
+      "content": "yes",
+      "timestamp": "2026-02-27T02:34:30.235704+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "I see you've said \"yes\" but I don't have context for what you're responding to. Could you please let me know what you'd like me to help you with? \n\nI have access to tools for:\n- Document management (checking status, generating/publishing docs, checking links)\n- Signal ingestion (sense pipeline status, writing notes to inbox)\n- Repository exploration (reading files, listing directories)\n\nWhat would you like me to do?",
+      "timestamp": "2026-02-27T02:34:33.706213+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-27T02:34:21.073981+00:00",
+  "updated_at": "2026-02-27T02:34:33.706229+00:00"
+}

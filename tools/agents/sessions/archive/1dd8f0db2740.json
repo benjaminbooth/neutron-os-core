@@ -1,0 +1,243 @@
+{
+  "session_id": "1dd8f0db2740",
+  "title": "Okay, what can you do, Neut.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Okay, what can you do, Neut.",
+      "timestamp": "2026-02-26T23:53:41.408009+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Hey! I'm **neut**, your AI assistant for the Neutron OS platform. Here's what I can help you with:\n\n## \ud83d\udcc4 **Document Management (docflow)**\n- **Check document status** - see what's tracked and published\n- **Generate Word docs** from markdown sources (.md \u2192 .docx)\n- **Publish documents** to OneDrive or other storage\n- **Check cross-document links** and show document diffs\n- **List available document providers**\n\n## \ud83e\udde0 **Signal Processing (sense)**\n- **Check inbox status** - see how many voice memos, transcripts, etc. need processing\n- **Ingest data** from GitLab, voice memos, freetext, or transcripts\n- **Write notes** directly to the sense inbox\n- **View processing pipeline** status\n\n## \ud83d\udcc1 **Repository Explorer**\n- **Browse files** and directories in the Neutron OS repo\n- **Read file contents** - markdown docs, specs, code, config files\n- **Search with patterns** to find specific files\n\n## \ud83c\udfaf **What I'm great at:**\n- Helping you navigate the 11 active digital twin initiatives\n- Understanding program context (I know about TRIGA DT, MSR work, NuclearBench, etc.)\n- Converting between markdown and Word for grant proposals and tech specs\n- Processing voice memos and meeting transcripts into structured program updates\n\nJust tell me what you need! For example:\n- \"Show me the latest document changes\"\n- \"Read the TRIGA roadmap\"\n- \"Check my sense inbox status\"\n- \"Generate a Word doc from the master tech spec\"\n\nWhat would you like to do first?",
+      "timestamp": "2026-02-26T23:53:52.061019+00:00"
+    },
+    {
+      "role": "user",
+      "content": "How should I get started, here?",
+      "timestamp": "2026-02-26T23:54:27.747886+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Great question! Let me help you get oriented. Here's how I'd recommend getting started:\n\n## \ud83d\udd0d **First, let's see where things stand:**",
+      "timestamp": "2026-02-26T23:54:30.366426+00:00",
+      "tool_calls": [
+        {
+          "name": "sense_status",
+          "id": "toolu_01VrYXMGjSSZWP2dM3hPNd3D",
+          "input": {}
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"inbox_raw\": {\"root\": 1}, \"processed\": 31, \"drafts\": 2}",
+      "timestamp": "2026-02-26T23:54:30.366452+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01VrYXMGjSSZWP2dM3hPNd3D",
+          "name": "sense_status"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "timestamp": "2026-02-26T23:54:32.836833+00:00",
+      "tool_calls": [
+        {
+          "name": "query_docs",
+          "id": "toolu_01VfvkybDdjzp3LMLrPxFpcx",
+          "input": {}
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"documents\": [{\"doc_id\": \"docflow-spec\", \"status\": \"published\", \"version\": \"v1\"}, {\"doc_id\": \"reactor-ops-log-prd\", \"status\": \"published\", \"version\": \"v1\"}, {\"doc_id\": \"experiment-manager-prd\", \"status\": \"published\", \"version\": \"v1\"}, {\"doc_id\": \"neutron-os-executive-prd\", \"status\": \"published\", \"version\": \"v1\"}, {\"doc_id\": \"agent-state-management-prd\", \"status\": \"published\", \"version\": \"v1\"}, {\"doc_id\": \"data-architecture-spec\", \"status\": \"published\", \"version\": \"v1\"}, {\"doc_id\": \"agent-state-management-spec\", \"status\": \"published\", \"version\": \"v1\"}, {\"doc_id\": \"medical-isotope-prd\", \"status\": \"published\", \"version\": \"v2.1.11\"}]}",
+      "timestamp": "2026-02-26T23:54:32.836858+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01VfvkybDdjzp3LMLrPxFpcx",
+          "name": "query_docs"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "## \ud83d\udcca **Current Status:**\n- **Sense pipeline:** 1 item in inbox, 31 processed, 2 drafts pending\n- **Documents:** 8 published specs/PRDs (all current)\n\n## \ud83d\ude80 **Recommended Getting Started Path:**\n\n### **Option 1: Dive into Documentation**\nStart with the core project docs to understand the platform:\n```\nneut read docs/prd/neutron-os-executive-prd.md  # High-level vision\nneut read docs/specs/neutron-os-master-tech-spec.md  # Technical details\n```\n\n### **Option 2: Process Your Inbox**\nYou have 1 item waiting in your sense inbox - let's see what it is:\n```\nneut sense ingest all  # Process pending voice memos/transcripts\n```\n\n### **Option 3: Explore Active Projects**\nCheck what's happening across the 11 initiatives:\n```\nneut list docs/  # Browse project documentation\nneut read tools/agents/config/people.md  # See team roster\n```\n\n### **Option 4: Document Publishing**\nIf you need to generate Word docs for grant proposals or reports:\n```\nneut doc generate <source.md>  # Generate .docx from markdown\n```\n\n**What interests you most?** Are you looking to:\n- Understand the platform architecture?\n- Process voice memos or meeting notes? \n- Work on documentation?\n- Check project status across the digital twins?\n\nJust let me know and I'll guide you through the next steps!",
+      "timestamp": "2026-02-26T23:54:41.604317+00:00"
+    },
+    {
+      "role": "user",
+      "content": "neut sense ingest all  # Process pending voice memos/transcripts",
+      "timestamp": "2026-02-27T00:03:50.913906+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "timestamp": "2026-02-27T00:04:01.343242+00:00",
+      "tool_calls": [
+        {
+          "name": "sense_ingest",
+          "id": "toolu_01JXSG8PE84hNm4ruAUsrVAg",
+          "input": {
+            "source": "all"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"message\": \"Ingestion triggered.\", \"source\": \"all\"}",
+      "timestamp": "2026-02-27T00:04:01.343272+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01JXSG8PE84hNm4ruAUsrVAg",
+          "name": "sense_ingest"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "\u2705 **Ingestion started!** Processing all sources (voice memos, GitLab, transcripts, freetext).\n\nLet me check the updated status:",
+      "timestamp": "2026-02-27T00:04:03.930164+00:00",
+      "tool_calls": [
+        {
+          "name": "sense_status",
+          "id": "toolu_01KnrEiBpxoYQ6zm1U5VqVas",
+          "input": {}
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"inbox_raw\": {\"root\": 1}, \"processed\": 31, \"drafts\": 2}",
+      "timestamp": "2026-02-27T00:04:03.930191+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01KnrEiBpxoYQ6zm1U5VqVas",
+          "name": "sense_status"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Interesting - the inbox still shows 1 item. This could mean:\n- **Processing in progress** (extractors are still running)\n- **Item requires manual review** before moving to processed\n- **Item failed extraction** and needs attention\n\nThe sense pipeline extracts structured signals from:\n- \ud83c\udfa4 **Voice memos** \u2192 meeting notes, action items\n- \ud83d\udccb **GitLab activity** \u2192 code changes, issue updates  \n- \ud83d\udcde **Teams transcripts** \u2192 decision records\n- \u270d\ufe0f **Freetext notes** \u2192 quick captures\n\n**Next steps:**\n1. **Wait a moment** for processing to complete, then check status again\n2. **Review the drafts** (you have 2 pending) - these might need your approval\n3. **Check what's in the raw inbox** to see if manual intervention is needed\n\nWould you like me to check the status again in a moment, or would you prefer to explore something else while the ingestion runs?",
+      "timestamp": "2026-02-27T00:04:10.976398+00:00"
+    },
+    {
+      "role": "user",
+      "content": "how do I look at drafts?",
+      "timestamp": "2026-02-27T00:05:05.104308+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Good question! Looking at the available tools, I don't see a direct \"view drafts\" command in my current toolkit. The `sense_status` shows you have 2 drafts pending, but I don't have a function to display their contents.\n\nBased on the Neutron OS architecture, drafts are likely stored in the sense pipeline's processing directories. Here are a few ways we could explore this:\n\n## \ud83d\udd0d **Let's investigate the file structure:**",
+      "timestamp": "2026-02-27T00:05:09.465314+00:00",
+      "tool_calls": [
+        {
+          "name": "list_files",
+          "id": "toolu_01JzuaCUCtthjnQLBRq9Smwn",
+          "input": {
+            "path": "tools/agents"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \"tools/agents\", \"directories\": [\"tools/agents/approved/\", \"tools/agents/chat/\", \"tools/agents/config/\", \"tools/agents/config.example/\", \"tools/agents/drafts/\", \"tools/agents/inbox/\", \"tools/agents/orchestrator/\", \"tools/agents/sense/\", \"tools/agents/sessions/\", \"tools/agents/setup/\"], \"files\": [], \"total\": 10}",
+      "timestamp": "2026-02-27T00:05:09.465350+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01JzuaCUCtthjnQLBRq9Smwn",
+          "name": "list_files"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Perfect! There's a `drafts/` directory. Let's see what's in there:",
+      "timestamp": "2026-02-27T00:05:11.915397+00:00",
+      "tool_calls": [
+        {
+          "name": "list_files",
+          "id": "toolu_018jbHn2oF6VQDjL6wmqMRFf",
+          "input": {
+            "path": "tools/agents/drafts"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \"tools/agents/drafts\", \"directories\": [], \"files\": [\"tools/agents/drafts/.gitkeep\", \"tools/agents/drafts/changelog_2026-02-24.md\", \"tools/agents/drafts/changelog_2026-02-25.md\", \"tools/agents/drafts/weekly_summary_2026-02-24.md\", \"tools/agents/drafts/weekly_summary_2026-02-25.md\"], \"total\": 5}",
+      "timestamp": "2026-02-27T00:05:11.915472+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_018jbHn2oF6VQDjL6wmqMRFf",
+          "name": "list_files"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Great! I can see your drafts. You have:\n- **2 changelog drafts** (Feb 24-25)\n- **2 weekly summary drafts** (Feb 24-25)\n\nLet's look at the most recent ones:",
+      "timestamp": "2026-02-27T00:05:15.578568+00:00",
+      "tool_calls": [
+        {
+          "name": "read_file",
+          "id": "toolu_01UGBJTaqr5b5QGAYUATPahd",
+          "input": {
+            "path": "tools/agents/drafts/weekly_summary_2026-02-25.md"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \"tools/agents/drafts/weekly_summary_2026-02-25.md\", \"content\": \"# Weekly Summary \\u2014 2026-02-25\\n\\nWeek of 2026-02-25: 112 signals across 63 initiatives, involving 16 people.\\n\\n## A&M data integration\\n\\n### Progress\\n\\n- Data receiver system being developed to handle experimental data for student use (Tom)\\n\\n## A&M loop\\n\\n### Progress\\n\\n- Data receiver system being developed to handle experimental data from A&M loop for student use. (Tom)\\n\\n## BWXT patent application\\n\\n### Decisions\\n\\n- BWXT's patent application for using machine learning for reactor design was deemed questionable and problematic (John Ross)\\n\\n## Black Duck\\n\\n### Action Items\\n\\n- Black Duck study conducted to identify third-party code and licensing dependencies across all codebases\\n\\n## Black Duck study\\n\\n### Status Changes\\n\\n- Black Duck study revealed proliferated licensing issues across all code bases, leading to making Vera free software.\\n\\n## Bubble Flow Loop DT\\n\\n### Status Changes\\n\\n- Repository stale (no commits in 30 days): ut-computational-ne/bubble_flow_loop_digital_twin/sam_anl_sm25_andres\\n- Repository stale (no commits in 30 days): ut-computational-ne/bubble_flow_loop_digital_twin/inverse_modeling_heat_transfer\\n- Repository stale (no commits in 30 days): ut-computational-ne/bubble_flow_loop_digital_twin/bubble_flow_loop_modsim_tools\\n- Repository stale (no commits in 30 days): ut-computational-ne/bubble_flow_loop_digital_twin/bubble_loop_builds\\n\\n## CASL\\n\\n### Decisions\\n\\n- VERA made free due to complex licensing issues discovered from incorporated third-party code\\n\\n## CMake\\n\\n### Blockers\\n\\n- Years of pain and suffering due to missing features in publicly distributed CMake that were available in their custom version\\n- TriBITS custom CMake solution caused years of pain due to missing features that were later added to standard CMake.\\n\\n## CUVCU\\n\\n### Blockers\\n\\n- CUVCU system still under construction with delayed timeline from mid-January to end of January\\n\\n## Cobra-TF\\n\\n### Status Changes\\n\\n- Test coverage varied significantly with MPACT having 842 tests while Cobra-TF had only six tests\\n\\n## Cover Gas Loop DT\\n\\n### Status Changes\\n\\n- Repository stale (no commits in 30 days): ut-computational-ne/cover_gas_loop_digital_twin/msts_digital_twin\\n\\n## Covertilla\\n\\n### Progress\\n\\n- MPACT had 842 tests while Covertilla had only six tests, indicating uneven test coverage across packages.\\n\\n## ERCOT DT\\n\\n### Status Changes\\n\\n- Repository stale (no commits in 30 days): ut-computational-ne/ercot_digital_twin/ercot_digital_twin\\n\\n## Genfoam\\n\\n### Action Items\\n\\n- Create capability comparison table for different code stands to present internally and push improvements\\n- Create capability comparison table for different code standards to push internal improvements (Sun Myung Park)\\n\\n## Genobos\\n\\n### Action Items\\n\\n- Tom enforced test-driven development practices requiring tests to be written alongside code (Tom)\\n\\n### Status Changes\\n\\n- Tom enforced test-driven development practices in his repository with proper processes. (Tom)\\n\\n## JEDI\\n\\n### Decisions\\n\\n- Patent application for code that generates multiple neutronics code inputs from one design deemed patentable after literature review (Manu)\\n\\n## MIT Irradiation Loop DT\\n\\n### Status Changes\\n\\n- Repository stale (no commits in 30 days): ut-computational-ne/mit_irradiation_loop_digital_twin/ans_winter_2025\\n- Repository stale (no commits in 30 days): ut-computational-ne/mit_irradiation_loop_digital_twin/mit_loop_tools\\n\\n## MIT flow loop\\n\\n### Progress\\n\\n- MIT flow loop expected to operate in March-June timeframe with new detector integration (Kevin Clarno)\\n\\n### Status Changes\\n\\n- MIT flow loop expected to begin early operation in March-June timeframe with gamma detector integration.\\n\\n## MPACT\\n\\n### Progress\\n\\n- MPACT had 842 tests while Covertilla had only six tests, indicating uneven test coverage across packages.\\n\\n### Status Changes\\n\\n- Test coverage varied significantly with MPACT having 842 tests while Cobra-TF had only six tests\\n\\n## MSR Digital Twin (Open)\\n\\n### Status Changes\\n\\n- Repository stale (no commits in 30 days): ut-computational-ne/msr_digital_twin_open/progression_problems\\n- Repository stale (no commits in 30 days): ut-computational-ne/msr_digital_twin_open/msr_progression_problems\\n- Repository stale (no commits in 30 days): ut-computational-ne/msr_digital_twin_open/msr_input_generator\\n- Repository stale (no commits in 30 days): ut-computational-ne/msr_digital_twin_proprietary/msr_digital_twin_proprietary\\n\\n## NETR experiment\\n\\n### Progress\\n\\n- Currently at sample prep stage for NETR experiment with coordination completed with operations folks for the experimental window.\\n\\n### Blockers\\n\\n- Equipment tolerance issues with batched components not fitting properly through jacks, requiring manual adjustments.\\n\\n### Action Items\\n\\n- Need to verify the Cots procedures again before proceeding to irradiation day.\\n\\n## NETTL experiment\\n\\n### Blockers\\n\\n- Equipment tolerances are inadequate as components don't fit properly through jacks, requiring workarounds\\n\\n### Action Items\\n\\n- Need to verify and coordinate with operations folks for the irradiation day window\\n\\n### Status Changes\\n\\n- Team is currently in sample prep phase at NETTL facility preparing for upcoming experiment\\n\\n## NeutronOS\\n\\n### Progress\\n\\n- Team is designing a digital version of the reactor log as part of NeutronOS development.\\n- Team is designing a digital version of the reactor log as part of NeutronOS workflow integration.\\n\\n## OP-1\\n\\n### Action Items\\n\\n- Need to digitize reactor log and startup checks as attachments to operating procedures OP-1 and OP-2\\n\\n## OP-2\\n\\n### Action Items\\n\\n- Need to digitize reactor log and startup checks as attachments to operating procedures OP-1 and OP-2\\n\\n## OPERA-1\\n\\n### Progress\\n\\n- Operating procedures OPERA-1 (startup/shutdown) and OPERA-2 (reactor operation) are being followed for manual and auto mode operations.\\n\\n### Action Items\\n\\n- Digitize reactor logs and startup checks that are attachments to operating procedures OPERA-1 and OPERA-2.\\n\\n## OPERA-2\\n\\n### Progress\\n\\n- Operating procedures OPERA-1 (startup/shutdown) and OPERA-2 (reactor operation) are being followed for manual and auto mode operations.\\n\\n### Action Items\\n\\n- Digitize reactor logs and startup checks that are attachments to operating procedures OPERA-1 and OPERA-2.\\n\\n## Oak Ridge molten salt reactor validation\\n\\n### Progress\\n\\n- Completed first validation attempt for OpenMC molten salt reactor model showing close alignment between experimental and simulated gamma spectra.\\n\\n## OffGas Digital Twin\\n\\n### Status Changes\\n\\n- Repository stale (no commits in 30 days): ut-computational-ne/off_gas_digital_twin/offgas_inverse_modeling\\n\\n## OpenMC model development\\n\\n### Decisions\\n\\n- Decided to implement time-dependent simulation for sodium-24 and Cl-38 isotopes with short half-lives\\n\\n## OpenMC model validation\\n\\n### Progress\\n\\n- Successfully completed first validation attempt of OpenMC model showing close alignment between experimental and simulated gamma spectrum\\n\\n## OpenMC molten salt reactor modeling\\n\\n### Progress\\n\\n- Completed first validation attempt for OpenMC molten salt reactor model showing close alignment between experimental and simulated gamma spectra.\\n- Developing time-dependent Monte Carlo simulation capabilities for short half-life isotopes sodium-24 and argon-38 in molten salt reactors.\\n\\n## PNT system\\n\\n### Progress\\n\\n- PNT system and neutron activation analysis experiments are operating under established experiment authorizations.\\n- PNT system in neutron activation lab enables automated sample analysis with predefined timing for neutron activation analysis experiments.\\n\\n## QA/QC\\n\\n### Action Items\\n\\n- Black Duck study conducted to identify third-party code and licensing dependencies across all codebases\\n\\n## SyTH\\n\\n### Status Changes\\n\\n- Repository stale (no commits in 30 days): ut-computational-ne/ut-computational-ne\\n\\n## TRIGA Digital Twin\\n\\n### Status Changes\\n\\n- Repository stale (no commits in 30 days): ut-computational-ne/triga_digital_twin/NETL_BackPacks\\n- TRIGA facility construction delayed from mid-January to end of\\n... (truncated)\", \"size\": 17995, \"truncated\": true}",
+      "timestamp": "2026-02-27T00:05:15.578627+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01UGBJTaqr5b5QGAYUATPahd",
+          "name": "read_file"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Excellent! Here's your most recent **weekly summary draft** from Feb 25. It contains a comprehensive overview of:\n\n## \ud83d\udcca **Summary Stats:**\n- **112 signals** across **63 initiatives** \n- **16 people** involved\n\n## \ud83d\udd0d **Key Highlights I can see:**\n- **Repository staleness alerts** across multiple digital twins (Bubble Flow Loop, MIT Loop, MSR, etc.)\n- **NETR/NETTL experiment progress** - sample prep stage with some equipment tolerance issues\n- **NeutronOS progress** - designing digital reactor log\n- **OpenMC validation success** - molten salt reactor model alignment with experimental data\n- **VERA licensing decision** - made free due to complex third-party code issues\n\nLet me also check the changelog:",
+      "timestamp": "2026-02-27T00:05:22.014327+00:00",
+      "tool_calls": [
+        {
+          "name": "read_file",
+          "id": "toolu_019NEDxmWRBHnkD9mDmWjJCy",
+          "input": {
+            "path": "tools/agents/drafts/changelog_2026-02-25.md"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \"tools/agents/drafts/changelog_2026-02-25.md\", \"content\": \"# Changelog \\u2014 2026-02-25\\n\\n> Week of 2026-02-25: 112 signals across 63 initiatives, involving 16 people.\\n\\n| Initiative | Type | Detail | People | Source | Confidence |\\n|-----------|------|--------|--------|--------|------------|\\n| A&M data integration | progress | Data receiver system being developed to handle experimental data for student use | Tom | voice | 0.7 |\\n| A&M loop | progress | Data receiver system being developed to handle experimental data from A&M loop for student use. | Tom | voice | 0.7 |\\n| BWXT patent application | decision | BWXT's patent application for using machine learning for reactor design was deemed questionable and problematic | John Ross | voice | 0.7 |\\n| Black Duck | action_item | Black Duck study conducted to identify third-party code and licensing dependencies across all codebases | \\u2014 | voice | 0.7 |\\n| Black Duck study | status_change | Black Duck study revealed proliferated licensing issues across all code bases, leading to making Vera free software. | \\u2014 | voice | 0.7 |\\n| Bubble Flow Loop DT | status_change | Repository stale (no commits in 30 days): ut-computational-ne/bubble_flow_loop_digital_twin/sam_anl_sm25_andres | \\u2014 | gitlab_diff | 1.0 |\\n| Bubble Flow Loop DT | status_change | Repository stale (no commits in 30 days): ut-computational-ne/bubble_flow_loop_digital_twin/inverse_modeling_heat_transfer | \\u2014 | gitlab_diff | 1.0 |\\n| Bubble Flow Loop DT | status_change | Repository stale (no commits in 30 days): ut-computational-ne/bubble_flow_loop_digital_twin/bubble_flow_loop_modsim_tools | \\u2014 | gitlab_diff | 1.0 |\\n| Bubble Flow Loop DT | status_change | Repository stale (no commits in 30 days): ut-computational-ne/bubble_flow_loop_digital_twin/bubble_loop_builds | \\u2014 | gitlab_diff | 1.0 |\\n| CASL | decision | VERA made free due to complex licensing issues discovered from incorporated third-party code | \\u2014 | voice | 0.7 |\\n| CMake | blocker | Years of pain and suffering due to missing features in publicly distributed CMake that were available in their custom version | \\u2014 | voice | 0.7 |\\n| CMake | blocker | TriBITS custom CMake solution caused years of pain due to missing features that were later added to standard CMake. | \\u2014 | voice | 0.7 |\\n| CUVCU | blocker | CUVCU system still under construction with delayed timeline from mid-January to end of January | \\u2014 | voice | 0.7 |\\n| Cobra-TF | status_change | Test coverage varied significantly with MPACT having 842 tests while Cobra-TF had only six tests | \\u2014 | voice | 0.7 |\\n| Cover Gas Loop DT | status_change | Repository stale (no commits in 30 days): ut-computational-ne/cover_gas_loop_digital_twin/msts_digital_twin | \\u2014 | gitlab_diff | 1.0 |\\n| Covertilla | progress | MPACT had 842 tests while Covertilla had only six tests, indicating uneven test coverage across packages. | \\u2014 | voice | 0.7 |\\n| ERCOT DT | status_change | Repository stale (no commits in 30 days): ut-computational-ne/ercot_digital_twin/ercot_digital_twin | \\u2014 | gitlab_diff | 1.0 |\\n| Genfoam | action_item | Create capability comparison table for different code stands to present internally and push improvements | \\u2014 | voice | 0.7 |\\n| Genfoam | action_item | Create capability comparison table for different code standards to push internal improvements | Sun Myung Park | voice | 0.7 |\\n| Genobos | action_item | Tom enforced test-driven development practices requiring tests to be written alongside code | Tom | voice | 0.7 |\\n| Genobos | status_change | Tom enforced test-driven development practices in his repository with proper processes. | Tom | voice | 0.7 |\\n| JEDI | decision | Patent application for code that generates multiple neutronics code inputs from one design deemed patentable after literature review | Manu | voice | 0.7 |\\n| MIT Irradiation Loop DT | status_change | Repository stale (no commits in 30 days): ut-computational-ne/mit_irradiation_loop_digital_twin/ans_winter_2025 | \\u2014 | gitlab_diff | 1.0 |\\n| MIT Irradiation Loop DT | status_change | Repository stale (no commits in 30 days): ut-computational-ne/mit_irradiation_loop_digital_twin/mit_loop_tools | \\u2014 | gitlab_diff | 1.0 |\\n| MIT flow loop | progress | MIT flow loop expected to operate in March-June timeframe with new detector integration | Kevin Clarno | voice | 0.7 |\\n| MIT flow loop | status_change | MIT flow loop expected to begin early operation in March-June timeframe with gamma detector integration. | \\u2014 | voice | 0.7 |\\n| MPACT | progress | MPACT had 842 tests while Covertilla had only six tests, indicating uneven test coverage across packages. | \\u2014 | voice | 0.7 |\\n| MPACT | status_change | Test coverage varied significantly with MPACT having 842 tests while Cobra-TF had only six tests | \\u2014 | voice | 0.7 |\\n| MSR Digital Twin (Open) | status_change | Repository stale (no commits in 30 days): ut-computational-ne/msr_digital_twin_open/progression_problems | \\u2014 | gitlab_diff | 1.0 |\\n| MSR Digital Twin (Open) | status_change | Repository stale (no commits in 30 days): ut-computational-ne/msr_digital_twin_open/msr_progression_problems | \\u2014 | gitlab_diff | 1.0 |\\n| MSR Digital Twin (Open) | status_change | Repository stale (no commits in 30 days): ut-computational-ne/msr_digital_twin_open/msr_input_generator | \\u2014 | gitlab_diff | 1.0 |\\n| MSR Digital Twin (Open) | status_change | Repository stale (no commits in 30 days): ut-computational-ne/msr_digital_twin_proprietary/msr_digital_twin_proprietary | \\u2014 | gitlab_diff | 1.0 |\\n| NETR experiment | action_item | Need to verify the Cots procedures again before proceeding to irradiation day. | \\u2014 | voice | 0.7 |\\n| NETR experiment | blocker | Equipment tolerance issues with batched components not fitting properly through jacks, requiring manual adjustments. | \\u2014 | voice | 0.7 |\\n| NETR experiment | progress | Currently at sample prep stage for NETR experiment with coordination completed with operations folks for the experimental window. | \\u2014 | voice | 0.7 |\\n| NETTL experiment | action_item | Need to verify and coordinate with operations folks for the irradiation day window | \\u2014 | voice | 0.7 |\\n| NETTL experiment | blocker | Equipment tolerances are inadequate as components don't fit properly through jacks, requiring workarounds | \\u2014 | voice | 0.7 |\\n| NETTL experiment | status_change | Team is currently in sample prep phase at NETTL facility preparing for upcoming experiment | \\u2014 | voice | 0.7 |\\n| NeutronOS | progress | Team is designing a digital version of the reactor log as part of NeutronOS development. | \\u2014 | voice | 0.7 |\\n| NeutronOS | progress | Team is designing a digital version of the reactor log as part of NeutronOS workflow integration. | \\u2014 | voice | 0.7 |\\n| OP-1 | action_item | Need to digitize reactor log and startup checks as attachments to operating procedures OP-1 and OP-2 | \\u2014 | voice | 0.7 |\\n| OP-2 | action_item | Need to digitize reactor log and startup checks as attachments to operating procedures OP-1 and OP-2 | \\u2014 | voice | 0.7 |\\n| OPERA-1 | action_item | Digitize reactor logs and startup checks that are attachments to operating procedures OPERA-1 and OPERA-2. | \\u2014 | voice | 0.7 |\\n| OPERA-1 | progress | Operating procedures OPERA-1 (startup/shutdown) and OPERA-2 (reactor operation) are being followed for manual and auto mode operations. | \\u2014 | voice | 0.7 |\\n| OPERA-2 | action_item | Digitize reactor logs and startup checks that are attachments to operating procedures OPERA-1 and OPERA-2. | \\u2014 | voice | 0.7 |\\n| OPERA-2 | progress | Operating procedures OPERA-1 (startup/shutdown) and OPERA-2 (reactor operation) are being followed for manual and auto mode operations. | \\u2014 | voice | 0.7 |\\n| Oak Ridge molten salt reactor validation | progress | Completed first validation attempt for OpenMC molten salt reactor model showing close alignment between experimental and simulated gamma spectra. | \\u2014 | voice | 0.7 |\\n| OffGas Digital Twin | status_change | Repository stale (no commits in 30 days): ut-computational-ne/off_gas_digital_twin/offgas_inverse_modeling | \\u2014 | gitlab_diff | 1.0 |\\n| OpenMC model development | decision | Decided to imp\\n... (truncated)\", \"size\": 22844, \"truncated\": true}",
+      "timestamp": "2026-02-27T00:05:22.014392+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_019NEDxmWRBHnkD9mDmWjJCy",
+          "name": "read_file"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Perfect! Now I can see both your **draft documents**:\n\n## \ud83d\udccb **Your Current Drafts:**\n\n### **1. Weekly Summary** (human-readable format)\n- Organized by initiative with sections for Progress, Decisions, Action Items, Blockers, Status Changes\n- Great for sharing with Kevin Clarno and stakeholders\n\n### **2. Changelog** (structured data format) \n- Table format with Initiative, Type, Detail, People, Source, Confidence\n- More granular, shows data sources (voice memos vs GitLab diffs)\n- Higher confidence (1.0) for GitLab-derived data vs voice (0.7)\n\n## \ud83c\udfaf **Key Insights from Your Drafts:**\n\n**\ud83d\udea8 Repository Staleness Alert:** Multiple DT repos haven't had commits in 30+ days\n**\ud83e\uddea Experiments Active:** NETR/NETTL in sample prep with equipment tolerance issues  \n**\u2696\ufe0f Licensing Decision:** VERA made free software due to complex third-party dependencies\n**\ud83d\udd2c Technical Progress:** OpenMC MSR model validation successful\n\n## \ud83d\udee0\ufe0f **Next Steps:**\nThese drafts likely need your **review and approval** before moving to the processed folder. The sense pipeline is designed for human-in-the-loop approval for safety-adjacent contexts.\n\nWould you like me to help you review specific sections or check what other files might be in your inbox?",
+      "timestamp": "2026-02-27T00:05:31.699731+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-26T23:53:15.820284+00:00",
+  "updated_at": "2026-02-27T00:05:31.699800+00:00"
+}

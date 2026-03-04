@@ -1,0 +1,19 @@
+{
+  "session_id": "b0164facedb8",
+  "title": "exut'",
+  "messages": [
+    {
+      "role": "user",
+      "content": "exut'",
+      "timestamp": "2026-02-27T08:17:59.921439+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "I notice you wrote \"exut'\" - did you mean to type \"neut\" (the Neutron OS CLI command)? \n\nIf you're looking to run a neut command, I can help you with various operations like:\n- Document management (generate, publish, check status)\n- Sense pipeline operations (check inbox, ingest data, write notes)\n- Repository exploration (list files, read content)\n\nWhat would you like to do?",
+      "timestamp": "2026-02-27T08:18:03.638275+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-27T08:13:21.557900+00:00",
+  "updated_at": "2026-02-27T08:18:03.638292+00:00"
+}

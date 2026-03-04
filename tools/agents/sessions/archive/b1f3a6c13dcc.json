@@ -1,0 +1,11 @@
+{
+  "session_id": "b1f3a6c13dcc",
+  "title": "Typo recovery: brif",
+  "messages": [],
+  "context": {
+    "context_markdown": "# CLI Typo Recovery\n\nThe user typed `neut sense brif` \u2014 probably meant `brief`.\n\nHelp them with their intended command. Available sense commands: brief, media, draft, status, ingest, review, suggest, sources, subscribers, routes, providers, serve, voice, timestamps, pipeline",
+    "source": "neut_sense_typo"
+  },
+  "created_at": "2026-02-27T07:20:05.950645+00:00",
+  "updated_at": ""
+}

@@ -1,0 +1,366 @@
+{
+  "session_id": "bca517a24c42",
+  "title": "Briefing: executive",
+  "messages": [
+    {
+      "role": "user",
+      "content": "The Black Duck thing is old news.",
+      "timestamp": "2026-02-27T09:01:43.991156+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "I understand - the Black Duck licensing study and VERA becoming a free product due to third-party dependencies is old information that shouldn't be highlighted as current news in this week's briefing.\n\nWould you like me to help you:\n\n1. **Filter out old signals** - I could help identify which other signals in this briefing might be outdated\n2. **Check the sense pipeline** - Look at what sources are feeding into the system and see if there are stale signals being picked up\n3. **Review the signal extraction** - The confidence is only 60%, which suggests the system might be surfacing older content as new\n\nThe briefing shows 61 signals analyzed, but if some are outdated, that could explain why the summary includes historical issues rather than focusing on truly current developments.\n\nWhat would be most helpful - should I check the sense pipeline status or help you identify other potentially stale signals in this briefing?",
+      "timestamp": "2026-02-27T09:01:50.663868+00:00"
+    },
+    {
+      "role": "user",
+      "content": "1 - yes filter our old news",
+      "timestamp": "2026-02-27T09:02:06.583902+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "timestamp": "2026-02-27T09:02:09.408132+00:00",
+      "tool_calls": [
+        {
+          "name": "sense_status",
+          "id": "toolu_01TXKYyMCpDFffKpMX3gUzxf",
+          "input": {}
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"inbox_raw\": {\"root\": 1}, \"processed\": 31, \"drafts\": 3}",
+      "timestamp": "2026-02-27T09:02:09.408161+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01TXKYyMCpDFffKpMX3gUzxf",
+          "name": "sense_status"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Let me check the recent signals to help identify what might be outdated. Looking at the executive briefing you shared, here are the signals I'd flag as potentially **old news** based on typical project timelines:\n\n## Likely Outdated Signals:\n- **Black Duck study / VERA licensing** - You confirmed this is old\n- **\"Years of pain and suffering\" with CMake** - Sounds like historical technical debt, not new development\n- **BWXT patent application being \"problematic\"** - Patent disputes typically take months/years to resolve, so this could be stale\n- **UIUC facility construction delays** - Construction updates are often repetitive status reports rather than new developments\n\n## Potentially Current:\n- **MIT flow loop March-June timeline** - Specific near-term dates suggest recent planning\n- **Patent application submission for neutronics code generation** - Could be recent IP development\n- **Test coverage numbers (MPACT 842 vs Cobra-TF 6 tests)** - Specific metrics suggest recent analysis\n- **Decision on homegrown TriBITS** - Architecture decisions are typically current when reported\n\nThe 60% confidence score suggests the system is indeed picking up mixed signals. With only 1 item in the raw inbox and 31 processed, it seems like the pipeline might be re-processing older content or the time window is too broad.\n\nWould you like me to check what's currently in the inbox or help refine the signal extraction to focus on truly recent developments?",
+      "timestamp": "2026-02-27T09:02:19.149197+00:00"
+    },
+    {
+      "role": "user",
+      "content": "what's Ben up to?",
+      "timestamp": "2026-02-27T09:02:43.981067+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Based on the personal context I have, here's what Ben Booth is currently focused on:\n\n## Current Priorities:\n1. **Program Tracker** - Published v1 to OneDrive, waiting for Kevin Clarno's feedback\n2. **neut sense pipeline** - Working on voice memo + Teams transcript \u2192 structured signals (which generated the briefing you just reviewed)\n3. **GitLab weekly diff summaries** - Converting technical changes into human-readable status reports\n4. **UT LLM license procurement** - Budget approved but licenses not yet in place\n5. **NuclearBench NEUP pre-application** - Grant proposal work\n\n## Active Management/Mentoring:\n- **Max Cohen Hoffing** (tacmch) - NETL PXI hardware/DAQ work\n- **Sam Queralt** (samqueralt) - TRIGA DT data engineering  \n- **Jeongwon Seo (Jay)** - TRIGA DT lead (has 3 GitLab accounts!)\n\n## Broader Initiative Involvement:\nLeading/contributing to **NeutronOS platform development**, **AI infrastructure** for the department, and coordinating the **NEUP 2026 grant portfolio** across multiple PIs.\n\nThe sense pipeline you just reviewed is one of his active projects - it's designed to automatically digest program signals from voice memos, Teams transcripts, GitLab activity, etc. and generate executive briefings like the one you saw.\n\nIs there something specific about Ben's work you wanted to know more about?",
+      "timestamp": "2026-02-27T09:02:51.336297+00:00"
+    },
+    {
+      "role": "user",
+      "content": "No. Tell more more about Eric's progress.",
+      "timestamp": "2026-02-27T09:04:05.498016+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "I don't have specific information about Eric's current progress in my available context. The personal context I have focuses on Ben Booth's priorities and the people he directly manages/mentors (Max, Sam, and Jay), but doesn't include detailed updates on other team members like Eric.\n\nTo get Eric's current status, I could:",
+      "timestamp": "2026-02-27T09:04:09.501511+00:00",
+      "tool_calls": [
+        {
+          "name": "read_file",
+          "id": "toolu_014tcwQfaa5MDiMURXPZZ7wW",
+          "input": {
+            "path": "tools/agents/config/people.md"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \"tools/agents/config/people.md\", \"content\": \"# Team Roster \\u2014 UT Computational Nuclear Engineering\\n# Used by the correlator to map mentions in transcripts, messages, and notes\\n# to known team members. Keep updated as team changes.\\n#\\n# IMPORTANT: The Aliases column is critical for speech-to-text correction.\\n# Include nicknames, phonetic mishearings, and common variations.\\n# Whisper often produces: \\\"so-ha\\\" \\u2192 Soha, \\\"jay\\\" \\u2192 Jay (Jeongwon), etc.\\n\\n| Name | Aliases | GitLab | Role | Initiative(s) |\\n|------|---------|--------|------|---------------|\\n| Kevin Clarno | Kevin | clarno | Dept. Head | All (sponsor) |\\n| Cole Gentry | Cole | cgentry7 | Sr. Eng. Scientist | TRIGA DT, Bubble Flow, MIT Loop, SyTH |\\n| Ondrej Chvala | Ondrej | \\u2014 | Sr. Research Scientist | MSR DT, NuclearBench, OffGas DT |\\n| Ben Collins | Ben C. | \\u2014 | 50% UT / 50% Veracity CTO | SyTH, MPACT |\\n| Nick Luciano | Nick | npl436 | Research Associate | TRIGA DT, DTCS |\\n| Jeongwon Seo | Jay, J | jay-nuclear-phd, starone1204 | Project Lead | TRIGA DT |\\n| Charlie Owen | Charlie | charlieowen | Student | SyTH |\\n| Eric Allen Wieser | Eric | \\u2014 | Student | JEDI |\\n| Alex Edwards | Alex E. | alexanderedwards2002 | Student | Nuclear Cybersecurity / DTCS |\\n| Max Cohen Hoffing | Max | tacmch | Student | NETL PXI |\\n| Sam Queralt | Sam | samqueralt | Student | TRIGA DT |\\n| Sun Myung Park | Sun | smpark3, smpark7 | Student | MSR DT |\\n| Andres Fierro | Andres | andresfierro231 | Student | Bubble Flow Loop |\\n| Eduardo Borges Issa | Eduardo | eduardoissa2195 | Undergrad | Bubble Flow Loop |\\n| Wesley Lao | Wesley, Wes | wgl | Student | Bubble Flow Loop |\\n| Phoebe Kim | Phoebe | phoebekim12006 | Student | TRIGA DT |\\n| Soha Aslam | Soha, so-ha, so-ja | sohhae | Student | TRIGA DT, AI infra |\\n| Shayan Shahbazi | Shayan | \\u2014 | Postdoc | MSR DT |\\n| Alex Macris | Alex M. | macris | Student | OffGas DT |\\n| John Ross | John R. | jrr4646 | Natura (zero-cost UT) | Natura partnership |\\n| John Cassibry | John C. | jcassibry | IT | Infrastructure |\\n| Andrea Melendez | Andrea | \\u2014 | Admin | Operations |\\n| Jim Terry | Jim | \\u2014 | Student | Reactor ops UX |\\n| William Charlton | Bill | \\u2014 | NETL Director | Isotope production |\\n| Ben Booth | Ben, Ben B. | bbooth | Sr. Eng. Research Scientist | NeutronOS, AI Infra, NuclearBench |\\n\", \"size\": 2257, \"truncated\": false}",
+      "timestamp": "2026-02-27T09:04:09.501550+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_014tcwQfaa5MDiMURXPZZ7wW",
+          "name": "read_file"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Based on the team roster, **Eric Allen Wieser** is a student working on **JEDI** (Reactor Economics), supervised by Kevin Clarno.\n\nHowever, the executive briefing you reviewed doesn't contain any specific mentions of Eric's progress on JEDI. The signals were more focused on:\n- TRIGA/MIT facility work\n- Technical infrastructure (CMake, testing)\n- Patent applications\n- Licensing issues\n\nTo get Eric's current status, I'd need to either:\n1. Check if there are any specific signals about JEDI or reactor economics work in the sense pipeline\n2. Look for GitLab activity (though Eric doesn't have a listed GitLab username)\n3. Check if there are any recent voice memos or transcripts mentioning Eric's work\n\nWould you like me to search for any JEDI-related signals or check what other information might be available about the reactor economics initiative?",
+      "timestamp": "2026-02-27T09:04:15.832081+00:00"
+    },
+    {
+      "role": "user",
+      "content": "Yes. JEDI",
+      "timestamp": "2026-02-27T09:04:26.138284+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "timestamp": "2026-02-27T09:04:47.648165+00:00",
+      "tool_calls": [
+        {
+          "name": "write_inbox_note",
+          "id": "toolu_01HH4eBos2aQGWpWbxsqoyn5",
+          "input": {
+            "text": "Query: What is the current status of the JEDI (Reactor Economics) initiative? Any recent progress from Eric Allen Wieser or updates on reactor economics modeling work?"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"error\": \"Rejected by user\"}",
+      "timestamp": "2026-02-27T09:04:47.648219+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01HH4eBos2aQGWpWbxsqoyn5",
+          "name": "write_inbox_note"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Let me search the existing documentation for JEDI-related information:",
+      "timestamp": "2026-02-27T09:04:51.151836+00:00",
+      "tool_calls": [
+        {
+          "name": "list_files",
+          "id": "toolu_01Umy7ADUDSZChqPJbuKoY47",
+          "input": {
+            "path": "docs",
+            "pattern": "*jedi*"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \"docs\", \"directories\": [], \"files\": [], \"total\": 0}",
+      "timestamp": "2026-02-27T09:04:51.151860+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01Umy7ADUDSZChqPJbuKoY47",
+          "name": "list_files"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "timestamp": "2026-02-27T09:04:53.224293+00:00",
+      "tool_calls": [
+        {
+          "name": "list_files",
+          "id": "toolu_014vpb2mUCuNfNX1aGpqsJfQ",
+          "input": {
+            "path": ".",
+            "pattern": "*jedi*"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \".\", \"directories\": [], \"files\": [], \"total\": 0}",
+      "timestamp": "2026-02-27T09:04:53.224325+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_014vpb2mUCuNfNX1aGpqsJfQ",
+          "name": "list_files"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Let me check the tools/agents directory for any processed signals that might mention JEDI or reactor economics:",
+      "timestamp": "2026-02-27T09:04:55.624232+00:00",
+      "tool_calls": [
+        {
+          "name": "list_files",
+          "id": "toolu_01VGLqaEzvcvmeRP9PcHAyHz",
+          "input": {
+            "path": "tools/agents"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \"tools/agents\", \"directories\": [\"tools/agents/__pycache__/\", \"tools/agents/approved/\", \"tools/agents/chat/\", \"tools/agents/config/\", \"tools/agents/config.example/\", \"tools/agents/doctor/\", \"tools/agents/drafts/\", \"tools/agents/inbox/\", \"tools/agents/orchestrator/\", \"tools/agents/sense/\", \"tools/agents/sessions/\", \"tools/agents/setup/\", \"tools/agents/subscribers/\"], \"files\": [\"tools/agents/self_heal.py\"], \"total\": 14}",
+      "timestamp": "2026-02-27T09:04:55.624262+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01VGLqaEzvcvmeRP9PcHAyHz",
+          "name": "list_files"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "timestamp": "2026-02-27T09:04:59.927756+00:00",
+      "tool_calls": [
+        {
+          "name": "list_files",
+          "id": "toolu_01MGZWw38ha4HoYerb9j3VZ5",
+          "input": {
+            "path": "tools/agents/approved",
+            "pattern": "*"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"path\": \"tools/agents/approved\", \"directories\": [], \"files\": [\"tools/agents/approved/.gitkeep\"], \"total\": 1}",
+      "timestamp": "2026-02-27T09:04:59.927787+00:00",
+      "tool_calls": [
+        {
+          "tool_call_id": "toolu_01MGZWw38ha4HoYerb9j3VZ5",
+          "name": "list_files"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "Based on my search, I don't see any specific JEDI-related documentation or processed signals in the current repository state. From what I can tell:\n\n## What I Know About JEDI:\n- **Full name:** JEDI (Reactor Economics)  \n- **Lead:** Eric Allen Wieser (student)\n- **Supervisor:** Kevin Clarno\n- **Focus:** Reactor economics modeling/analysis\n\n## What's Missing:\nThe executive briefing you reviewed earlier didn't contain any JEDI-related signals, and I don't see dedicated documentation or recent processed signals about reactor economics work in the sense pipeline.\n\nThis could mean:\n1. JEDI work is happening but not being captured in the current sense sources (voice memos, Teams transcripts, GitLab activity)\n2. Eric might be working more independently or through different communication channels\n3. The work might be in early stages without frequent status updates\n4. Economic modeling work might not generate the same type of technical signals as hardware/software development\n\nWould you like me to check if there are any specific references to Eric or reactor economics in the broader documentation, or would you prefer to get a direct update on JEDI's status through other means?",
+      "timestamp": "2026-02-27T09:05:07.309234+00:00"
+    },
+    {
+      "role": "user",
+      "content": "How about Ethan on the bubble loop?",
+      "timestamp": "2026-02-27T09:05:22.810826+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Looking at the team roster, I don't see anyone named Ethan listed. For the **Bubble Flow Loop** initiative, the team members I have documented are:\n\n## Bubble Flow Loop Team:\n- **Cole Gentry** (Sr. Engineering Scientist) - Lead\n- **Andres Fierro** (Student) - andresfierro231 on GitLab\n- **Eduardo Borges Issa** (Undergrad) - eduardoissa2195 on GitLab  \n- **Wesley Lao** (Student) - wgl on GitLab\n\nIt's possible that:\n1. **Ethan is a new team member** not yet added to the roster\n2. **Ethan might go by a different name** in the official records (nickname vs. full name)\n3. **Ethan might be on a different initiative** but you're thinking of bubble loop work\n\nThe executive briefing you reviewed mentioned \"MIT's flow loop is on track for March-June operation with gamma detector integration\" - but that was specifically about the **MIT Irradiation Loop** (separate from the Bubble Flow Loop), which is also led by Cole Gentry.\n\nDo you know Ethan's last name, or could he be one of the students listed under a different name? Or perhaps he's working on the MIT loop rather than the bubble flow loop?",
+      "timestamp": "2026-02-27T09:05:30.577655+00:00"
+    }
+  ],
+  "context": {
+    "context_markdown": "# Executive Briefing\n\n**Time window:** 2026-02-20T08:59:32.137391+00:00 \u2192 2026-02-27T08:59:32.137391+00:00\n**Signals analyzed:** 61\n**Breakdown:** 22 progress, 11 action_item, 10 status_change, 9 decision, 9 blocker\n**Confidence:** 60%\n\n## Summary\n\n**Executive Briefing - Weekly Operations Summary**\n\nSeveral critical blockers are impacting project timelines and require immediate attention. The UIUC facility construction has been delayed from mid-January to end of January with no confirmed completion date, while years of technical debt from missing CMake features continue to create development bottlenecks. Additionally, complex third-party licensing dependencies discovered through a Black Duck study have forced VERA to become a free product, highlighting the need for better intellectual property management across all code packages.\n\nKey technical progress is advancing despite these challenges. MIT's flow loop is on track for March-June operation with gamma detector integration, and a patent application has been submitted for automated neutronics code generation from design specifications. However, BWXT's competing machine learning patent application has been flagged as problematic, requiring potential defensive action. The team has made strategic decisions to develop a homegrown TriBITS version for multi-repository management and enforce test-driven development practices, though current test coverage remains inconsistent with MPACT having 842 tests versus Cobra-TF's six.\n\nThe organization is clearly addressing foundational technical infrastructure issues while maintaining forward momentum on core research deliverables. The emphasis on testing requirements, licensing compliance, and standardized development practices suggests a maturation phase, though execution consistency across different code packages remains uneven.\n\n## Key Signals\n\n- **[decision]** BWXT's patent application for using machine learning for reactor design was deemed questionable and problematic\n- **[decision]** Decision made to create homegrown TriBITS version for multi-repository CMake management instead of using publicly available tools\n- **[blocker]** CUVCU system still under construction with delayed timeline from mid-January to end of January\n- **[blocker]** Years of pain and suffering due to missing features in publicly distributed CMake that were available in their custom version\n- **[action_item]** Create capability comparison table for different code stands to present internally and push improvements",
+    "context_data": {
+      "briefing_id": "b70acbc29149",
+      "generated_at": "2026-02-27T08:59:41.120130+00:00",
+      "time_window_start": "2026-02-20T08:59:32.137391+00:00",
+      "time_window_end": "2026-02-27T08:59:32.137391+00:00",
+      "summary": "**Executive Briefing - Weekly Operations Summary**\n\nSeveral critical blockers are impacting project timelines and require immediate attention. The UIUC facility construction has been delayed from mid-January to end of January with no confirmed completion date, while years of technical debt from missing CMake features continue to create development bottlenecks. Additionally, complex third-party licensing dependencies discovered through a Black Duck study have forced VERA to become a free product, highlighting the need for better intellectual property management across all code packages.\n\nKey technical progress is advancing despite these challenges. MIT's flow loop is on track for March-June operation with gamma detector integration, and a patent application has been submitted for automated neutronics code generation from design specifications. However, BWXT's competing machine learning patent application has been flagged as problematic, requiring potential defensive action. The team has made strategic decisions to develop a homegrown TriBITS version for multi-repository management and enforce test-driven development practices, though current test coverage remains inconsistent with MPACT having 842 tests versus Cobra-TF's six.\n\nThe organization is clearly addressing foundational technical infrastructure issues while maintaining forward momentum on core research deliverables. The emphasis on testing requirements, licensing compliance, and standardized development practices suggests a maturation phase, though execution consistency across different code packages remains uneven.",
+      "signal_count": 61,
+      "signals_by_type": {
+        "decision": 9,
+        "action_item": 11,
+        "progress": 22,
+        "blocker": 9,
+        "status_change": 10
+      },
+      "key_signals": [
+        {
+          "source": "voice",
+          "timestamp": "2026-02-24T07:16:28.230664+00:00",
+          "raw_text": " Manu, because they were like, we can't find anyone who has written a code that writes code inputs for new tronics. From one design, multiple code inputs for new tronics, it looks like this is not patentable. Now that we've looked in the literature, it's not there. Yeah. That's so stupid. So yeah, they're trying to patent that. I mean, that's legit. Yeah, that's all a jet design. Yeah, it's totally patentable. But I think BWXTs, they have one word, it's just like using machine learning for desig",
+          "people": [
+            "John Ross"
+          ],
+          "initiatives": [
+            "BWXT patent application"
+          ],
+          "signal_type": "decision",
+          "detail": "BWXT's patent application for using machine learning for reactor design was deemed questionable and problematic",
+          "confidence": 0.7,
+          "metadata": {
+            "filename": "J.J. Pickle Research Campus 4_20260224_064137.m4a",
+            "llm_provider": "anthropic",
+            "original_file": "J.J. Pickle Research Campus 4_20260224_064137.m4a"
+          }
+        },
+        {
+          "source": "voice",
+          "timestamp": "2026-02-24T11:23:06.866424+00:00",
+          "raw_text": " We need to make our own homegrown version, TriBITS, make our own homegrown version of this stuff that's out there because I know this is the ideal way I'm doing it. And then there's pain and suffering for years because there were features that were nice, that were not in the publicly distributed in the CMake. But then eventually it was added to the seemake and yet you were bound to trivets. And it took a long time to finally pull it out. What turned it into just her test arms? It was for multi-",
+          "people": [],
+          "initiatives": [
+            "TriBITS"
+          ],
+          "signal_type": "decision",
+          "detail": "Decision made to create homegrown TriBITS version for multi-repository CMake management instead of using publicly available tools",
+          "confidence": 0.7,
+          "metadata": {
+            "filename": "Chemical and Petroleum Engineering Building 2.m4a",
+            "llm_provider": "anthropic",
+            "original_file": "Chemical and Petroleum Engineering Building 2.m4a",
+            "used_corrected": true
+          },
+          "originator": "",
+          "originator_notified": false,
+          "feedback_received": false
+        },
+        {
+          "source": "voice",
+          "timestamp": "2026-02-24T07:16:28.230664+00:00",
+          "raw_text": " Manu, because they were like, we can't find anyone who has written a code that writes code inputs for new tronics. From one design, multiple code inputs for new tronics, it looks like this is not patentable. Now that we've looked in the literature, it's not there. Yeah. That's so stupid. So yeah, they're trying to patent that. I mean, that's legit. Yeah, that's all a jet design. Yeah, it's totally patentable. But I think BWXTs, they have one word, it's just like using machine learning for desig",
+          "people": [],
+          "initiatives": [
+            "CUVCU"
+          ],
+          "signal_type": "blocker",
+          "detail": "CUVCU system still under construction with delayed timeline from mid-January to end of January",
+          "confidence": 0.7,
+          "metadata": {
+            "filename": "J.J. Pickle Research Campus 4_20260224_064137.m4a",
+            "llm_provider": "anthropic",
+            "original_file": "J.J. Pickle Research Campus 4_20260224_064137.m4a"
+          }
+        },
+        {
+          "source": "voice",
+          "timestamp": "2026-02-24T11:23:06.866424+00:00",
+          "raw_text": " We need to make our own homegrown version, TriBITS, make our own homegrown version of this stuff that's out there because I know this is the ideal way I'm doing it. And then there's pain and suffering for years because there were features that were nice, that were not in the publicly distributed in the CMake. But then eventually it was added to the seemake and yet you were bound to trivets. And it took a long time to finally pull it out. What turned it into just her test arms? It was for multi-",
+          "people": [],
+          "initiatives": [
+            "TriBITS",
+            "CMake"
+          ],
+          "signal_type": "blocker",
+          "detail": "Years of pain and suffering due to missing features in publicly distributed CMake that were available in their custom version",
+          "confidence": 0.7,
+          "metadata": {
+            "filename": "Chemical and Petroleum Engineering Building 2.m4a",
+            "llm_provider": "anthropic",
+            "original_file": "Chemical and Petroleum Engineering Building 2.m4a",
+            "used_corrected": true
+          },
+          "originator": "",
+          "originator_notified": false,
+          "feedback_received": false
+        },
+        {
+          "source": "voice",
+          "timestamp": "2026-02-24T07:16:28.230664+00:00",
+          "raw_text": " Manu, because they were like, we can't find anyone who has written a code that writes code inputs for new tronics. From one design, multiple code inputs for new tronics, it looks like this is not patentable. Now that we've looked in the literature, it's not there. Yeah. That's so stupid. So yeah, they're trying to patent that. I mean, that's legit. Yeah, that's all a jet design. Yeah, it's totally patentable. But I think BWXTs, they have one word, it's just like using machine learning for desig",
+          "people": [],
+          "initiatives": [
+            "Genfoam",
+            "viewer team"
+          ],
+          "signal_type": "action_item",
+          "detail": "Create capability comparison table for different code stands to present internally and push improvements",
+          "confidence": 0.7,
+          "metadata": {
+            "filename": "J.J. Pickle Research Campus 4_20260224_064137.m4a",
+            "llm_provider": "anthropic",
+            "original_file": "J.J. Pickle Research Campus 4_20260224_064137.m4a"
+          }
+        }
+      ],
+      "topic": "general",
+      "topic_query": "",
+      "confidence": 0.6,
+      "time_window_reason": "Explicit time window requested (capped at 7 days)"
+    },
+    "source": "neut_sense_brief"
+  },
+  "created_at": "2026-02-27T09:01:32.088849+00:00",
+  "updated_at": "2026-02-27T09:05:30.577679+00:00"
+}

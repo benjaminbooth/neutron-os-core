@@ -1,0 +1,19 @@
+{
+  "session_id": "ded7b524b90e",
+  "title": "Hey there.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hey there.",
+      "timestamp": "2026-02-27T00:30:33.126017+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! I'm neut, your AI assistant for Neutron OS. I'm here to help you with:\n\n- **Document management** (docflow) \u2014 check status, generate Word docs, publish to OneDrive\n- **Signal processing** (sense) \u2014 manage the inbox, ingest data from various sources\n- **Repository exploration** \u2014 read files, list directories, check what's changed\n\nWhat can I help you with today? Are you looking to check on any documents, work with the sense pipeline, or explore something in the repository?",
+      "timestamp": "2026-02-27T00:30:37.116199+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-27T00:30:25.646473+00:00",
+  "updated_at": "2026-02-27T00:30:37.116217+00:00"
+}

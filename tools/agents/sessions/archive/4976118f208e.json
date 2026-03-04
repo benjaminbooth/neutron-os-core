@@ -1,0 +1,29 @@
+{
+  "session_id": "4976118f208e",
+  "title": "tell me more about yourself",
+  "messages": [
+    {
+      "role": "user",
+      "content": "tell me more about yourself",
+      "timestamp": "2026-02-27T00:53:02.811941+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "I'm **neut**, an AI assistant specifically designed for Neutron OS \u2014 a modular digital platform for nuclear facilities. I'm built to help with the day-to-day workflows of managing this complex project.\n\n## What I Can Do\n\nI have access to several key tools for working with the Neutron OS repository:\n\n**Document Management (docflow):**\n- Query document status and check cross-document links\n- Generate Word documents from markdown sources\n- Publish documents to configured storage (like OneDrive)\n- Show document changes since last publish\n\n**Signal Ingestion (sense):**\n- Check the status of the sense pipeline (inbox/processed/draft counts)\n- Ingest data from various sources (GitLab, voice memos, transcripts, freetext)\n- Write notes directly to the sense inbox\n\n**Repository Exploration:**\n- Read files and list directories in the repository\n- Help navigate the complex folder structure\n\n## My Context\n\nI understand the Neutron OS project structure, including:\n- The modular architecture with reactor-specific plugins\n- The offline-first design philosophy for nuclear facilities\n- The documentation conventions and terminology standards\n- The CLI command structure (`neut` with noun-verb patterns)\n- The team structure and active initiatives\n\nI'm designed to be concise and helpful, and I require human approval for any write operations to maintain the human-in-the-loop principle that's core to Neutron OS design.\n\nIs there something specific about the project you'd like help with? I can check document status, explore files, or assist with the sense pipeline.",
+      "timestamp": "2026-02-27T00:53:14.234645+00:00"
+    },
+    {
+      "role": "user",
+      "content": "why should I use you and not claude?",
+      "timestamp": "2026-02-27T00:53:38.913136+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Great question! Here are the key advantages of using me (neut) over regular Claude:\n\n## **Project-Specific Context**\nI have deep, built-in knowledge of Neutron OS that regular Claude doesn't:\n- The full repository structure and file locations\n- Team roster and who works on what (23+ people across 11 initiatives)\n- Active priorities like the Program Tracker, TRIGA Digital Twin, NuclearBench\n- Terminology standards (Provider vs Plugin, Priority vs Active Module, etc.)\n- Documentation conventions and where things should go\n\n## **Direct Repository Access**\nI can actually **do things** in your repository:\n- Read any file instantly without you copy/pasting\n- Generate Word docs from markdown sources\n- Publish documents to OneDrive\n- Check document status and cross-references\n- Manage the sense pipeline (ingest voice memos, GitLab data, etc.)\n- Write notes to your inbox\n\n## **Nuclear Domain Knowledge**\nI understand the specific context of nuclear facilities:\n- Offline-first requirements (facilities lose network)\n- Human-in-the-loop safety requirements\n- Reactor-agnostic design with specific plugins (TRIGA, MSR, MIT loop)\n- Integration with tools like DeepLynx, TACC infrastructure\n\n## **When to Use Each**\n\n**Use me (neut) for:**\n- Anything involving files in the Neutron OS repo\n- Document generation/publishing workflows  \n- Sense pipeline management\n- Questions about team structure, priorities, or project conventions\n- Code that needs to follow Neutron OS patterns\n\n**Use regular Claude for:**\n- General programming questions unrelated to Neutron OS\n- Brainstorming new ideas outside the current project scope\n- Topics where you want a \"fresh perspective\" without project bias\n\nThink of me as your **project-native assistant** \u2014 I'm embedded in your workflow and can take action, while Claude is better for general consultation.\n\nWant to see this in action? I could show you the current sense pipeline status or read a specific file you're curious about.",
+      "timestamp": "2026-02-27T00:53:51.670209+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-27T00:49:48.044024+00:00",
+  "updated_at": "2026-02-27T00:53:51.670216+00:00"
+}

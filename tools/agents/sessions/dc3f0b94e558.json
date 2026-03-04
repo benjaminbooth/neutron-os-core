@@ -1,0 +1,19 @@
+{
+  "session_id": "dc3f0b94e558",
+  "title": "reset",
+  "messages": [
+    {
+      "role": "user",
+      "content": "reset",
+      "timestamp": "2026-02-26T23:52:08.393689+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "I understand you want to reset. Could you clarify what you'd like me to reset? For example:\n\n- Clear our conversation history and start fresh\n- Reset a specific system or service status\n- Reset some configuration or state in the repository\n- Something else?\n\nLet me know what specifically you'd like to reset and I can help accordingly.",
+      "timestamp": "2026-02-26T23:52:13.767631+00:00"
+    }
+  ],
+  "context": {},
+  "created_at": "2026-02-26T23:38:10.500472+00:00",
+  "updated_at": "2026-02-26T23:52:13.767648+00:00"
+}
