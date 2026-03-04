@@ -145,6 +145,7 @@ _STYLE = Style.from_dict({
     "picker.uncheck":  "#6c6c6c",
     "picker.sid":      _CHERENKOV_DIM,
     "picker.meta":     "#6c6c6c",
+    "picker.detail":   "#6c6c6c italic",
 })
 
 
@@ -184,6 +185,14 @@ class _OutputLexer(Lexer):
 
     def __init__(self, control: _ScrollableBufferControl | None = None):
         self._control = control
+
+    def invalidation_hash(self):
+        # Include selection range so the fragment cache is busted when the
+        # user drags a new selection (text doesn't change, but styling does).
+        ctrl = self._control
+        if ctrl:
+            return (id(self), ctrl.sel_start, ctrl.sel_end)
+        return id(self)
 
     def lex_document(self, document):
         lines = document.lines
@@ -270,6 +279,8 @@ class _OutputLexer(Lexer):
             return [("class:diagram.rendered", line)]
 
         # Picker lines
+        if stripped.startswith("\u2514 "):
+            return [("class:picker.detail", line)]
         if stripped.startswith(("Select a session", "Archive sessions")):
             return [("class:picker.header", line)]
         if line.startswith(" > "):
@@ -772,63 +783,87 @@ class _ScrollableBufferControl(BufferControl):
     text is auto-copied to the system clipboard (terminal-style behaviour).
     """
 
-    _cached_half: int = 20
-    _cache_time: float = 0.0
-
     def __init__(self, tui: FullScreenChat, **kwargs):
         super().__init__(**kwargs)
         self._tui = tui
-        self._drag_start: int | None = None
+        self._drag_start: int | None = None  # selection anchor (persists for shift ops)
+        self._dragging: bool = False          # True only while mouse button is held
         # Selection range (inclusive start, exclusive end) — read by _OutputLexer
         self.sel_start: int | None = None
         self.sel_end: int | None = None
+        # Scroll velocity tracking
+        self._last_scroll_time: float = 0.0
 
     # -- Position translation ------------------------------------------------
 
     def _mouse_pos_to_cursor(self, row: int, col: int) -> int:
-        """Translate mouse (visual_row, col) to a buffer cursor position.
+        """Translate mouse (line_number, column) to a buffer cursor position.
 
-        The buffer text is pre-wrapped by ``_word_wrap`` so most lines map
-        1:1 to visual lines.  For any line that still exceeds the window
-        width (e.g. during streaming before a re-wrap), we account for the
-        Window's character-level wrapping.
+        prompt_toolkit's ``Window`` mouse handler already translates screen
+        coordinates into content coordinates — ``row`` is the **buffer line
+        number** and ``col`` is the **character column** within that line.
+        No scroll offset or wrapping math is needed here.
         """
-        text = self.buffer.text
-        scroll = self._tui._scroll_vertical_scroll
-        width = self._tui._scroll_window_width or 80
-
-        target_visual = scroll + row
-        visual_line = 0
-        cursor_pos = 0
-
-        for line in text.split("\n"):
-            line_len = len(line)
-            visual_count = max(1, (line_len + width - 1) // width) if line_len else 1
-
-            if visual_line + visual_count > target_visual:
-                visual_offset = target_visual - visual_line
-                char_offset = min(visual_offset * width + col, line_len)
-                return cursor_pos + char_offset
-
-            visual_line += visual_count
-            cursor_pos += line_len + 1  # +1 for the \n
-
-        return max(0, len(text))
+        return self.buffer.document.translate_row_col_to_index(row, col)
 
     # -- Mouse handler -------------------------------------------------------
 
     def mouse_handler(self, mouse_event):
         from prompt_toolkit.mouse_events import MouseEventType
+        try:
+            from prompt_toolkit.mouse_events import MouseModifier
+        except ImportError:
+            MouseModifier = None
+
+        def _has_shift() -> bool:
+            if MouseModifier is None:
+                return False
+            mods = getattr(mouse_event, "modifiers", None)
+            if mods is None:
+                return False
+            return MouseModifier.SHIFT in mods
 
         # --- Scroll ---
         if mouse_event.event_type in (
             MouseEventType.SCROLL_UP, MouseEventType.SCROLL_DOWN,
         ):
-            half_page = self._cached_half_page()
+            window = self._tui._output_window
+
+            # Velocity-based step: faster scrolling → bigger jumps
+            now = time.monotonic()
+            dt = now - self._last_scroll_time
+            self._last_scroll_time = now
+            if dt < 0.03:       # very fast flicking
+                step = 12
+            elif dt < 0.06:     # fast
+                step = 7
+            elif dt < 0.12:     # moderate
+                step = 4
+            else:               # slow / single tick
+                step = 3
+
+            # Capture cursor before moving — used as anchor for shift+scroll
+            old_pos = self.buffer.cursor_position
+
             if mouse_event.event_type == MouseEventType.SCROLL_UP:
-                self.buffer.cursor_up(count=half_page)
+                new_scroll = max(0, window.vertical_scroll - step)
             else:
-                self.buffer.cursor_down(count=half_page)
+                max_line = max(0, self.buffer.document.line_count - 1)
+                new_scroll = min(max_line, window.vertical_scroll + step)
+
+            window.vertical_scroll = new_scroll
+            # Place cursor on the scroll target line so _scroll() won't override
+            new_pos = self.buffer.document.translate_row_col_to_index(new_scroll, 0)
+            self.buffer.cursor_position = new_pos
+
+            # Shift+scroll: extend selection from anchor
+            if _has_shift():
+                if self._drag_start is None:
+                    self._drag_start = old_pos  # anchor at pre-scroll position
+                a, b = sorted((self._drag_start, new_pos))
+                self.sel_start = a
+                self.sel_end = b
+
             try:
                 from prompt_toolkit.application import get_app
                 get_app().invalidate()
@@ -841,10 +876,19 @@ class _ScrollableBufferControl(BufferControl):
             pos = self._mouse_pos_to_cursor(
                 mouse_event.position.y, mouse_event.position.x,
             )
-            self._drag_start = pos
-            # Clear any previous selection
-            self.sel_start = None
-            self.sel_end = None
+            self._dragging = True
+
+            if _has_shift() and self._drag_start is not None:
+                # Shift+click: extend from existing anchor to click point
+                a, b = sorted((self._drag_start, pos))
+                self.sel_start = a
+                self.sel_end = b
+            else:
+                # Normal click: set new anchor, clear selection
+                self._drag_start = pos
+                self.sel_start = None
+                self.sel_end = None
+
             try:
                 from prompt_toolkit.application import get_app
                 get_app().invalidate()
@@ -852,9 +896,9 @@ class _ScrollableBufferControl(BufferControl):
                 pass
             return None
 
-        # --- MOUSE_MOVE — extend selection from drag start ---
+        # --- MOUSE_MOVE — extend selection only while button is held ---
         if mouse_event.event_type == MouseEventType.MOUSE_MOVE:
-            if self._drag_start is not None:
+            if self._dragging and self._drag_start is not None:
                 pos = self._mouse_pos_to_cursor(
                     mouse_event.position.y, mouse_event.position.x,
                 )
@@ -871,6 +915,8 @@ class _ScrollableBufferControl(BufferControl):
 
         # --- MOUSE_UP — auto-copy selection to clipboard ---
         if mouse_event.event_type == MouseEventType.MOUSE_UP:
+            self._dragging = False
+
             if self._drag_start is not None:
                 pos = self._mouse_pos_to_cursor(
                     mouse_event.position.y, mouse_event.position.x,
@@ -887,9 +933,8 @@ class _ScrollableBufferControl(BufferControl):
                     if selected:
                         _copy_to_system_clipboard(selected)
 
-                self._drag_start = None
-                # Keep sel_start/sel_end so highlight persists after release.
-                # Next MOUSE_DOWN clears it.
+                # _drag_start persists as anchor for shift+click/shift+scroll.
+                # Only a non-shift MOUSE_DOWN resets it.
 
             try:
                 from prompt_toolkit.application import get_app
@@ -899,19 +944,6 @@ class _ScrollableBufferControl(BufferControl):
             return None
 
         return None
-
-    def _cached_half_page(self) -> int:
-        """Terminal half-page height, cached for 1 second."""
-        import time as _time
-        now = _time.monotonic()
-        if now - self._cache_time > 1.0:
-            try:
-                import shutil
-                self._cached_half = max(shutil.get_terminal_size().lines // 2, 10)
-            except Exception:
-                self._cached_half = 20
-            self._cache_time = now
-        return self._cached_half
 
 
 def _copy_to_system_clipboard(text: str) -> None:
@@ -2046,14 +2078,50 @@ class FullScreenChat:
             self._app.exit()
             return
 
-        # Interactive session picker for /sessions
+        # /sessions with subcommands
         if cmd == "/sessions":
-            self._open_picker(PickerMode.SELECT)
+            if len(parts) == 1:
+                self._open_picker(PickerMode.SELECT)
+                return
+            subcmd = parts[1].lower()
+            if subcmd == "rename":
+                from tools.agents.chat.commands import cmd_rename
+                title = " ".join(parts[2:]).strip()
+                result = cmd_rename(self._agent, self._store, title)
+                self._append_output(_strip_ansi(result) + "\n")
+                self._set_suggestion("after_slash")
+                return
+            if subcmd == "archive":
+                if len(parts) == 2:
+                    self._open_picker(PickerMode.MULTI)
+                    return
+                from tools.agents.chat.commands import cmd_archive
+                arg = parts[2].strip()
+                result = cmd_archive(arg, self._store, self._agent)
+                self._append_output(_strip_ansi(result) + "\n")
+                self._set_suggestion("after_slash")
+                return
+            # Unknown subcommand
+            self._append_output(f"\n  Unknown: /sessions {subcmd}\n\n")
+            self._set_suggestion("after_slash")
             return
 
-        # Interactive archive picker for bare /archive (no args)
+        # Backward compat: bare /archive (no args) opens multi-picker
         if cmd == "/archive" and len(parts) == 1:
             self._open_picker(PickerMode.MULTI)
+            return
+
+        # Backward compat: /rename and /archive with args fall through
+        # to cli._handle_slash_command below (skip unknown-command check)
+        if cmd in ("/rename", "/archive"):
+            from tools.agents.chat.cli import _handle_slash_command
+            result = _handle_slash_command(text, self._agent, self._store)
+            if result == "exit":
+                self._app.exit()
+                return
+            if result:
+                self._append_output(_strip_ansi(result) + "\n")
+            self._set_suggestion("after_slash")
             return
 
         # Intercept unknown commands for fuzzy suggestion before
@@ -2307,6 +2375,8 @@ class FullScreenChat:
         lines.append(archive_hint)
         lines.append("")
 
+        item_start_idx = len(lines)  # track where items begin
+
         for i, item in enumerate(p.items):
             sid = item.get("id", "?")[:12]
             title = item.get("title") or "(untitled)"
@@ -2333,12 +2403,27 @@ class FullScreenChat:
                     f"  {msg_count:>3d} msgs  {updated}{archived_tag}"
                 )
 
+        # Detail line — show full title of highlighted item
+        lines.append("")
+        item = p.items[p.cursor]
+        if item.get("id") == "__new__":
+            lines.append("  \u2514 Start a fresh conversation")
+        else:
+            full_title = item.get("title") or "(untitled)"
+            lines.append(f"  \u2514 {full_title}")
+
         lines.append("")
         text = "\n".join(lines)
 
+        # Place document cursor on highlighted item so the window
+        # scrolls to keep it (and the header above) visible.
+        target_line = item_start_idx + p.cursor
+        char_offset = sum(len(lines[j]) + 1 for j in range(min(target_line, len(lines))))
+        char_offset = min(char_offset, len(text))
+
         with self._output_lock:
             self._output_buffer.set_document(
-                Document(text, len(text)),
+                Document(text, char_offset),
                 bypass_readonly=True,
             )
         self._app.invalidate()
@@ -2585,7 +2670,7 @@ class FullScreenChat:
                 self._picker = PickerState(
                     mode=PickerMode.SELECT,
                     items=[new_item] + items,
-                    cursor=0,
+                    cursor=min(1, len(items)),  # preselect latest session
                     checked=set(),
                     saved_output=saved,
                 )

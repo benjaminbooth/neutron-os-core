@@ -175,7 +175,16 @@ def _handle_slash_command(
         return cmd_status(agent)
 
     if cmd == "/sessions":
-        return cmd_sessions(store, input_prov=None)
+        if len(parts) == 1:
+            return cmd_sessions(store, input_prov=None)
+        subcmd = parts[1].lower()
+        if subcmd == "rename":
+            title = " ".join(parts[2:]).strip() if len(parts) > 2 else ""
+            return cmd_rename(agent, store, title)
+        if subcmd == "archive":
+            arg = parts[2].strip() if len(parts) > 2 else ""
+            return cmd_archive(arg, store, agent)
+        return f"\n  Unknown: /sessions {subcmd}\n"
 
     if cmd == "/resume":
         arg = parts[1].strip() if len(parts) > 1 else ""

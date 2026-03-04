@@ -100,7 +100,7 @@ def format_markdown_line(line: str) -> str:
     # Headings
     m = _HEADING_RE.match(line)
     if m:
-        return _c(_Colors.BOLD + _Colors.BRIGHT_BLUE, line)
+        return _c(_Colors.BOLD + _Colors.CHERENKOV, line)
 
     # List items — bullet in cyan
     m = _LIST_RE.match(line)
@@ -149,8 +149,14 @@ def stream_text(chunks: Iterator[StreamChunk]) -> str:
         """Clear the partially displayed line from screen."""
         nonlocal partial_displayed
         if partial_displayed > 0 and is_tty:
-            # Move to start of line and clear
-            sys.stdout.write("\r" + " " * partial_displayed + "\r")
+            import shutil
+            cols = shutil.get_terminal_size().columns
+            # If the partial wrapped onto multiple terminal lines,
+            # move the cursor up before clearing.
+            extra_lines = partial_displayed // cols
+            if extra_lines > 0:
+                sys.stdout.write(f"\x1b[{extra_lines}A")
+            sys.stdout.write("\r\x1b[J")  # start of line + clear to end of screen
             sys.stdout.flush()
         partial_displayed = 0
 
@@ -241,39 +247,26 @@ def stream_text(chunks: Iterator[StreamChunk]) -> str:
 
 @contextmanager
 def render_thinking_spinner(label: str = "Thinking"):
-    """Context manager showing a braille spinner while work happens.
+    """Context manager showing a TRIGA pulse spinner while work happens.
 
+    Yields the spinner object so callers can optionally call
+    ``spinner.update_tokens()`` or ``spinner.set_sub_state()``.
     Falls back to a static message in non-TTY environments.
     """
+    from tools.agents.chat.pulse_spinner import TrigaPulseSpinner
+
     if not (hasattr(sys.stdout, "isatty") and sys.stdout.isatty()):
         sys.stdout.write(f"  {label}...\n")
         sys.stdout.flush()
-        yield
+        yield None
         return
 
-    braille = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-    stop = threading.Event()
-    idx = [0]
-
-    def spin():
-        while not stop.is_set():
-            char = braille[idx[0] % len(braille)]
-            msg = f"  {_c(_Colors.DIM, f'{char} {label}')}"
-            sys.stdout.write(f"\r{msg}")
-            sys.stdout.flush()
-            idx[0] += 1
-            stop.wait(0.08)
-        # Clear the spinner line
-        sys.stdout.write("\r" + " " * 60 + "\r")
-        sys.stdout.flush()
-
-    t = threading.Thread(target=spin, daemon=True)
-    t.start()
+    spinner = TrigaPulseSpinner(label)
+    spinner.start()
     try:
-        yield
+        yield spinner
     finally:
-        stop.set()
-        t.join(timeout=1)
+        spinner.stop()
 
 
 # ---------------------------------------------------------------------------
@@ -283,7 +276,7 @@ def render_thinking_spinner(label: str = "Thinking"):
 def render_message(role: str, content: str) -> None:
     """Print a chat message with role prefix and markdown formatting."""
     if role == "assistant":
-        prefix = _c(_Colors.BOLD + _Colors.BRIGHT_BLUE, "neut>") if _use_color() else "neut>"
+        prefix = _c(_Colors.BOLD + _Colors.CHERENKOV, "neut>") if _use_color() else "neut>"
         print()
         for line in content.splitlines():
             formatted = format_markdown_line(line)
@@ -304,7 +297,7 @@ def render_welcome(gateway=None, show_banner: bool = False) -> None:
         mascot_banner()
     else:
         print()
-        print(f"  {_c(_Colors.BOLD + _Colors.BRIGHT_BLUE, 'neut chat')} — interactive agent")
+        print(f"  {_c(_Colors.BOLD + _Colors.CHERENKOV, 'neut chat')} — interactive agent")
 
     if gateway is not None:
         provider = gateway.active_provider

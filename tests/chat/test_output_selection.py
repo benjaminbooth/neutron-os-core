@@ -19,10 +19,10 @@ from tools.agents.chat.fullscreen import (
 def make_control():
     """Create a _ScrollableBufferControl with a fake TUI and given buffer text."""
 
-    def _factory(text: str, scroll: int = 0, width: int = 40):
+    def _factory(text: str):
         tui = MagicMock()
-        tui._scroll_vertical_scroll = scroll
-        tui._scroll_window_width = width
+        tui._scroll_vertical_scroll = 0
+        tui._scroll_window_width = 40
         buf = Buffer(read_only=True, name="output")
         buf.set_document(Document(text, 0), bypass_readonly=True)
         ctrl = _ScrollableBufferControl(
@@ -34,7 +34,13 @@ def make_control():
 
 
 class TestMousePosToCursor:
-    """Verify (visual_row, col) -> buffer cursor_position mapping."""
+    """Verify (line_number, col) -> buffer cursor_position mapping.
+
+    prompt_toolkit's Window already translates screen coordinates to content
+    coordinates: row = buffer line number, col = character column.  Our
+    ``_mouse_pos_to_cursor`` simply delegates to
+    ``Document.translate_row_col_to_index``.
+    """
 
     def test_single_line(self, make_control):
         ctrl = make_control("hello world")
@@ -47,12 +53,8 @@ class TestMousePosToCursor:
 
     def test_col_clamped_to_line_length(self, make_control):
         ctrl = make_control("short\nhi")
+        # Document.translate_row_col_to_index clamps col to line length
         assert ctrl._mouse_pos_to_cursor(0, 99) == 5
-
-    def test_scroll_offset(self, make_control):
-        ctrl = make_control("aaa\nbbb\nccc\nddd", scroll=2)
-        pos = ctrl._mouse_pos_to_cursor(0, 1)
-        assert pos == len("aaa\nbbb\n") + 1
 
     def test_empty_lines(self, make_control):
         ctrl = make_control("first\n\n\nfourth")
@@ -60,24 +62,14 @@ class TestMousePosToCursor:
         assert ctrl._mouse_pos_to_cursor(2, 0) == len("first\n\n")
         assert ctrl._mouse_pos_to_cursor(3, 2) == len("first\n\n\n") + 2
 
-    def test_long_line_wraps(self, make_control):
-        ctrl = make_control("abcdefghijklmnopqrstuvwxyz", width=10)
-        assert ctrl._mouse_pos_to_cursor(0, 3) == 3
-        assert ctrl._mouse_pos_to_cursor(1, 0) == 10
-        assert ctrl._mouse_pos_to_cursor(1, 5) == 15
-        assert ctrl._mouse_pos_to_cursor(2, 3) == 23
+    def test_third_line(self, make_control):
+        ctrl = make_control("aaa\nbbb\nccc\nddd")
+        # Line 2, col 1 → past "aaa\nbbb\n" = 8 chars, + 1
+        assert ctrl._mouse_pos_to_cursor(2, 1) == len("aaa\nbbb\n") + 1
 
-    def test_past_end_of_buffer(self, make_control):
-        ctrl = make_control("only line")
-        pos = ctrl._mouse_pos_to_cursor(10, 0)
-        assert pos == len("only line")
-
-    def test_mixed_short_and_long_lines(self, make_control):
-        ctrl = make_control("short\nabcdefghijklmno\nend", width=10)
-        assert ctrl._mouse_pos_to_cursor(0, 2) == 2
-        assert ctrl._mouse_pos_to_cursor(1, 3) == len("short\n") + 3
-        assert ctrl._mouse_pos_to_cursor(2, 2) == len("short\n") + 12
-        assert ctrl._mouse_pos_to_cursor(3, 1) == len("short\nabcdefghijklmno\n") + 1
+    def test_last_line(self, make_control):
+        ctrl = make_control("short\nabcdefghijklmno\nend")
+        assert ctrl._mouse_pos_to_cursor(2, 1) == len("short\nabcdefghijklmno\n") + 1
 
 
 class TestSelectedStyleDefined:
@@ -175,12 +167,12 @@ class TestDragSelectionState:
 
     def test_drag_start_end(self, make_control):
         ctrl = make_control("hello world\nsecond line")
-        # Simulate MOUSE_DOWN at (0,0)
+        # Simulate MOUSE_DOWN at (line 0, col 0)
         ctrl._drag_start = ctrl._mouse_pos_to_cursor(0, 0)
         ctrl.sel_start = None
         ctrl.sel_end = None
 
-        # Simulate MOUSE_MOVE to (0,5)
+        # Simulate MOUSE_MOVE to (line 0, col 5)
         pos = ctrl._mouse_pos_to_cursor(0, 5)
         a, b = sorted((ctrl._drag_start, pos))
         ctrl.sel_start = a
@@ -189,6 +181,17 @@ class TestDragSelectionState:
         assert ctrl.sel_start == 0
         assert ctrl.sel_end == 5
         assert ctrl.buffer.text[ctrl.sel_start:ctrl.sel_end] == "hello"
+
+    def test_cross_line_drag(self, make_control):
+        ctrl = make_control("hello world\nsecond line")
+        # Drag from (line 0, col 6) to (line 1, col 6)
+        ctrl._drag_start = ctrl._mouse_pos_to_cursor(0, 6)
+        pos = ctrl._mouse_pos_to_cursor(1, 6)
+        a, b = sorted((ctrl._drag_start, pos))
+        ctrl.sel_start = a
+        ctrl.sel_end = b
+
+        assert ctrl.buffer.text[ctrl.sel_start:ctrl.sel_end] == "world\nsecond"
 
     def test_mouseup_fallback_without_mousemove(self, make_control):
         """MOUSE_UP synthesises selection when MOUSE_MOVE never fired."""
@@ -273,3 +276,32 @@ class TestLexerSelectionIntegration:
         # No selection styling
         for style, _ in fragments:
             assert "selected" not in style
+
+    def test_invalidation_hash_changes_with_selection(self, make_control):
+        """Cache key must change when selection changes so fragments are re-rendered."""
+        ctrl = make_control("hello world")
+        lexer = _OutputLexer(control=ctrl)
+
+        ctrl.sel_start = None
+        ctrl.sel_end = None
+        hash_none = lexer.invalidation_hash()
+
+        ctrl.sel_start = 0
+        ctrl.sel_end = 5
+        hash_sel = lexer.invalidation_hash()
+
+        assert hash_none != hash_sel, "hash must differ so BufferControl cache is busted"
+
+    def test_invalidation_hash_differs_per_range(self, make_control):
+        ctrl = make_control("hello world")
+        lexer = _OutputLexer(control=ctrl)
+
+        ctrl.sel_start = 0
+        ctrl.sel_end = 3
+        h1 = lexer.invalidation_hash()
+
+        ctrl.sel_start = 2
+        ctrl.sel_end = 8
+        h2 = lexer.invalidation_hash()
+
+        assert h1 != h2

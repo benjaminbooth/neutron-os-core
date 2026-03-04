@@ -34,6 +34,8 @@ class TestSlashCommands:
         assert "/status" in result
         assert "/exit" in result
         assert "/sessions" in result
+        assert "/sessions rename" in result
+        assert "/sessions archive" in result
         assert "/resume" in result
         assert "/new" in result
         # CLI commands are now dynamically loaded
@@ -154,6 +156,9 @@ class TestSlashCommandDispatch:
         assert "/help" in all_commands
         assert "/status" in all_commands
         assert "/exit" in all_commands
+        assert "/sessions" in all_commands
+        assert "/sessions rename" in all_commands
+        assert "/sessions archive" in all_commands
         # CLI commands are auto-synced
         assert any("/sense" in cmd for cmd in all_commands)
 
@@ -192,6 +197,85 @@ class TestSlashCommandDispatch:
 
         result = _handle_slash_command("/resume test_id", agent, store)
         assert "Resumed" in result
+
+
+class TestSessionsSubcommands:
+    """Test /sessions rename and /sessions archive subcommand dispatch."""
+
+    def test_dispatch_sessions_rename(self):
+        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.agents.chat.agent import ChatAgent
+
+        agent = MagicMock(spec=ChatAgent)
+        agent.session = Session(session_id="abc123")
+        store = MagicMock(spec=SessionStore)
+
+        result = _handle_slash_command("/sessions rename My Title", agent, store)
+        assert "My Title" in result
+        assert agent.session.title == "My Title"
+
+    def test_dispatch_sessions_archive(self):
+        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.agents.chat.agent import ChatAgent
+
+        agent = MagicMock(spec=ChatAgent)
+        agent.session = Session(session_id="current_id")
+        store = MagicMock(spec=SessionStore)
+        store.list_sessions.return_value = ["abc123", "def456"]
+        store.archive.return_value = True
+
+        result = _handle_slash_command("/sessions archive abc123", agent, store)
+        assert "Archived" in result or "archived" in result.lower()
+        store.archive.assert_called_with("abc123")
+
+    def test_dispatch_sessions_unknown_sub(self):
+        agent = MagicMock()
+        store = MagicMock()
+        result = _handle_slash_command("/sessions foobar", agent, store)
+        assert "Unknown" in result
+        assert "foobar" in result
+
+    def test_rename_backward_compat(self):
+        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.agents.chat.agent import ChatAgent
+
+        agent = MagicMock(spec=ChatAgent)
+        agent.session = Session(session_id="abc123")
+        store = MagicMock(spec=SessionStore)
+
+        result = _handle_slash_command("/rename My Title", agent, store)
+        assert "My Title" in result
+        assert agent.session.title == "My Title"
+
+    def test_archive_backward_compat(self):
+        from tools.agents.orchestrator.session import SessionStore, Session
+        from tools.agents.chat.agent import ChatAgent
+
+        agent = MagicMock(spec=ChatAgent)
+        agent.session = Session(session_id="current_id")
+        store = MagicMock(spec=SessionStore)
+        store.archive.return_value = True
+        new_session = Session()
+        store.create.return_value = new_session
+
+        result = _handle_slash_command("/archive", agent, store)
+        assert "Archived" in result or "archived" in result.lower()
+
+    def test_sessions_subcommands_in_registry(self):
+        """Both /sessions rename and /sessions archive should be in get_slash_commands()."""
+        all_commands = get_slash_commands()
+        assert "/sessions rename" in all_commands
+        assert "/sessions archive" in all_commands
+
+    def test_bare_sessions_lists(self):
+        from tools.agents.orchestrator.session import SessionStore
+
+        store = MagicMock(spec=SessionStore)
+        store.list_sessions.return_value = []
+        agent = MagicMock()
+
+        result = _handle_slash_command("/sessions", agent, store)
+        assert "No saved sessions" in result
 
 
 class TestBannerRendering:

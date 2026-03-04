@@ -473,6 +473,16 @@ class ChatAgent:
         if ctx_content:
             parts.append(f"\n--- Additional context ---\n{ctx_content[:4000]}")
 
+        # Context from terminal command (e.g., neut sense brief → chat)
+        ctx_md = self.session.context.get("context_markdown", "")
+        if ctx_md:
+            parts.append(
+                "\n--- Context from terminal command ---\n"
+                "The user just viewed the following output and wants to discuss it. "
+                "Reference this content when answering.\n\n"
+                + ctx_md[:6000]
+            )
+
         return "\n".join(parts)
 
     def _build_messages(self) -> list[dict[str, Any]]:

@@ -12,10 +12,23 @@ from tools.agents.setup.renderer import _c, _Colors, _use_color
 class BasicInputProvider(InputProvider):
     """Wraps Python's built-in input() into the InputProvider interface."""
 
-    def prompt(self, prefix: str = "you> ") -> str:
+    def __init__(self):
+        self._mode: str = "Ask"
+
+    def prompt(self, prefix: str = "you> ", show_border: bool = False) -> str:
         if _use_color() and prefix == "you> ":
-            prefix = _c(_Colors.BRIGHT_BLUE, "you> ")
-        return input(prefix)
+            prefix = _c(_Colors.CHERENKOV, "you> ")
+        result = input(prefix)
+        # Basic provider can only show the bottom border after Enter
+        if show_border:
+            try:
+                import shutil
+                width = min(shutil.get_terminal_size().columns, 120)
+            except Exception:
+                width = 80
+            border = _c(_Colors.DIM, "\u2500" * width) if _use_color() else "\u2500" * width
+            print(border)
+        return result
 
     def prompt_choice(self, options: list[str]) -> str:
         for i, opt in enumerate(options, 1):

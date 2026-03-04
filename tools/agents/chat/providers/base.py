@@ -83,9 +83,33 @@ class RenderProvider(ABC):
 class InputProvider(ABC):
     """Handles user input with optional history and autocomplete."""
 
+    _MODES = ("Ask", "Plan", "Agent")
+
+    @property
+    def mode(self) -> str:
+        """Current interaction mode: Ask, Plan, or Agent."""
+        return getattr(self, "_mode", "Ask")
+
+    @mode.setter
+    def mode(self, value: str) -> None:
+        if value not in self._MODES:
+            raise ValueError(f"Unknown mode: {value}. Choose from {self._MODES}")
+        self._mode = value
+
+    def cycle_mode(self) -> str:
+        """Advance to the next mode and return its name."""
+        idx = self._MODES.index(self.mode)
+        self._mode = self._MODES[(idx + 1) % len(self._MODES)]
+        return self._mode
+
     @abstractmethod
-    def prompt(self, prefix: str = "you> ") -> str:
+    def prompt(self, prefix: str = "you> ", show_border: bool = False) -> str:
         """Read a line of user input with the given prefix.
+
+        Args:
+            prefix: The prompt text shown before the cursor.
+            show_border: If True, show a bottom border below the input line
+                (rendered live while typing if the provider supports it).
 
         Raises:
             EOFError: On Ctrl+D

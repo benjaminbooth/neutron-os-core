@@ -62,7 +62,7 @@ def _format_line(line: str) -> str:
 
     m = _HEADING_RE.match(line)
     if m:
-        return _c(_Colors.BOLD + _Colors.BRIGHT_BLUE, line)
+        return _c(_Colors.BOLD + _Colors.CHERENKOV, line)
 
     m = _BLOCKQUOTE_RE.match(line)
     if m:
@@ -87,16 +87,37 @@ class AnsiRenderProvider(RenderProvider):
     """Zero-dependency render provider using ANSI escape codes."""
 
     def stream_text(self, chunks: Iterator[StreamChunk]) -> str:
+        from tools.agents.chat.pulse_spinner import TrigaPulseSpinner
+
         accumulated = ""
         in_code_block = False
         line_buffer = ""
         partial_displayed = 0
         is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
 
+        # Show TRIGA pulse spinner while waiting for first content
+        spinner: TrigaPulseSpinner | None = None
+        if is_tty:
+            spinner = TrigaPulseSpinner("Thinking")
+            spinner.start()
+
+        def _stop_spinner():
+            nonlocal spinner
+            if spinner is not None:
+                spinner.stop()
+                spinner = None
+
         def _clear_partial():
             nonlocal partial_displayed
             if partial_displayed > 0 and is_tty:
-                sys.stdout.write("\r" + " " * partial_displayed + "\r")
+                import shutil
+                cols = shutil.get_terminal_size().columns
+                # If the partial wrapped onto multiple terminal lines,
+                # move the cursor up before clearing.
+                extra_lines = partial_displayed // cols
+                if extra_lines > 0:
+                    sys.stdout.write(f"\x1b[{extra_lines}A")
+                sys.stdout.write("\r\x1b[J")  # start of line + clear to end of screen
                 sys.stdout.flush()
             partial_displayed = 0
 
@@ -127,6 +148,7 @@ class AnsiRenderProvider(RenderProvider):
 
         for chunk in chunks:
             if chunk.type == "text":
+                _stop_spinner()
                 accumulated += chunk.text
                 _clear_partial()
                 line_buffer += chunk.text
@@ -139,9 +161,20 @@ class AnsiRenderProvider(RenderProvider):
                     _show_partial(line_buffer)
 
             elif chunk.type == "thinking_delta":
-                pass  # Thinking handled separately
+                # Keep spinner alive during reasoning, update label
+                if spinner is not None:
+                    spinner.set_sub_state("reasoning")
+
+            elif chunk.type == "usage":
+                # Feed token counts into spinner while it's active
+                if spinner is not None:
+                    spinner.update_tokens(
+                        input_tokens=chunk.input_tokens,
+                        output_tokens=chunk.output_tokens,
+                    )
 
             elif chunk.type == "tool_use_start":
+                _stop_spinner()
                 if line_buffer:
                     _clear_partial()
                     _flush_line(line_buffer)
@@ -151,6 +184,7 @@ class AnsiRenderProvider(RenderProvider):
                 pass
 
             elif chunk.type == "done":
+                _stop_spinner()
                 _clear_partial()
                 if line_buffer:
                     if line_buffer.strip().startswith("```"):
@@ -174,7 +208,7 @@ class AnsiRenderProvider(RenderProvider):
             mascot_banner()
         else:
             print()
-            print(f"  {_c(_Colors.BOLD + _Colors.BRIGHT_BLUE, 'neut chat')} — interactive agent")
+            print(f"  {_c(_Colors.BOLD + _Colors.CHERENKOV, 'neut chat')} — interactive agent")
 
         if gateway is not None:
             provider = gateway.active_provider

@@ -72,10 +72,55 @@ class RichRenderProvider(RenderProvider):
         self._active_spinner = None
 
     def stream_text(self, chunks: Iterator[StreamChunk]) -> str:
+        from tools.agents.chat.pulse_spinner import TrigaPulseSpinner
+        import sys
+
         accumulated = ""
+        is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+
+        # Phase 1: Show TRIGA pulse spinner BEFORE Rich Live context.
+        # Rich's Live intercepts stdout, so the spinner must run outside it.
+        spinner: TrigaPulseSpinner | None = None
+        if is_tty:
+            spinner = TrigaPulseSpinner("Thinking")
+            spinner.start()
+
+        # Consume chunks until first renderable content arrives
+        got_done = False
+        for chunk in chunks:
+            if chunk.type == "text":
+                if spinner:
+                    spinner.stop()
+                    spinner = None
+                accumulated += chunk.text
+                break
+            elif chunk.type == "thinking_delta":
+                if spinner:
+                    spinner.set_sub_state("reasoning")
+            elif chunk.type == "usage":
+                if spinner:
+                    spinner.update_tokens(
+                        input_tokens=chunk.input_tokens,
+                        output_tokens=chunk.output_tokens,
+                    )
+            elif chunk.type in ("tool_use_start", "done"):
+                if spinner:
+                    spinner.stop()
+                    spinner = None
+                if chunk.type == "done":
+                    got_done = True
+                break
+
+        # Phase 2: Stream remaining chunks inside Rich Live (spinner is stopped)
+        if got_done or not accumulated:
+            # Nothing to stream — either done or no text yet
+            if accumulated:
+                self.console.print(Markdown(accumulated))
+            return accumulated
+
         try:
             with Live(
-                Markdown(""),
+                Markdown(accumulated),
                 console=self.console,
                 refresh_per_second=15,
                 vertical_overflow="visible",
@@ -86,14 +131,12 @@ class RichRenderProvider(RenderProvider):
                         live.update(Markdown(accumulated))
 
                     elif chunk.type == "tool_use_start":
-                        # Commit current markdown, show tool indicator
                         live.update(Markdown(accumulated))
 
                     elif chunk.type == "done":
                         live.update(Markdown(accumulated))
                         break
         except Exception:
-            # Fallback: just print what we have
             if accumulated:
                 self.console.print(Markdown(accumulated))
 
@@ -102,11 +145,11 @@ class RichRenderProvider(RenderProvider):
     def render_welcome(self, gateway=None, show_banner: bool = False) -> None:
         if show_banner:
             from tools.agents.setup.renderer import _BANNER
-            banner_text = Text(_BANNER.strip("\n"), style="bold bright_blue")
+            banner_text = Text(_BANNER.strip("\n"), style="bold #00cfff")
             self.console.print(banner_text)
         else:
             self.console.print()
-            title = Text("neut chat", style="bold bright_blue")
+            title = Text("neut chat", style="bold #00cfff")
             title.append(" — interactive agent", style="default")
             self.console.print("  ", title)
 
