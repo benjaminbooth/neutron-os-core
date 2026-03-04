@@ -115,6 +115,9 @@ docs/**/*.docx
 # Personal AI assistant context (contributor-specific)
 .claude/
 
+# NeutronOS runtime state
+.neut/
+
 # Agent instance config (facility-specific, contains people/keys)
 tools/agents/config/
 !tools/agents/config.example/
