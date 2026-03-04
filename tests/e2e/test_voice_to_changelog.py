@@ -237,54 +237,58 @@ Daily update: Meeting scheduled with Alice regarding Project Alpha.
 class TestFullPipeline:
     """Integration tests for the complete pipeline."""
     
-    @pytest.mark.asyncio
-    async def test_voice_to_changelog_flow(
+    def test_voice_to_changelog_flow(
         self,
         isolated_inbox,
         mock_transcription,
         mock_llm_gateway,
     ):
         """Complete flow from voice memo to changelog draft."""
-        # 1. Voice memo arrives
-        voice_file = isolated_inbox["voice"] / "memo_2026-02-24_test.m4a"
-        voice_file.write_bytes(b"fake audio content")
-        
-        # 2. Transcription
-        transcript = await mock_transcription(voice_file)
-        
-        # 3. Correction
-        corrected = await mock_llm_gateway.correct_transcription(transcript["text"])
-        
-        # 4. Signal extraction
-        signals = await mock_llm_gateway.extract_signals(corrected["corrected_text"])
-        
-        # 5. Generate changelog
-        summary = await mock_llm_gateway.summarize(signals["signals"])
-        
-        # Create the changelog
-        drafts_dir = isolated_inbox["inbox"] / "drafts"
-        drafts_dir.mkdir()
-        
-        changelog = drafts_dir / "changelog_2026-02-24.md"
-        changelog.write_text(f"""# Changelog - 2026-02-24
+        import asyncio
+
+        async def _run():
+            # 1. Voice memo arrives
+            voice_file = isolated_inbox["voice"] / "memo_2026-02-24_test.m4a"
+            voice_file.write_bytes(b"fake audio content")
+
+            # 2. Transcription
+            transcript = await mock_transcription(voice_file)
+
+            # 3. Correction
+            corrected = await mock_llm_gateway.correct_transcription(transcript["text"])
+
+            # 4. Signal extraction
+            signals = await mock_llm_gateway.extract_signals(corrected["corrected_text"])
+
+            # 5. Generate changelog
+            summary = await mock_llm_gateway.summarize(signals["signals"])
+
+            # Create the changelog
+            drafts_dir = isolated_inbox["inbox"] / "drafts"
+            drafts_dir.mkdir()
+
+            changelog = drafts_dir / "changelog_2026-02-24.md"
+            changelog.write_text(f"""# Changelog - 2026-02-24
 
 ## Summary
 {summary}
 
 ## Signals
 """ + "\n".join(f"- {s['type']}: {s['content']}" for s in signals["signals"]))
-        
-        # 6. Move to processed
-        processed_file = isolated_inbox["processed"] / voice_file.name
-        shutil.move(str(voice_file), str(processed_file))
-        
-        # Verify end state
-        assert not voice_file.exists()
-        assert processed_file.exists()
-        assert changelog.exists()
-        
-        content = changelog.read_text()
-        assert "Meeting" in content or "schedule" in content.lower()
+
+            # 6. Move to processed
+            processed_file = isolated_inbox["processed"] / voice_file.name
+            shutil.move(str(voice_file), str(processed_file))
+
+            # Verify end state
+            assert not voice_file.exists()
+            assert processed_file.exists()
+            assert changelog.exists()
+
+            content = changelog.read_text()
+            assert "Meeting" in content or "schedule" in content.lower()
+
+        asyncio.run(_run())
 
 
 class TestErrorRecovery:

@@ -21,7 +21,7 @@ CONFIG_EXAMPLE_DIR = _AGENTS_DIR / "config.example"
 class Person:
     name: str
     aliases: list[str] = field(default_factory=list)  # Nicknames, phonetic variants
-    gitlab: str = ""
+    usernames: dict[str, str] = field(default_factory=dict)  # platform → handle
     role: str = ""
     initiatives: list[str] = field(default_factory=list)
     # Derived: lowercase first name, last name, full name, aliases for matching
@@ -34,18 +34,28 @@ class Person:
             keys.append(parts[0].lower())  # first name
             if len(parts) > 1:
                 keys.append(parts[-1].lower())  # last name
-        if self.gitlab and self.gitlab != "—":
-            # Handle comma-separated gitlab usernames
-            for username in self.gitlab.split(","):
-                username = username.strip()
-                if username:
-                    keys.append(username.lower())
+        # All platform usernames become match keys
+        for handle in self.usernames.values():
+            if handle and handle != "—":
+                for username in handle.split(","):
+                    username = username.strip()
+                    if username:
+                        keys.append(username.lower())
         # Add all aliases as match keys (critical for STT correction)
         for alias in self.aliases:
             alias_lower = alias.lower().strip()
             if alias_lower and alias_lower not in keys:
                 keys.append(alias_lower)
         self._match_keys = keys
+
+    # Convenience accessors for common platforms
+    @property
+    def gitlab(self) -> str:
+        return self.usernames.get("gitlab", "")
+
+    @property
+    def github(self) -> str:
+        return self.usernames.get("github", "")
 
 
 @dataclass
@@ -92,50 +102,100 @@ class Correlator:
 
     @staticmethod
     def _parse_people(text: str) -> list[Person]:
-        """Parse a markdown table of people."""
-        people = []
+        """Parse a markdown table of people using header-driven column lookup.
+
+        Reads the header row to build a column map so any column order works
+        and new columns (like GitHub) are picked up automatically.
+        """
+        people: list[Person] = []
         lines = text.strip().splitlines()
-        in_table = False
+        col_map: dict[str, int] = {}
+
+        # Normalised header name → internal field
+        _HEADER_ALIASES: dict[str, str] = {
+            "name": "name",
+            "aliases": "aliases",
+            "usernames": "usernames",
+            # Legacy per-platform columns — merged into usernames dict
+            "gitlab": "_legacy_gitlab",
+            "github": "_legacy_github",
+            "linear": "_legacy_linear",
+            "role": "role",
+            "initiative(s)": "initiatives",
+            "initiatives": "initiatives",
+        }
+
         for line in lines:
             line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "|" not in line:
+            if not line or line.startswith("#") or "|" not in line:
                 continue
             cells = [c.strip() for c in line.split("|")[1:-1]]
             if not cells or len(cells) < 2:
                 continue
-            # Skip header row and separator
-            if cells[0].lower() == "name" or set(cells[0]) <= {"-", " ", ":"}:
-                in_table = True
-                continue
+
+            # Separator row (e.g. |---|---|)
             if set(cells[0]) <= {"-", " ", ":"}:
                 continue
-            if not in_table:
-                # First data row starts the table
-                in_table = True
-                if cells[0].lower() == "name":
-                    continue
 
-            # Parse table: Name | Aliases | GitLab | Role | Initiative(s)
-            name = cells[0] if len(cells) > 0 else ""
-            aliases_str = cells[1] if len(cells) > 1 else ""
-            gitlab = cells[2] if len(cells) > 2 else ""
-            role = cells[3] if len(cells) > 3 else ""
-            initiatives_str = cells[4] if len(cells) > 4 else ""
+            # Detect header row
+            if not col_map and cells[0].lower() == "name":
+                for idx, header in enumerate(cells):
+                    key = header.lower().strip()
+                    if key in _HEADER_ALIASES:
+                        col_map[_HEADER_ALIASES[key]] = idx
+                continue
 
-            # Parse aliases (comma-separated)
+            # If we never saw a header, fall back to positional defaults
+            if not col_map:
+                col_map = {"name": 0, "aliases": 1, "usernames": 2, "role": 3, "initiatives": 4}
+
+            def _cell(field: str) -> str:
+                idx = col_map.get(field)
+                if idx is None or idx >= len(cells):
+                    return ""
+                return cells[idx]
+
+            name = _cell("name")
+            if not name or name == "Name":
+                continue
+
+            aliases_str = _cell("aliases")
             aliases = [a.strip() for a in aliases_str.split(",") if a.strip() and a.strip() != "—"]
+
+            # Build usernames dict from the Usernames column ("platform:handle" pairs)
+            usernames: dict[str, str] = {}
+            usernames_raw = _cell("usernames")
+            if usernames_raw and usernames_raw != "—":
+                for pair in usernames_raw.split(","):
+                    pair = pair.strip()
+                    if ":" in pair:
+                        platform, handle = pair.split(":", 1)
+                        handle = handle.strip()
+                        if handle and handle != "—":
+                            usernames[platform.strip().lower()] = handle
+
+            # Merge legacy per-platform columns into usernames dict
+            for legacy_field, platform in (
+                ("_legacy_gitlab", "gitlab"),
+                ("_legacy_github", "github"),
+                ("_legacy_linear", "linear"),
+            ):
+                val = _cell(legacy_field)
+                if val and val != "—" and platform not in usernames:
+                    usernames[platform] = val
+
+            role = _cell("role")
+
+            initiatives_str = _cell("initiatives")
             initiatives = [i.strip() for i in initiatives_str.split(",") if i.strip()]
 
-            if name and name != "Name":
-                people.append(Person(
-                    name=name,
-                    aliases=aliases,
-                    gitlab=gitlab if gitlab != "—" else "",
-                    role=role,
-                    initiatives=initiatives,
-                ))
+            people.append(Person(
+                name=name,
+                aliases=aliases,
+                usernames=usernames,
+                role=role,
+                initiatives=initiatives,
+            ))
         return people
 
     @staticmethod
@@ -256,3 +316,10 @@ class Correlator:
             else:
                 resolved.append(topic)
         return resolved
+
+    def resolve_signals(self, signals: list) -> list:
+        """Resolve people and initiatives on a list of Signal objects in-place."""
+        for signal in signals:
+            signal.people = self.resolve_people(signal.people)
+            signal.initiatives = self.resolve_initiatives(signal.initiatives)
+        return signals

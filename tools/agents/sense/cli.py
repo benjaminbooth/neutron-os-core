@@ -305,10 +305,8 @@ def _ingest_gitlab(correlator) -> list:
         for err in extraction.errors:
             print(f"  Error: {err}")
 
-    # Resolve people via correlator
-    for signal in extraction.signals:
-        signal.people = correlator.resolve_people(signal.people)
-        signal.initiatives = correlator.resolve_initiatives(signal.initiatives)
+    # Resolve people and initiatives via correlator
+    correlator.resolve_signals(extraction.signals)
 
     print(f"  Extracted {len(extraction.signals)} signal(s)")
     for s in extraction.signals[:5]:

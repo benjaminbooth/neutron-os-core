@@ -2,6 +2,7 @@
 
 import pytest
 from tools.agents.sense.correlator import Correlator, Person, Initiative
+from tools.agents.sense.models import Signal
 
 
 class TestPersonParsing:
@@ -77,9 +78,15 @@ class TestPersonMatching:
         assert result is not None
         assert result.name == "Alice Smith"
 
-    def test_linear_username_match(self, tmp_config):
+    def test_github_username_match(self, tmp_config):
         correlator = Correlator(config_dir=tmp_config)
-        result = correlator.match_person("bob.j")
+        result = correlator.match_person("alice-gh")
+        assert result is not None
+        assert result.name == "Alice Smith"
+
+    def test_alias_match(self, tmp_config):
+        correlator = Correlator(config_dir=tmp_config)
+        result = correlator.match_person("Bobby")
         assert result is not None
         assert result.name == "Bob Jones"
 
@@ -141,3 +148,77 @@ class TestInitiativeMatching:
         correlator = Correlator(config_dir=tmp_config)
         result = correlator.resolve_initiatives(["Alpha", "unknown"])
         assert result == ["Project Alpha", "unknown"]
+
+
+class TestResolveMixedSources:
+    """Test resolution across GitHub, GitLab, display names, and aliases."""
+
+    def test_resolve_mixed_sources(self, tmp_config):
+        correlator = Correlator(config_dir=tmp_config)
+        names = ["alice-gh", "bjones", "Alice Smith", "Bobby"]
+        result = correlator.resolve_people(names)
+        assert result == ["Alice Smith", "Bob Jones", "Alice Smith", "Bob Jones"]
+
+
+class TestFlexibleColumnOrder:
+    """Test that the header-driven parser handles different column layouts."""
+
+    def test_different_column_order(self, tmp_path):
+        config = tmp_path / "config"
+        config.mkdir()
+        (config / "people.md").write_text(
+            "| Name | GitHub | Role | GitLab | Aliases | Initiative(s) |\n"
+            "|------|--------|------|--------|---------|---------------|\n"
+            "| Dana Fox | danafox | PI | dfox | — | Project Delta |\n"
+        )
+        (config / "initiatives.md").write_text("# Empty\n")
+
+        correlator = Correlator(config_dir=config)
+        assert len(correlator.people) == 1
+        dana = correlator.people[0]
+        assert dana.github == "danafox"
+        assert dana.gitlab == "dfox"
+        assert dana.role == "PI"
+
+        # Both forge usernames resolve
+        assert correlator.match_person("danafox").name == "Dana Fox"
+        assert correlator.match_person("dfox").name == "Dana Fox"
+
+    def test_missing_github_column(self, tmp_path):
+        """Old-format people.md without GitHub still parses."""
+        config = tmp_path / "config"
+        config.mkdir()
+        (config / "people.md").write_text(
+            "| Name | Aliases | GitLab | Role | Initiative(s) |\n"
+            "|------|---------|--------|------|---------------|\n"
+            "| Eve Adams | Evie | eadams | Staff | Project Echo |\n"
+        )
+        (config / "initiatives.md").write_text("# Empty\n")
+
+        correlator = Correlator(config_dir=config)
+        eve = correlator.people[0]
+        assert eve.github == ""
+        assert eve.gitlab == "eadams"
+        assert correlator.match_person("Evie").name == "Eve Adams"
+
+
+class TestResolveSignals:
+    """Test the bulk resolve_signals() convenience method."""
+
+    def test_resolve_signals_bulk(self, tmp_config):
+        correlator = Correlator(config_dir=tmp_config)
+        signals = [
+            Signal(
+                source="test", timestamp="2026-03-01", raw_text="test",
+                people=["alice-gh", "bjones"], initiatives=["Alpha"],
+            ),
+            Signal(
+                source="test", timestamp="2026-03-01", raw_text="test",
+                people=["Bobby", "unknown"], initiatives=["unknown_proj"],
+            ),
+        ]
+        result = correlator.resolve_signals(signals)
+        assert result[0].people == ["Alice Smith", "Bob Jones"]
+        assert result[0].initiatives == ["Project Alpha"]
+        assert result[1].people == ["Bob Jones", "unknown"]
+        assert result[1].initiatives == ["unknown_proj"]

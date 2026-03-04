@@ -376,5 +376,5 @@ class TestCmdStatus:
 
         captured = capsys.readouterr()
         assert "test-prd" in captured.out
-        assert "published" in captured.out
+        assert "PUBLISHED" in captured.out
         assert "v2" in captured.out

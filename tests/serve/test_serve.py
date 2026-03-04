@@ -63,7 +63,7 @@ class TestUploadPage:
     def test_serves_html(self, server):
         resp = urllib.request.urlopen(_url(server, "/"))
         content = resp.read().decode()
-        assert "neut sense" in content
+        assert "Neutron OS" in content
         assert "<html" in content
 
 

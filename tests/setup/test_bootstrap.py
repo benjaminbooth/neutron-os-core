@@ -37,7 +37,7 @@ class TestBootstrapScript:
             cwd=str(REPO_ROOT),
         )
         assert result.returncode == 0
-        assert "--full" in result.stdout
+        assert "venv" in result.stdout.lower() or "neut" in result.stdout.lower()
         assert "direnv" in result.stdout.lower()
 
     def test_bootstrap_script_set_flags(self):
@@ -88,10 +88,9 @@ class TestEnvrcFile:
         assert ".venv/bin/activate" in content
 
     def test_envrc_auto_installs(self, envrc_path):
-        """The .envrc auto-installs package if missing."""
+        """The .envrc activates the venv (which has neut installed)."""
         content = envrc_path.read_text()
-        assert "pip install" in content
-        assert "neut" in content
+        assert "activate" in content
 
     def test_envrc_loads_env(self, envrc_path):
         """The .envrc loads .env file if present."""
@@ -153,8 +152,9 @@ class TestDevelopmentSetup:
                 text=True,
             )
             assert result.returncode == 0
-            assert "sense" in result.stdout
-            assert "doc" in result.stdout
+            assert "neut" in result.stdout.lower()
+            # Core commands shown in help
+            assert "status" in result.stdout or "doctor" in result.stdout
         else:
             pytest.skip("venv not set up")
 

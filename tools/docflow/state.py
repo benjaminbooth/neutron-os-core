@@ -62,18 +62,23 @@ class DocumentState:
     source_path: str  # Relative path from repo root
     status: str = "draft"  # "draft", "published", "orphan"
     published: PublicationRecord | None = None
-    active_draft: dict | None = None  # Current draft being edited
-    draft_history: list[dict] = field(default_factory=list)
+    active_draft: PublicationRecord | None = None  # Current draft being edited
+    draft_history: list = field(default_factory=list)
     pending_comments: list[dict] = field(default_factory=list)
     stakeholders: list[str] = field(default_factory=list)
     last_branch: str = ""  # Git branch where last published
     last_commit: str = ""  # Git commit SHA of last publication
 
     def to_dict(self) -> dict:
+        def _rec_to_dict(r):
+            if r is None:
+                return None
+            return r.to_dict() if isinstance(r, PublicationRecord) else r
+
         return {
-            "active_draft": self.active_draft,
+            "active_draft": _rec_to_dict(self.active_draft),
             "doc_id": self.doc_id,
-            "draft_history": self.draft_history,
+            "draft_history": [_rec_to_dict(h) for h in self.draft_history],
             "last_branch": self.last_branch,
             "last_commit": self.last_commit,
             "pending_comments": self.pending_comments,
@@ -87,13 +92,23 @@ class DocumentState:
     def from_dict(cls, data: dict) -> DocumentState:
         published_data = data.get("published")
         published = PublicationRecord.from_dict(published_data) if published_data else None
+
+        draft_data = data.get("active_draft")
+        active_draft = PublicationRecord.from_dict(draft_data) if isinstance(draft_data, dict) and draft_data else None
+
+        raw_history = data.get("draft_history", [])
+        draft_history = [
+            PublicationRecord.from_dict(h) if isinstance(h, dict) else h
+            for h in raw_history
+        ]
+
         return cls(
             doc_id=data.get("doc_id", ""),
             source_path=data.get("source_path", ""),
             status=data.get("status", "draft"),
             published=published,
-            active_draft=data.get("active_draft"),
-            draft_history=data.get("draft_history", []),
+            active_draft=active_draft,
+            draft_history=draft_history,
             pending_comments=data.get("pending_comments", []),
             stakeholders=data.get("stakeholders", []),
             last_branch=data.get("last_branch", ""),
