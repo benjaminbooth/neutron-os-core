@@ -148,7 +148,7 @@ def _get_parser_for_module(module_path: str) -> Optional[argparse.ArgumentParser
 CLI_MODULES = {
     "sense": "tools.agents.sense.cli",
     "doc": "tools.docflow.cli",
-    "setup": "tools.agents.setup.cli",
+    "config": "tools.agents.setup.cli",
     "chat": "tools.agents.chat.cli",
 }
 

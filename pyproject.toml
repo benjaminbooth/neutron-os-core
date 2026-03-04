@@ -17,6 +17,10 @@ sense = [
     "alembic>=1.13",
     "pgvector>=0.2",
 ]
+repos = [
+    "PyGithub>=2.0",
+    "python-gitlab>=4.0",
+]
 serve = []
 chat = [
     "rich>=13.0",
@@ -30,7 +34,7 @@ dev = [
     "ruff>=0.4",
 ]
 all = [
-    "neutron-os[docflow,sense,serve,chat,mcp,dev]",
+    "neutron-os[docflow,sense,repos,serve,chat,mcp,dev]",
 ]
 
 [project.scripts]

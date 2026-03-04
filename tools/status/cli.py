@@ -128,6 +128,7 @@ class HealthChecker:
         health.services.append(self.check_api_server())
         health.services.append(self.check_sense_server())
         health.services.append(self.check_mcp_server())
+        health.services.append(self.check_mo())
 
         health.compute_overall()
         return health
@@ -346,6 +347,71 @@ class HealthChecker:
                 message=str(e)[:50],
             )
 
+    def check_mo(self) -> ServiceHealth:
+        """Check M-O scratch space health."""
+        start = time.time()
+        try:
+            from tools.mo import manager
+            mgr = manager()
+            info = mgr.status()
+            latency = (time.time() - start) * 1000
+
+            if not info.get("writable"):
+                return ServiceHealth(
+                    name="M-O (Scratch)",
+                    status=HealthStatus.UNHEALTHY,
+                    message="Scratch dir not writable",
+                    latency_ms=latency,
+                    details={"base_dir": info.get("base_dir", "unknown")},
+                )
+
+            disk_pct = info.get("disk_used_pct", 0)
+            active = info.get("active_entries", 0)
+            free = info.get("disk_free_bytes", 0)
+
+            if disk_pct >= 95:
+                status = HealthStatus.UNHEALTHY
+                message = f"Disk critical ({disk_pct}% used)"
+            elif disk_pct >= 80:
+                status = HealthStatus.DEGRADED
+                message = f"Disk pressure ({disk_pct}% used)"
+            else:
+                status = HealthStatus.HEALTHY
+                message = f"{active} entries, {self._format_bytes(free)} free"
+
+            return ServiceHealth(
+                name="M-O (Scratch)",
+                status=status,
+                message=message,
+                latency_ms=latency,
+                details={
+                    "base_dir": info.get("base_dir"),
+                    "active_entries": active,
+                    "disk_used_pct": disk_pct,
+                },
+            )
+
+        except ImportError:
+            return ServiceHealth(
+                name="M-O (Scratch)",
+                status=HealthStatus.UNKNOWN,
+                message="M-O module not installed",
+            )
+        except Exception as e:
+            return ServiceHealth(
+                name="M-O (Scratch)",
+                status=HealthStatus.UNKNOWN,
+                message=str(e)[:50],
+            )
+
+    @staticmethod
+    def _format_bytes(n: int) -> str:
+        for unit in ("B", "KB", "MB", "GB"):
+            if abs(n) < 1024:
+                return f"{n:.1f} {unit}" if unit != "B" else f"{n} B"
+            n = n / 1024
+        return f"{n:.1f} TB"
+
     def _mask_url(self, url: str) -> str:
         """Mask password in URL."""
         import re
@@ -387,6 +453,7 @@ def format_health_table(health: SystemHealth, use_color: bool = True) -> str:
     }.get(health.overall, "?")
 
     lines.append(f"Overall: {overall_icon} {health.overall.value.upper()}")
+    lines.append("")  # blank line before shell prompt
 
     return "\n".join(lines)
 

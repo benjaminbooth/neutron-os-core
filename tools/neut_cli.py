@@ -97,7 +97,7 @@ def _show_pending_changelog() -> None:
 
 
 SUBCOMMANDS = {
-    "setup": "tools.agents.setup.cli",
+    "config": "tools.agents.setup.cli",
     "sense": "tools.agents.sense.cli",
     "doc": "tools.docflow.cli",
     "docflow": "tools.docflow.cli",
@@ -357,7 +357,7 @@ Rules:
 
 # Help text for subcommands without get_parser()
 _SUBCOMMAND_HELP = {
-    "setup": "Interactive onboarding wizard",
+    "config": "Interactive onboarding wizard",
     "sense": "Agentic signal ingestion pipeline",
     "doc": "Document lifecycle management",
     "docflow": "Document lifecycle management (alias for doc)",
@@ -521,7 +521,7 @@ def print_usage(show_all: bool = False):
     print("  status    System health dashboard")
     print("  doctor    Diagnose environment issues")
     print("  update    Check for updates and apply them")
-    print("  setup     First-time configuration")
+    print("  config    First-time configuration")
 
     if show_all:
         print()
