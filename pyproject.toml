@@ -1,6 +1,6 @@
 [project]
 name = "neutron-os"
-version = "0.3.0"
+version = "0.3.1"
 description = "Modular digital platform for nuclear facilities"
 requires-python = ">=3.11"
 license = "MIT"
