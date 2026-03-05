@@ -32,33 +32,32 @@ integrated digital tools.
 ```
 Neutron_OS/
   docs/
-    prd/                    # Product requirements (one per module)
-    specs/                  # Technical specifications
-    design/                 # Brand, UX, architecture diagrams
+    prd/                    # Product requirements, strategy, OKRs
+    specs/                  # Technical specs, design, standards
     adr/                    # Architecture decision records
-    strategy/               # Roadmaps, OKRs
-    program/                # Program management artifacts
-    research/               # Surveys, analyses
-    standards/              # Coding and documentation standards
-    proposals/NEUP_2026/    # Grant portfolio (moved)
-  plugins/
-    plugin-triga/           # UT TRIGA reactor-specific logic
-    plugin-msr/             # Molten salt reactor logic
-    plugin-mit-loop/        # MIT irradiation loop logic
-  services/                 # Backend services (planned)
-  packages/                 # Shared libraries (planned)
-  frontend/                 # Web UI (planned)
-  tools/
-    agents/                 # True agents only (chat, doctor)
-    pipelines/              # Data processing flows (sense)
-    infra/                  # Shared infrastructure (orchestrator, gateway)
-    setup/                  # Config wizard
-    mo/                     # M-O resource steward
-    exports/                # GitLab weekly data exports
-    tracker/                # Program tracker build tools
-    cost_estimation/        # Infrastructure cost models
-  infra/                    # Terraform, Helm, k8s configs
+    research/               # Surveys, analyses, use-case scenarios
+    analysis/               # Data and cost analyses
+    proposals/              # Grant portfolio (NEUP 2026)
+    _tools/                 # Generated artifacts (docx, etc.)
+    _archive/               # Retired documents
+  archive/                  # Historical spikes and retired plans
   spikes/                   # Experimental prototypes
+  tools/
+    agents/                 # Agents (chat, doctor, sense orchestrator)
+    pipelines/              # Data processing flows (sense)
+    docflow/                # Document lifecycle engine
+    infra/                  # Shared infrastructure (orchestrator, gateway)
+    extensions/             # Extension system and scaffold
+    setup/                  # Config wizard and onboarding
+    mo/                     # M-O resource steward
+    mcp_server/             # IDE integration (MCP)
+    exports/                # GitLab/GitHub weekly data exports
+    repo_sensing/           # Multi-source repo analytics
+    cost_estimation_tool/   # Infrastructure cost models
+    neut_cli.py             # CLI entry point
+  tests/                    # Test suites (unit + integration)
+  infra/                    # Terraform, Helm, k8s configs
+  scripts/                  # Bootstrap and installation scripts
   data/                     # Data schemas and seed data
 ```
 
@@ -158,7 +157,7 @@ Consistent .gitignore standards across all 6 digital twin projects ensure:
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| CLI | Rust (clap v4) | `neut` binary, offline-first |
+| CLI | Python (argparse + argcomplete) | `neut` command, offline-first |
 | Agent tooling | Python | `tools/agents/` |
 | Data platform | Apache Iceberg + DuckDB + Dagster + dbt | Medallion architecture |
 | Object storage | MinIO | S3-compatible, on-premise |
@@ -232,7 +231,7 @@ Sources (voice memos, Teams, GitLab, Linear, freetext)
 - `tools/pipelines/sense/extractors/` — Source-specific signal extraction
 - `tools/pipelines/sense/correlator.py` — Entity resolution
 - `tools/pipelines/sense/synthesizer.py` — Cross-source signal merging
-- `tools/pipelines/sense/publisher.py` — Multi-target publishing
+- `tools/pipelines/sense/publisher.py` — Multi-target publishing (planned)
 ### Design Principles
 - **Human-in-the-loop:** All writes require explicit approval
 - **Model-agnostic:** Gateway routes to any OpenAI-compatible endpoint
@@ -242,7 +241,7 @@ Sources (voice memos, Teams, GitLab, Linear, freetext)
 
 ### Architecture Spec
 
-Full design: `docs/specs/neutron_os_agent_architecture_v2.md`
+Full design: `docs/specs/neutron-os-agent-architecture.md`
 
 ---
 

@@ -2,71 +2,105 @@
 
 **Nuclear Energy Unified Technology for Research, Operations & Networks**
 
-A polyglot platform providing infrastructure, data lakehouse, immutable audit layer, and shared services for nuclear research and operations.
+A modular digital platform for nuclear facilities that unifies data management, operations tracking, experiment scheduling, and analytics — replacing fragmented workflows (paper logs, spreadsheets, phone calls) with integrated digital tools.
 
-## Overview
+## Key Capabilities
 
-Neutron OS is the foundational platform that supports:
-- **TRIGA Digital Twin** - UT NETL reactor operations and research
-- **MSR Digital Twin** - Molten salt reactor simulations
-- **MIT Irradiation Loop** - Experiment analysis
-- **OffGas Digital Twin** - Off-gas system modeling
-- **Future facilities** - Multi-facility blockchain network ready
+- **Sense Pipeline** — Ingest signals from voice memos, Teams, GitLab, Linear, and freetext; extract structured insights; publish weekly briefings
+- **DocFlow** — Document lifecycle management with provider-based generation, storage, and review
+- **Interactive Agent** — Chat-based assistant with facility context (`neut chat`)
+- **Self-Diagnostics** — AI-powered troubleshooting (`neut doctor`)
+- **Extension System** — Scaffold and manage facility-specific extensions (`neut ext`)
+- **MCP Server** — IDE integration via Model Context Protocol (`neut serve-mcp`)
 
-## Key Features
+## Quick Start
 
-- **Data Lakehouse** - Apache Iceberg + DuckDB + Superset (Bronze/Silver/Gold tiers)
-- **Immutable Audit** - Hyperledger Fabric for multi-facility consensus
-- **Test-Driven Analytics** - Superset scenarios drive data model design
-- **Meeting Intake** - LangGraph + Anthropic pipeline for requirements extraction
-- **Polyglot Build** - Bazel supporting Python, TypeScript, C, Go, Mojo
+```bash
+# Clone and install
+git clone <repo-url> && cd Neutron_OS
+pip install -e ".[all]"
+
+# Or use the bootstrap script (creates venv, installs, sets up direnv)
+./scripts/bootstrap.sh
+
+# Verify
+neut --help
+neut doctor
+```
+
+See [CLAUDE.md](CLAUDE.md) for detailed setup instructions including direnv, venv, and troubleshooting.
 
 ## Repository Structure
 
 ```
 Neutron_OS/
-├── docs/                 # Architecture, PRDs, specs, scenarios
-├── infra/                # Terraform, Helm, K3D (paused until hosting decision)
-├── data/                 # Iceberg schemas, dbt, Dagster, Superset
-├── blockchain/           # Hyperledger Fabric network and chaincode
-├── packages/             # Shared libraries (schemas, Python, TS)
-├── tools/                # Meeting intake, dev utilities
-├── services/             # Backend services (stub)
-├── plugins/              # Reactor-specific plugins (stub)
-└── frontend/             # React + Vite + TS app (stub)
+├── tools/                # Core application code
+│   ├── agents/           #   Chat agent, doctor, inbox
+│   ├── pipelines/        #   Sense pipeline (extractors, correlator, synthesizer)
+│   ├── docflow/          #   Document lifecycle engine
+│   ├── infra/            #   Shared infra (gateway, orchestrator)
+│   ├── setup/            #   Config wizard and onboarding
+│   ├── extensions/       #   Extension system and scaffold
+│   ├── mo/               #   M-O resource steward
+│   ├── mcp_server/       #   IDE integration server
+│   └── neut_cli.py       #   CLI entry point
+├── tests/                # Test suites (unit + integration)
+├── docs/                 # Architecture specs, PRDs, design docs
+├── infra/                # Terraform, Helm, K3D configs
+├── data/                 # Iceberg schemas, dbt, data models
+├── scripts/              # Bootstrap and installation scripts
+├── spikes/               # Experimental prototypes
+├── pyproject.toml        # Package definition (Hatchling)
+├── Makefile              # Dev commands (test, build, lint, clean)
+├── .gitlab-ci.yml        # CI/CD pipeline
+└── CLAUDE.md             # AI assistant context and project conventions
 ```
 
-## Infrastructure Standards
-
-| ✅ Use | ❌ Avoid |
-|--------|----------|
-| Terraform | Vendor-specific IaC |
-| Kubernetes (K3D local) | Docker-Compose |
-| Helm | Manual manifests |
-| Bazel | Single-language build tools |
-| S3-compatible storage | Provider-locked storage |
-
-## Quick Start
+## CLI
 
 ```bash
-# Prerequisites: Bazel, K3D, Helm, Terraform
-
-# Local development cluster (once infra is ready)
-cd infra/k3d && k3d cluster create --config cluster-config.yaml
-
-# Run tests
-bazel test //...
+neut chat              # Interactive agent
+neut sense ingest      # Run signal ingestion
+neut sense status      # Pipeline health
+neut doc publish       # Generate and publish documents
+neut doctor            # AI-powered diagnostics
+neut ext scaffold      # Create a new extension
+neut config            # Onboarding wizard
 ```
+
+## Development
+
+```bash
+make test              # Unit tests
+make integration       # Integration tests (needs .env credentials)
+make lint              # Ruff linter
+make build             # Build wheel
+make clean             # Remove build artifacts
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| CLI & Agents | Python (argparse, rich, prompt-toolkit) |
+| LLM Gateway | Model-agnostic (Anthropic, OpenAI, any OpenAI-compatible) |
+| Data Platform | Apache Iceberg + DuckDB + Dagster + dbt |
+| Database | PostgreSQL + pgvector |
+| Infrastructure | Terraform, Helm, K3D |
+| CI/CD | GitLab CI with AI code review |
+| Packaging | Hatchling (pip-installable wheel) |
+
+## Design Principles
+
+- **Reactor-agnostic core** with facility-specific config
+- **Offline-first** — queue locally, sync on restore
+- **Human-in-the-loop** for all writes in safety-adjacent contexts
+- **No vendor lock-in** — model-agnostic, cloud-agnostic, IDE-agnostic
+- **Provider pattern** — swap implementations via config, not code changes
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, git practices, and .gitignore conventions.
-
-## Related Repositories
-
-- [TRIGA_Digital_Twin](../TRIGA_Digital_Twin) - NETL reactor portal and simulations
-- [MSR_Digital_Twin_Open](../MSR_Digital_Twin_Open) - Molten salt reactor analysis
-- [MIT_Irradiation_Loop_Digital_Twin](../MIT_Irradiation_Loop_Digital_Twin) - Irradiation experiments
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, git practices, and conventions.
 
 ## License
 
