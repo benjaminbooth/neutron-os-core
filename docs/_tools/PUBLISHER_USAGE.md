@@ -27,14 +27,13 @@ You'll see a menu:
 
 📁 Documentation folders:
 
-  [1] prd                      (8 files)
+  [1] requirements              (33 files)
   [2] research                 (10 files)
   [3] specs                    (3 files)
-  [4] adr                      (25 files)
   [0] All files                (46 files)
   [S] Search by name
 
-Select folder [0-4], [S] for search, or [Q] to quit:
+Select folder [0-3], [S] for search, or [Q] to quit:
 ```
 
 ---
@@ -53,7 +52,7 @@ Browse folders, select files, confirm, and publish. Best for exploring what's av
 
 ```bash
 # Publish all PRDs
-python3 docs/_tools/publish_to_onedrive.py docs/prd/*.md
+python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd_*.md
 
 # Publish all specs
 python3 docs/_tools/publish_to_onedrive.py docs/specs/*.md
@@ -89,10 +88,10 @@ python3 docs/_tools/publish_to_onedrive.py "docs/**/*.md"
 
 ```bash
 # Publish PRDs and specs together
-python3 docs/_tools/publish_to_onedrive.py docs/prd/*.md docs/specs/*.md
+python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd_*.md docs/specs/*.md
 
 # Publish specific files
-python3 docs/_tools/publish_to_onedrive.py docs/prd/experiment-manager-prd.md docs/research/deeplynx-assessment.md
+python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd_experiment-manager.md docs/research/deeplynx-assessment.md
 ```
 
 ---
@@ -103,18 +102,16 @@ The publisher respects your `docs/` folder hierarchy:
 
 ```
 docs/
-├── prd/
-│   ├── experiment-manager-prd.md
-│   ├── data-platform-prd.md
+├── requirements/
+│   ├── prd_experiment-manager.md
+│   ├── prd_data-platform.md
+│   ├── adr_001-streaming-first.md
 │   └── ...
 ├── specs/
 │   ├── neutron-os-master-tech-spec.md
 │   └── ...
-├── research/
-│   ├── deeplynx-assessment.md
-│   └── ...
-└── adr/
-    ├── ADR-001-streaming-first.md
+└── research/
+    ├── deeplynx-assessment.md
     └── ...
 ```
 
@@ -122,8 +119,8 @@ When you publish, documents are organized the same way in `docs/_tools/generated
 
 ```
 generated/
-├── prd/
-│   ├── experiment-manager-prd.docx
+├── requirements/
+│   ├── prd_experiment-manager.docx
 │   └── ...
 ├── specs/
 │   └── ...
@@ -132,7 +129,7 @@ generated/
 ```
 
 OneDrive file names are friendly:
-- `prd > experiment-manager-prd.docx`
+- `requirements > prd_experiment-manager.docx`
 - `specs > data-architecture-spec.docx`
 - `research > deeplynx-assessment.docx`
 
@@ -143,45 +140,45 @@ OneDrive file names are friendly:
 ### Publish All PRDs (8 documents)
 
 ```bash
-python3 docs/_tools/publish_to_onedrive.py docs/prd/*.md
+python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd_*.md
 ```
 
 Output:
 ```
 📋 Found 8 file(s):
 
-  [1] prd/experiment-manager-prd.md
-  [2] prd/data-platform-prd.md
-  [3] prd/reactor-ops-log-prd.md
-  [4] prd/neutron-os-executive-prd.md
-  [5] prd/scheduling-system-prd.md
-  [6] prd/compliance-tracking-prd.md
-  [7] prd/analytics-dashboards-prd.md
-  [8] prd/medical-isotope-prd.md
+  [1] requirements/prd_experiment-manager.md
+  [2] requirements/prd_data-platform.md
+  [3] requirements/prd_reactor-ops-log.md
+  [4] requirements/prd_neutron-os-executive.md
+  [5] requirements/prd_scheduling-system.md
+  [6] requirements/prd_compliance-tracking.md
+  [7] requirements/prd_analytics-dashboards.md
+  [8] requirements/prd_medical-isotope.md
 
 Publish these files? [y/N]: y
 
 🚀 ONEDRIVE DOCUMENT PUBLISHER
 ======================================================================
 
-  📝 Generating experiment-manager-prd.md...
-  ✅ Generated experiment-manager-prd.docx
-  📤 Uploading prd > experiment-manager-prd.docx...
+  📝 Generating prd_experiment-manager.md...
+  ✅ Generated prd_experiment-manager.docx
+  📤 Uploading requirements > prd_experiment-manager.docx...
   ✅ Uploaded (ID: 01AB2CD...)
   🔗 Creating shareable link...
   ✅ Link created: https://utexas-my.sharepoint.com/...
   🔐 Setting permissions for utexas.edu...
   ✅ Permissions set
-✅ Published: prd > experiment-manager-prd.docx
+✅ Published: requirements > prd_experiment-manager.docx
 
 [... repeats for other files ...]
 
 📊 PUBLICATION SUMMARY
 ======================================================================
 
-✅ prd > experiment-manager-prd.docx
+✅ requirements > prd_experiment-manager.docx
    https://utexas-my.sharepoint.com/...
-✅ prd > data-platform-prd.docx
+✅ requirements > prd_data-platform.docx
    https://utexas-my.sharepoint.com/...
 [... etc ...]
 
@@ -203,7 +200,7 @@ Enter search pattern (e.g., 'prd' or 'experiment'): architecture
   [1] research/deeplynx-assessment.md
   [2] specs/digital-twin-architecture-spec.md
   [3] specs/data-architecture-spec.md
-  [4] adr/ADR-007-streaming-first.md
+  [4] requirements/adr_007-streaming-first.md
 
 Publish these files? [y/N]: y
 ```
@@ -221,14 +218,13 @@ Menu:
 
 📁 Documentation folders:
 
-  [1] prd                      (8 files)
+  [1] requirements              (33 files)
   [2] research                 (10 files)
   [3] specs                    (3 files)
-  [4] adr                      (25 files)
   [0] All files                (46 files)
   [S] Search by name
 
-Select folder [0-4], [S] for search, or [Q] to quit: 1
+Select folder [0-3], [S] for search, or [Q] to quit: 1
 ```
 
 ---
@@ -256,9 +252,9 @@ Local copies with updated links in `docs/_tools/generated/`:
 
 ```
 docs/_tools/generated/
-├── prd/
-│   ├── experiment-manager-prd.docx
-│   ├── data-platform-prd.docx
+├── requirements/
+│   ├── prd_experiment-manager.docx
+│   ├── prd_data-platform.docx
 │   └── ...
 ├── specs/
 │   └── ...
@@ -285,7 +281,7 @@ Set via the `MS_GRAPH_TENANT_ID` environment variable.
 ### Folder Organization
 
 OneDrive folder names mirror your local structure:
-- `docs/prd/` → OneDrive `prd/`
+- `docs/requirements/` → OneDrive `requirements/`
 - `docs/specs/` → OneDrive `specs/`
 - `docs/research/` → OneDrive `research/`
 
@@ -316,7 +312,7 @@ Verify permissions in Azure portal:
 Check working directory:
 ```bash
 cd /Users/ben/Projects/UT_Computational_NE/Neutron_OS
-ls docs/prd/*.md
+ls docs/requirements/prd_*.md
 ```
 
 ### "File not found" in glob

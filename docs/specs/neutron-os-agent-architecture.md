@@ -9,12 +9,12 @@ respect and extend, not replace:
 
 ```
 Neutron_OS/
-  docs/prd/
-    neutron-os-executive-prd.md     # Platform vision (modular, reactor-agnostic)
-    neut-cli-prd.md                 # CLI with noun-verb: neut log|sim|model|twin|data|chat
-    compliance-tracking-prd.md      # Audit automation module
-    medical-isotope-prd.md          # Isotope workflow module
-    experiment-manager-prd.md       # Experiment management module
+  docs/requirements/
+    prd_neutron-os-executive.md     # Platform vision (modular, reactor-agnostic)
+    prd_neut-cli.md                 # CLI with noun-verb: neut log|sim|model|twin|data|chat
+    prd_compliance-tracking.md      # Audit automation module
+    prd_medical-isotope.md          # Isotope workflow module
+    prd_experiment-manager.md       # Experiment management module
     ...
   docs/specs/
     neut-cli-spec.md                # Rust CLI, clap v4, offline-first, WASM plugins
@@ -511,7 +511,7 @@ Instead, **append a section** for agent development:
 ## Agent Development (Neut Sense)
 
 ### Architecture
-See `docs/prd/neut-cli-prd.md` for CLI design. Neut Sense extends
+See `docs/requirements/prd_neut-cli.md` for CLI design. Neut Sense extends
 the existing command structure for proactive program awareness.
 
 Agent code lives in `tools/agents/`. Instance config in `tools/agents/config/`

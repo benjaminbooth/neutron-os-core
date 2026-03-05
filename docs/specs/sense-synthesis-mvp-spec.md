@@ -138,24 +138,24 @@ class Signal:
 ## Target PRDs
 
 ### 1. Reactor Ops Log PRD
-**File:** `docs/prd/reactor-ops-log-prd.md`  
+**File:** `docs/requirements/prd_reactor-ops-log.md`  
 **Section to Update:** `## Requirements` → subsections for new requirements  
 **Stakeholders in Signals:** Jim (TJ), Nick Luciano  
 **Key Topics:** Console checks, shift handoffs, tamper-proof entries, NRC compliance
 
 ### 2. Experiment Manager PRD
-**File:** `docs/prd/experiment-manager-prd.md`  
+**File:** `docs/requirements/prd_experiment-manager.md`  
 **Section to Update:** `## Requirements`  
 **Stakeholders in Signals:** Khiloni Shah, Nick Luciano  
 **Key Topics:** Sample tracking, lifecycle states, ROC approval, chain of custody
 
 ### 3. Operator Dashboard (NEW)
-**File:** `docs/prd/operator-dashboard-prd.md` (create if not exists)  
+**File:** `docs/requirements/prd_operator-dashboard.md` (create if not exists)  
 **Purpose:** Real-time view for reactor operators during shifts  
 **Key Topics:** Compliance status, upcoming checks, recent events, alerts
 
 ### 4. Researcher Dashboard (NEW)  
-**File:** `docs/prd/researcher-dashboard-prd.md` (create if not exists)  
+**File:** `docs/requirements/prd_researcher-dashboard.md` (create if not exists)  
 **Purpose:** Experiment status and sample tracking for researchers  
 **Key Topics:** My experiments, sample locations, upcoming irradiations, results
 

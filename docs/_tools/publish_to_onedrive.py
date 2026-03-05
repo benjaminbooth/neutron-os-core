@@ -10,7 +10,7 @@ Publish any markdown files from docs/ to OneDrive with automatic:
 
 Usage:
     python3 publish_to_onedrive.py                    # Interactive menu
-    python3 publish_to_onedrive.py docs/prd/*.md      # Publish PRD folder
+    python3 publish_to_onedrive.py docs/requirements/prd_*.md      # Publish PRD folder
     python3 publish_to_onedrive.py docs/research/*.md # Publish research
     python3 publish_to_onedrive.py docs/**/*.md       # Publish all docs
     
@@ -749,7 +749,7 @@ def main():
         epilog="""
 Examples:
   python3 publish_to_onedrive.py                          # Interactive menu
-  python3 publish_to_onedrive.py docs/prd/*.md            # Publish PRD folder
+  python3 publish_to_onedrive.py docs/requirements/prd_*.md            # Publish PRD folder
   python3 publish_to_onedrive.py docs/research/*.md       # Publish research
   python3 publish_to_onedrive.py docs/specs/*.md          # Publish specs
   python3 publish_to_onedrive.py docs/**/*.md             # Publish all docs
@@ -766,7 +766,7 @@ Environment Variables Required:
     parser.add_argument(
         "files",
         nargs="*",
-        help="Markdown files or glob patterns to publish (e.g., docs/prd/*.md)",
+        help="Markdown files or glob patterns to publish (e.g., docs/requirements/prd_*.md)",
     )
     parser.add_argument(
         "--search",

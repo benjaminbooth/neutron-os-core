@@ -149,7 +149,7 @@ When you open a document, cross-references (e.g., "See [Experiment Manager PRD](
 
 **"File not found"**
 - Run from workspace root: `/Users/ben/Projects/UT_Computational_NE/Neutron_OS/`
-- Check markdown files exist in `docs/prd/`
+- Check markdown files exist in `docs/requirements/`
 
 **Need help?** See `docs/_tools/PUBLISH_SETUP.md` for detailed guide
 

@@ -1,6 +1,6 @@
 # Experiment Manager PRD: Merge Scenario Implementation Plan
 
-**Target Document**: `docs/prd/experiment-manager-prd.md`  
+**Target Document**: `docs/requirements/prd_experiment-manager.md`  
 **Current Status**: v2.0.0 (published, in external review)  
 **Merge Target**: v2.1.0 (incorporate Sense signals + reviewer feedback)  
 **Timeline**: Week of February 25, 2026  
@@ -383,7 +383,7 @@ import json
 from pathlib import Path
 
 # Load baseline
-baseline_md = Path('docs/prd/experiment-manager-prd.md').read_text()
+baseline_md = Path('docs/requirements/prd_experiment-manager.md').read_text()
 
 # Load merge decisions
 with open('signals/merge-decisions.json') as f:
@@ -397,7 +397,7 @@ for decision in decisions['merge_decisions']:
     pass
 
 # Save merged version
-Path('docs/prd/experiment-manager-prd-v2.1.0.md').write_text(merged_md)
+Path('docs/requirements/prd_experiment-manager-v2.1.0.md').write_text(merged_md)
 print('✓ Merged document created')
 "
 ```

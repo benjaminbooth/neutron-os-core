@@ -360,7 +360,7 @@ The registry maps document identifiers to their published URLs. URL format is en
 
 class LinkEntry:
     doc_id: str             # e.g., "experiment-manager-prd"
-    source_path: str        # e.g., "docs/prd/experiment-manager-prd.md"
+    source_path: str        # e.g., "docs/requirements/prd_experiment-manager.md"
     published_url: str      # From StorageProvider.get_canonical_url()
     draft_url: str | None   # If currently in review
     storage_id: str         # Provider-specific reference
@@ -606,10 +606,10 @@ Facilities select a coherent set of providers. Common profiles:
 DocFlow is accessed as a subcommand of the neut CLI: neut doc (alias: neut docflow). See docs/specs/neut-cli-spec.md for the full neut command hierarchy.
 
 # --- Publishing ---
-neut doc publish docs/prd/foo.md              # Generate + publish
-neut doc publish --draft docs/prd/foo.md      # Publish as draft with review period
+neut doc publish docs/requirements/prd_foo.md              # Generate + publish
+neut doc publish --draft docs/requirements/prd_foo.md      # Publish as draft with review period
 neut doc publish --all --changed-only          # Batch publish all changed docs
-neut doc generate docs/prd/foo.md             # Generate locally only (no upload)
+neut doc generate docs/requirements/prd_foo.md             # Generate locally only (no upload)
 
 # --- Review management ---
 neut doc review list                          # Active reviews
@@ -621,7 +621,7 @@ neut doc review promote foo                   # Draft → Published (gated)
 
 # --- Monitoring ---
 neut doc status                               # Overall status (all docs)
-neut doc status docs/prd/foo.md               # Single doc status
+neut doc status docs/requirements/prd_foo.md               # Single doc status
 neut doc check-links                          # Verify all cross-doc links resolve
 neut doc diff                                 # Show docs changed since last publish
 
@@ -756,7 +756,7 @@ Phase 1: MVP (Weeks 1-2)
 
 • [ ] CLI basics (cli.py) — publish, generate, status, check-links, providers
 
-• Milestone: docflow publish docs/prd/foo.md generates .docx with rewritten links and uploads to OneDrive. docflow publish --storage local generates to local filesystem. Core never references OneDrive.
+• Milestone: docflow publish docs/requirements/prd_foo.md generates .docx with rewritten links and uploads to OneDrive. docflow publish --storage local generates to local filesystem. Core never references OneDrive.
 
 Phase 2: Review & Feedback (Weeks 3-4)
 

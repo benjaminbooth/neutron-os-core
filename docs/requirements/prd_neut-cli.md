@@ -284,7 +284,7 @@ DocFlow manages document generation, publishing, and review cycles.
 
 ```bash
 # Publish a document
-neut doc publish docs/prd/foo.md
+neut doc publish docs/requirements/prd_foo.md
 
 # Check document status
 neut doc status
