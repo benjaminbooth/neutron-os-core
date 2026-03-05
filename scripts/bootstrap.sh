@@ -90,7 +90,14 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$_SCRIPT_PATH")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-VENV_PATH="${PROJECT_ROOT}/../.venv"
+
+# Use parent .venv if it already exists (shared workspace layout),
+# otherwise create .venv inside the project root (standalone clone).
+if [[ -d "${PROJECT_ROOT}/../.venv" ]]; then
+    VENV_PATH="${PROJECT_ROOT}/../.venv"
+else
+    VENV_PATH="${PROJECT_ROOT}/.venv"
+fi
 
 # Parse args
 for arg in "$@"; do
