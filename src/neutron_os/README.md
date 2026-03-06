@@ -7,7 +7,7 @@ directory is part of the `neutron_os` package installed via `pip install -e ".[a
 
 - `neut_cli.py` — CLI entry point (`neut` command)
 - `cli_registry.py` — Command discovery and registration
-- `platform/` — Shared infrastructure (LLM gateway, orchestrator, auth)
+- `infra/` — Shared infrastructure (LLM gateway, orchestrator, auth)
 - `extensions/` — Extension system + all builtin extensions
 - `setup/` — Config wizard and onboarding
 - `review/` — Review workflow engine
@@ -26,5 +26,5 @@ directory is part of the `neutron_os` package installed via `pip install -e ".[a
 
 Do NOT create new top-level directories here. New functionality should be a
 builtin extension (`extensions/builtins/{name}/`) or, if it's shared platform
-infrastructure, go in `platform/`. If unsure, create an extension — it can
+infrastructure, go in `infra/`. If unsure, create an extension — it can
 always be promoted to platform later.
