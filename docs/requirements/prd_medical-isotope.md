@@ -76,11 +76,11 @@ but serve fundamentally different workflows and stakeholders.
 
 ### Hospital Customer: Order to Delivery
 
-![Hospital order-to-delivery workflow](media/medical-isotope-prd/media/image1.jpg)
+![Hospital order-to-delivery workflow](../_media/medical-isotope-prd/media/image1.jpg)
 
 ### Production Manager: Weekly Batch
 
-![Production manager weekly batch timeline](media/medical-isotope-prd/media/image2.jpg)
+![Production manager weekly batch timeline](../_media/medical-isotope-prd/media/image2.jpg)
 
 ### Order State Machine
 
@@ -101,7 +101,7 @@ stateDiagram-v2
 
 ### System Integration
 
-![System integration diagram showing order → scheduling → production → QA → fulfillment](media/medical-isotope-prd/media/image3.jpg)
+![System integration diagram showing order → scheduling → production → QA → fulfillment](../_media/medical-isotope-prd/media/image3.jpg)
 
 ## Current State (to be validated)
 
@@ -233,7 +233,7 @@ Example products for a TRIGA facility (actual catalog varies):
 
 ## Workflow Stages
 
-![Workflow stages diagram](media/medical-isotope-prd/media/image4.jpg)
+![Workflow stages diagram](../_media/medical-isotope-prd/media/image4.jpg)
 
 ### Stage Transitions
 
@@ -310,15 +310,15 @@ Example products for a TRIGA facility (actual catalog varies):
 
 ### Customer Order Portal
 
-![Requirements and design diagram](media/medical-isotope-prd/media/image5.png)
+![Requirements and design diagram](../_media/medical-isotope-prd/media/image5.png)
 
 ### Production Manager Dashboard
 
-![System architecture diagram](media/medical-isotope-prd/media/image6.png)
+![System architecture diagram](../_media/medical-isotope-prd/media/image6.png)
 
 ### QA/QC Entry Form
 
-![Process flow diagram](media/medical-isotope-prd/media/image7.png)
+![Process flow diagram](../_media/medical-isotope-prd/media/image7.png)
 
 ## Integration Points
 
@@ -428,7 +428,7 @@ Example products for a TRIGA facility (actual catalog varies):
 
 ## Relationship to Experiment Manager
 
-![Quality assurance procedures diagram](media/medical-isotope-prd/media/image8.jpg)
+![Quality assurance procedures diagram](../_media/medical-isotope-prd/media/image8.jpg)
 
 **Shared code estimate:** ~60% of backend logic is reusable between
 modules.
