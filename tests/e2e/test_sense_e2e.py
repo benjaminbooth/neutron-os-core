@@ -6,7 +6,6 @@ behavior through the complete ingest → draft workflow.
 """
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

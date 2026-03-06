@@ -17,7 +17,6 @@ For integration tests (requires Docker/K3D):
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 from unittest.mock import MagicMock, patch
 import pytest

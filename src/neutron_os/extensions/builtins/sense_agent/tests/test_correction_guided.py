@@ -4,9 +4,6 @@ Golden copy test fixtures are in tests/sense/fixtures/audio_clips/
 """
 
 import json
-import os
-import shutil
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -68,8 +65,6 @@ class TestGuidedCorrectionReview:
         """Create isolated GuidedCorrectionReview instance."""
         from neutron_os.extensions.builtins.sense_agent.correction_review_guided import (
             GuidedCorrectionReview,
-            CLIPS_DIR,
-            REVIEW_STATE_FILE,
         )
         
         # Patch the paths to use temp directories
@@ -152,9 +147,6 @@ class TestCorrectionPropagation:
         """Create isolated CorrectionPropagator."""
         from neutron_os.extensions.builtins.sense_agent.correction_propagation import (
             CorrectionPropagator,
-            PROPAGATION_QUEUE,
-            PROPAGATION_LOG,
-            USER_GLOSSARY,
         )
         
         with patch("neutron_os.extensions.builtins.sense_agent.correction_propagation.PROPAGATION_QUEUE", temp_propagation_dir / "queue.json"):

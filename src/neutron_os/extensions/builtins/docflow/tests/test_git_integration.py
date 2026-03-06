@@ -1,6 +1,5 @@
 """Unit tests for git integration."""
 
-import pytest
 from neutron_os.extensions.builtins.docflow.git_integration import (
     get_git_context,
     check_branch_policy,

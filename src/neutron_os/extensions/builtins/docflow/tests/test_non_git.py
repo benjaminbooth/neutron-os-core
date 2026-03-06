@@ -5,9 +5,8 @@ Validates that docflow works correctly when installed standalone
 """
 
 import pytest
-from pathlib import Path
 
-from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig, _state_dir
+from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
 from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
 from neutron_os.extensions.builtins.docflow.git_integration import get_git_context
 

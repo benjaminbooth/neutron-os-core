@@ -1,9 +1,6 @@
 """Unit tests for the signal router."""
 
-import json
 import pytest
-from datetime import datetime, timezone
-from pathlib import Path
 
 from neutron_os.extensions.builtins.sense_agent.router import Router, Endpoint, TransitRecord
 from neutron_os.extensions.builtins.sense_agent.models import Signal

@@ -53,7 +53,7 @@ Before writing code, decide:
 |---|---|
 | Domain-agnostic CLI feature | `src/neutron_os/extensions/builtins/{name}/` |
 | Domain-specific feature (reactor-ops, isotopes) | External repo → `.neut/extensions/` |
-| Shared platform plumbing (auth, gateway) | `src/neutron_os/platform/` |
+| Shared platform plumbing (auth, gateway) | `src/neutron_os/infra/` |
 
 Every extension needs a `neut-extension.toml` manifest. Use `neut ext init` to
 scaffold one, or copy from an existing builtin. Agent extensions must have

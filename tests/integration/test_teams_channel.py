@@ -12,7 +12,6 @@ No external credentials needed for local transcript processing.
 """
 
 import pytest
-from pathlib import Path
 
 pytestmark = [pytest.mark.integration, pytest.mark.teams]
 
@@ -60,7 +59,6 @@ class TestTeamsTranscriptProcessing:
     def test_extract_signals_from_transcript(self, tmp_path):
         """Extract signals from a meeting transcript without LLM."""
         from neutron_os.extensions.builtins.sense_agent.extractors.transcript import TranscriptExtractor
-        from neutron_os.extensions.builtins.sense_agent.correlator import Correlator
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -95,12 +93,12 @@ class TestTeamsTranscriptProcessing:
             host, port = srv.server_address
             url = f"http://{host}:{port}/upload"
 
-            boundary = "----TeamsTest"
+            _boundary = "----TeamsTest"
             body = (
-                f"------TeamsTest\r\n"
-                f'Content-Disposition: form-data; name="file"; filename="standup_2026-02-18.vtt"\r\n'
-                f"Content-Type: text/vtt\r\n"
-                f"\r\n"
+                "------TeamsTest\r\n"
+                'Content-Disposition: form-data; name="file"; filename="standup_2026-02-18.vtt"\r\n'
+                "Content-Type: text/vtt\r\n"
+                "\r\n"
             ).encode() + SAMPLE_VTT.encode() + b"\r\n------TeamsTest--\r\n"
 
             req = urllib.request.Request(

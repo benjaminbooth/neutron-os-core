@@ -13,8 +13,8 @@ from .base import RenderProvider
 from neutron_os.setup.renderer import _c, _Colors, _use_color
 
 if TYPE_CHECKING:
-    from neutron_os.platform.orchestrator.actions import Action
-    from neutron_os.platform.gateway import StreamChunk
+    from neutron_os.infra.orchestrator.actions import Action
+    from neutron_os.infra.gateway import StreamChunk
 
 
 # Markdown regexes (duplicated from renderer.py to keep this self-contained)
@@ -266,7 +266,7 @@ class AnsiRenderProvider(RenderProvider):
                 print("  Choose [a]pprove, [A]lways allow, [r]eject, or [s]kip")
 
     def render_action_result(self, action: Action) -> None:
-        from neutron_os.platform.orchestrator.actions import ActionStatus
+        from neutron_os.infra.orchestrator.actions import ActionStatus
         if action.status == ActionStatus.COMPLETED:
             result = action.result or {}
             if "error" in result:

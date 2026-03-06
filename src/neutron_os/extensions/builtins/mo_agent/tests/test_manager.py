@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import os
-import time
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 from neutron_os.extensions.builtins.mo_agent.manifest import Manifest, ScratchEntry
 from neutron_os.extensions.builtins.mo_agent.manager import MoManager

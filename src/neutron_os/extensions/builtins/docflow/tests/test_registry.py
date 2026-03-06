@@ -1,8 +1,6 @@
 """Unit tests for the link registry."""
 
-import json
 import pytest
-from pathlib import Path
 
 from neutron_os.extensions.builtins.docflow.state import LinkEntry
 from neutron_os.extensions.builtins.docflow.registry import LinkRegistry

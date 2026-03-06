@@ -1,6 +1,5 @@
 """Tests for token usage tracking and cost estimation."""
 
-import pytest
 
 from neutron_os.extensions.builtins.chat_agent.usage import (
     UsageTracker,

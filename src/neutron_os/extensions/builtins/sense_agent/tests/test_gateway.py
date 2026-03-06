@@ -1,10 +1,9 @@
 """Unit tests for the LLM gateway."""
 
 import json
-import pytest
 from unittest.mock import MagicMock
 
-from neutron_os.platform.gateway import (
+from neutron_os.infra.gateway import (
     Gateway,
     GatewayResponse,
     LLMProvider,

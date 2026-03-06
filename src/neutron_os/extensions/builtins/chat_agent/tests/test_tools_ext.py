@@ -1,10 +1,6 @@
 """Tests for tool extension discovery and hot-reload."""
 
-import importlib
 import sys
-import pytest
-from pathlib import Path
-from unittest.mock import patch
 
 from neutron_os.extensions.builtins.chat_agent.tools import get_all_tools, _scan_extensions, _ext_cache
 
@@ -36,7 +32,7 @@ class TestExtensionDiscovery:
         (pkg_dir / "__init__.py").touch()
         (pkg_dir / "my_tool.py").write_text(
             'from neutron_os.extensions.builtins.chat_agent.tools import ToolDef\n'
-            'from neutron_os.platform.orchestrator.actions import ActionCategory\n'
+            'from neutron_os.infra.orchestrator.actions import ActionCategory\n'
             '\n'
             'TOOLS = [ToolDef(name="my_tool", description="Test tool", '
             'category=ActionCategory.READ, parameters={"type": "object", "properties": {}})]\n'

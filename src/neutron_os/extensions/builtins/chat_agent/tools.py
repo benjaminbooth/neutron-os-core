@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from neutron_os.platform.orchestrator.actions import ActionCategory
+from neutron_os.infra.orchestrator.actions import ActionCategory
 
 logger = logging.getLogger(__name__)
 

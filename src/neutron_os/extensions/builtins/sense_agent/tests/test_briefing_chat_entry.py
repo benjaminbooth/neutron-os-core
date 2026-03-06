@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import patch
 
 import pytest
 
 from neutron_os.extensions.builtins.chat_agent.entry import _format_briefing_context, enter_chat
-from neutron_os.platform.orchestrator.session import Session
+from neutron_os.infra.orchestrator.session import Session
 
 
 # ---------------------------------------------------------------------------

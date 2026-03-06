@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .base import BaseExtractor
 from ..models import Extraction, Signal
-from neutron_os.platform.gateway import Gateway
+from neutron_os.infra.gateway import Gateway
 from ..correlator import Correlator
 
 

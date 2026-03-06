@@ -2,7 +2,7 @@
 
 import pytest
 from neutron_os.extensions.builtins.docflow.factory import DocFlowFactory
-from neutron_os.extensions.builtins.docflow.providers.base import StorageProvider, GenerationProvider
+from neutron_os.extensions.builtins.docflow.providers.base import StorageProvider
 
 
 class TestFactoryRegistration:

@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..tools import ToolDef
-from neutron_os.platform.orchestrator.actions import ActionCategory
+from neutron_os.infra.orchestrator.actions import ActionCategory
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 _DRAFTS_DIR = _REPO_ROOT / "runtime" / "drafts" / "approved"

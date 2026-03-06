@@ -13,8 +13,8 @@ from typing import Any, Iterator, TYPE_CHECKING
 from .base import RenderProvider
 
 if TYPE_CHECKING:
-    from neutron_os.platform.orchestrator.actions import Action
-    from neutron_os.platform.gateway import StreamChunk
+    from neutron_os.infra.orchestrator.actions import Action
+    from neutron_os.infra.gateway import StreamChunk
 
 try:
     from rich.console import Console
@@ -217,7 +217,7 @@ class RichRenderProvider(RenderProvider):
                 self.console.print("  Choose [a]pprove, [A]lways allow, [r]eject, or [s]kip")
 
     def render_action_result(self, action: Action) -> None:
-        from neutron_os.platform.orchestrator.actions import ActionStatus
+        from neutron_os.infra.orchestrator.actions import ActionStatus
         if action.status == ActionStatus.COMPLETED:
             result = action.result or {}
             if "error" in result:

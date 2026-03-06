@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from neutron_os.platform.orchestrator.actions import (
+from neutron_os.infra.orchestrator.actions import (
     Action,
     ActionCategory,
     ActionStatus,

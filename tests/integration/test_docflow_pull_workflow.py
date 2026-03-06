@@ -6,7 +6,7 @@ These tests hit real filesystem operations but mock external storage.
 
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
 from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
@@ -65,7 +65,7 @@ class TestPublishPullRoundTrip:
         source.write_text("# Original Title\n\nOriginal paragraph.\n")
 
         record = workflow_engine.publish(source, storage_override="local")
-        storage_path = Path(record.storage_id) if "file://" not in record.storage_id else Path(record.url.replace("file://", ""))
+        _storage_path = Path(record.storage_id) if "file://" not in record.storage_id else Path(record.url.replace("file://", ""))
 
         # 2. Simulate external edit by modifying the .docx
         # Find the actual docx file in storage

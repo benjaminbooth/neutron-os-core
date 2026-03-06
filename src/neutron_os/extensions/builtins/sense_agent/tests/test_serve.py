@@ -1,16 +1,13 @@
 """Tests for the neut sense serve HTTP ingestion server."""
 
-import io
 import json
 import threading
-import time
 import urllib.request
 import urllib.parse
-from pathlib import Path
 
 import pytest
 
-from neutron_os.extensions.builtins.sense_agent.serve import create_server, InboxHandler, ROUTE_MAP
+from neutron_os.extensions.builtins.sense_agent.serve import create_server, ROUTE_MAP
 
 
 @pytest.fixture
@@ -72,7 +69,7 @@ class TestFileUpload:
 
     def _upload(self, server, filename, content=b"test data"):
         """Upload a file via multipart POST."""
-        boundary = "----TestBoundary123"
+        _boundary = "----TestBoundary123"
         body = (
             f"------TestBoundary123\r\n"
             f"Content-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\n"
@@ -84,7 +81,7 @@ class TestFileUpload:
             _url(server, "/upload"),
             data=body,
             headers={
-                "Content-Type": f"multipart/form-data; boundary=----TestBoundary123",
+                "Content-Type": "multipart/form-data; boundary=----TestBoundary123",
             },
             method="POST",
         )
@@ -102,16 +99,16 @@ class TestFileUpload:
         assert (inbox / "notes.md").exists()
 
     def test_upload_vtt_to_teams(self, server, inbox):
-        result = self._upload(server, "meeting.vtt")
+        _result = self._upload(server, "meeting.vtt")
         assert (inbox / "teams" / "meeting.vtt").exists()
 
     def test_upload_unknown_ext_to_other(self, server, inbox):
-        result = self._upload(server, "data.csv")
+        _result = self._upload(server, "data.csv")
         assert (inbox / "other" / "data.csv").exists()
 
     def test_duplicate_filename_gets_timestamp(self, server, inbox):
         self._upload(server, "dup.md", b"first")
-        result = self._upload(server, "dup.md", b"second")
+        _result = self._upload(server, "dup.md", b"second")
         # Should not overwrite the first
         md_files = list(inbox.glob("dup*.md"))
         assert len(md_files) == 2

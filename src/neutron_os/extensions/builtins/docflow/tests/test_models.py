@@ -1,6 +1,5 @@
 """Unit tests for docflow data models."""
 
-import pytest
 from neutron_os.extensions.builtins.docflow.state import (
     Comment,
     LinkEntry,

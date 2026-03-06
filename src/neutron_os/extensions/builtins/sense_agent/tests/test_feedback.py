@@ -1,9 +1,7 @@
 """Unit tests for the feedback collection system."""
 
-import json
 import pytest
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from datetime import datetime
 from unittest.mock import patch
 
 from neutron_os.extensions.builtins.sense_agent.feedback import (
@@ -167,7 +165,7 @@ class TestFeedbackCollector:
 
     def test_apply_feedback_updates_signal(self, collector, sample_signal):
         # Create a feedback request first
-        request = collector.create_feedback_request(sample_signal)
+        _request = collector.create_feedback_request(sample_signal)
 
         # Now submit feedback
         feedback = SignalFeedback(
@@ -185,7 +183,7 @@ class TestFeedbackCollector:
         assert len(collector.feedback_log) >= 1
 
     def test_dismiss_feedback_marks_noise(self, collector, sample_signal):
-        request = collector.create_feedback_request(sample_signal)
+        _request = collector.create_feedback_request(sample_signal)
 
         feedback = SignalFeedback(
             signal_id=sample_signal.signal_id,

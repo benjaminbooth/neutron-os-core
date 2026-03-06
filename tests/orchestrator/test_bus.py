@@ -1,10 +1,8 @@
 """Tests for the EventBus."""
 
 import json
-import pytest
-from pathlib import Path
 
-from neutron_os.platform.orchestrator.bus import EventBus, Event
+from neutron_os.infra.orchestrator.bus import EventBus, Event
 
 
 class TestEventBus:
@@ -44,7 +42,8 @@ class TestEventBus:
     def test_unsubscribe(self):
         bus = EventBus()
         received = []
-        handler = lambda t, d: received.append(t)
+        def handler(t, d):
+            received.append(t)
         bus.subscribe("*", handler)
 
         bus.publish("first", {})
@@ -118,7 +117,7 @@ class TestEventBusLogging:
         bus = EventBus(log_path=log)
         replayed = []
         bus.subscribe("*", lambda t, d: replayed.append(t))
-        events = bus.replay(since="2026-02-01T00:00:00")
+        _events = bus.replay(since="2026-02-01T00:00:00")
 
         assert replayed == ["new"]
 

@@ -1,8 +1,7 @@
 """Tests for action types and lifecycle."""
 
-import pytest
 
-from neutron_os.platform.orchestrator.actions import (
+from neutron_os.infra.orchestrator.actions import (
     Action,
     ActionCategory,
     ActionStatus,

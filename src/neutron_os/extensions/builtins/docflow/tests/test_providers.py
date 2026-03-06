@@ -5,7 +5,6 @@ They test the interface, not implementation details.
 """
 
 import pytest
-from pathlib import Path
 
 from neutron_os.extensions.builtins.docflow.providers.base import (
     GenerationProvider,

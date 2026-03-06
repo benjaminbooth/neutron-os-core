@@ -12,11 +12,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, TYPE_CHECKING
 
-from neutron_os.platform.orchestrator.actions import Action, ActionStatus
+from neutron_os.infra.orchestrator.actions import Action, ActionStatus
 from neutron_os.setup.renderer import _c, _Colors, _use_color
 
 if TYPE_CHECKING:
-    from neutron_os.platform.gateway import StreamChunk
+    from neutron_os.infra.gateway import StreamChunk
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ _FILE_PATH_RE = re.compile(
 )
 
 # Repository root for resolving relative paths to absolute
-from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os import REPO_ROOT as _REPO_ROOT  # noqa: E402
 
 
 def _make_path_clickable(match: re.Match) -> str:

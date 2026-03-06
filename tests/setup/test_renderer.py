@@ -1,7 +1,5 @@
 """Tests for neutron_os.setup.renderer."""
 
-import io
-import sys
 
 import pytest
 

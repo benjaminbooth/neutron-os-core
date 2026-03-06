@@ -46,7 +46,7 @@ Each extension follows this structure:
 
 - **Domain-specific extensions** (reactor-ops-log, medical-isotope) →
   external repos, installed to `.neut/extensions/` or `~/.neut/extensions/`
-- **Platform infrastructure** → `src/neutron_os/platform/`
+- **Platform infrastructure** → `src/neutron_os/infra/`
 - **Runtime data** → `runtime/`
 
 ## AI Agent Policy

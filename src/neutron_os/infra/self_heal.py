@@ -19,7 +19,7 @@ from argparse import Namespace
 from datetime import datetime, timezone
 from typing import Callable
 
-from neutron_os.platform.orchestrator.bus import EventBus
+from neutron_os.infra.orchestrator.bus import EventBus
 
 # ---------------------------------------------------------------------------
 # Recovery registry

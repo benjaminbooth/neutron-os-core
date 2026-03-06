@@ -35,7 +35,7 @@ Neutron_OS/
   src/neutron_os/              # Python package root (importable)
     neut_cli.py                #   CLI entry point
     cli_registry.py            #   Command discovery
-    platform/                  #   Shared infra (gateway, orchestrator, auth)
+    infra/                     #   Shared infra (gateway, orchestrator, auth)
     extensions/                #   Extension system
       builtins/                #   Domain-agnostic builtin extensions
         sense_agent/           #     Signal ingestion agent
@@ -86,7 +86,7 @@ at root level has a specific purpose. If you're unsure where something goes:
 |---|---|
 | Add a domain-agnostic extension | `src/neutron_os/extensions/builtins/{name}/` |
 | Build a domain-specific extension | External repo → `.neut/extensions/` |
-| Add shared platform code (auth, gateway) | `src/neutron_os/platform/` |
+| Add shared platform code (auth, gateway) | `src/neutron_os/infra/` |
 | Store facility config | `runtime/config/` |
 | Write cross-cutting tests | `tests/` |
 | Write extension tests | `src/neutron_os/extensions/builtins/{ext}/tests/` |
@@ -205,7 +205,7 @@ Sources (voice memos, Teams, GitLab, Linear, freetext)
 
 ### Key Files
 
-- `src/neutron_os/platform/gateway.py` — Model-agnostic LLM routing
+- `src/neutron_os/infra/gateway.py` — Model-agnostic LLM routing
 - `src/neutron_os/extensions/builtins/sense_agent/extractors/` — Source-specific extraction
 - `src/neutron_os/extensions/builtins/sense_agent/correlator.py` — Entity resolution
 - `src/neutron_os/extensions/builtins/sense_agent/synthesizer.py` — Cross-source merging

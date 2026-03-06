@@ -1,14 +1,11 @@
 """Tests for the approval gate."""
 
-import pytest
 
-from neutron_os.platform.orchestrator.actions import (
-    Action,
-    ActionCategory,
+from neutron_os.infra.orchestrator.actions import (
     ActionStatus,
     create_action,
 )
-from neutron_os.platform.orchestrator.approval import ApprovalGate
+from neutron_os.infra.orchestrator.approval import ApprovalGate
 
 
 class TestApprovalGate:

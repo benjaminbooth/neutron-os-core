@@ -1,7 +1,7 @@
 """Unit tests for the entity correlator."""
 
 import pytest
-from neutron_os.extensions.builtins.sense_agent.correlator import Correlator, Person, Initiative
+from neutron_os.extensions.builtins.sense_agent.correlator import Correlator
 from neutron_os.extensions.builtins.sense_agent.models import Signal
 
 

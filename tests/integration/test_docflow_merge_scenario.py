@@ -14,16 +14,13 @@ focusing on the merge logic and signal synthesis.
 """
 
 import hashlib
-import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-from neutron_os.extensions.builtins.sense_agent.models import Signal, Extraction, Changelog, ChangelogEntry
+from neutron_os.extensions.builtins.sense_agent.models import Signal, Extraction, Changelog
 from neutron_os.extensions.builtins.sense_agent.synthesizer import Synthesizer
 from neutron_os.extensions.builtins.sense_agent.extractors.docflow_review import (
     ExternalChange,
@@ -948,7 +945,7 @@ class TestCompleteSenseToMergePipeline:
         
         assert "sense" in decision_sources, "Merge should incorporate Sense signals"
         assert "external" in decision_sources, "Merge should incorporate external reviews"
-        print(f"✓ Stage 6: Merge incorporates both Sense and external sources")
+        print("✓ Stage 6: Merge incorporates both Sense and external sources")
         
         # Stage 7: Version bump (v2.0.0 → v2.1.0)
         # In reality: commit count since v2.0.0 = 5, so 2-5 commits → minor bump
@@ -956,7 +953,7 @@ class TestCompleteSenseToMergePipeline:
         assert new_version > baseline_document_state.published.version
         print(f"✓ Stage 7: Version bumped: {baseline_document_state.published.version} → {new_version}")
         
-        print(f"\n✅ Complete pipeline successful!")
+        print("\n✅ Complete pipeline successful!")
 
     def _simulate_merge(
         self,

@@ -132,7 +132,7 @@ Example chat tool — modify this for your own data sources.
 """
 
 from neutron_os.extensions.builtins.chat_agent.tools import ToolDef
-from neutron_os.platform.orchestrator.actions import ActionCategory
+from neutron_os.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [
     ToolDef(

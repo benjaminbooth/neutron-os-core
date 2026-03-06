@@ -1,9 +1,7 @@
 """Unit tests for the briefing service."""
 
-import json
 import pytest
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from neutron_os.extensions.builtins.sense_agent.briefing import (
     BriefingService,
@@ -145,7 +143,7 @@ class TestBriefingService:
 
     def test_acknowledge_updates_state(self, service):
         # Generate a briefing with acknowledge=True
-        briefing = service.brief_me(acknowledge=True)
+        _briefing = service.brief_me(acknowledge=True)
 
         assert any(
             r.event_type == ConsumptionEvent.BRIEFING_ACKNOWLEDGED

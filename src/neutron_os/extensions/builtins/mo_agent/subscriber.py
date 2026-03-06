@@ -108,7 +108,7 @@ def _should_process(fingerprint: str) -> bool:
 def _get_agent():
     """Lazy-load the MoAgent with gateway. Returns None if unavailable."""
     try:
-        from neutron_os.platform.gateway import Gateway
+        from neutron_os.infra.gateway import Gateway
         gateway = Gateway()
         if not gateway.available:
             return None

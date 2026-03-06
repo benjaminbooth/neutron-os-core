@@ -12,7 +12,7 @@ from neutron_os.setup.renderer import _c, _Colors
 
 if TYPE_CHECKING:
     from .agent import ChatAgent
-    from neutron_os.platform.orchestrator.session import SessionStore
+    from neutron_os.infra.orchestrator.session import SessionStore
 
 
 def cmd_help() -> str:

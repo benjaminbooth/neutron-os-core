@@ -1,6 +1,5 @@
 """Unit tests for neut sense data models."""
 
-import pytest
 from neutron_os.extensions.builtins.sense_agent.models import Signal, Extraction, ChangelogEntry, Changelog
 
 

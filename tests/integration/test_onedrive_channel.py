@@ -10,7 +10,6 @@ Requires: MS_GRAPH_CLIENT_ID, MS_GRAPH_CLIENT_SECRET, MS_GRAPH_TENANT_ID
 """
 
 import pytest
-from pathlib import Path
 
 pytestmark = [pytest.mark.integration, pytest.mark.onedrive]
 
@@ -50,7 +49,7 @@ class TestOneDriveUpload:
         try:
             token = provider._get_token()
             assert token is not None
-            print(f"  Provider authenticated successfully")
+            print("  Provider authenticated successfully")
         except Exception as e:
             pytest.fail(f"Provider auth failed: {e}")
 
@@ -75,7 +74,7 @@ class TestOneDriveUpload:
 
             # Clean up
             provider.delete(result.storage_id)
-            print(f"  Cleaned up test file")
+            print("  Cleaned up test file")
 
         except Exception as e:
             # Don't fail the test on cleanup issues

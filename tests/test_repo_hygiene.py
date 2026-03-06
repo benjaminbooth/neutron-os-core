@@ -36,7 +36,7 @@ class TestNoStaleImports:
                     continue
                 if "from tools." in stripped or "import tools." in stripped:
                     stale.append(f"{py.relative_to(REPO_ROOT)}:{i}: {stripped}")
-        assert stale == [], f"Stale 'tools.' imports found:\n" + "\n".join(stale)
+        assert stale == [], "Stale 'tools.' imports found:\n" + "\n".join(stale)
 
 
 class TestExtensionTestsColocated:
@@ -59,7 +59,7 @@ class TestExtensionTestsColocated:
             if candidate.is_dir():
                 violations.append(str(candidate.relative_to(REPO_ROOT)))
         assert violations == [], (
-            f"Extension tests should be colocated:\n"
+            "Extension tests should be colocated:\n"
             + "\n".join(f"  {v} → src/neutron_os/extensions/builtins/{v.split('/')[-1]}/tests/" for v in violations)
         )
 
@@ -94,7 +94,7 @@ class TestNoRuntimeDataInSrc:
             if candidate.is_dir():
                 violations.append(str(candidate.relative_to(REPO_ROOT)))
         assert violations == [], (
-            f"Runtime data dirs found in src/neutron_os/ (should be in runtime/):\n"
+            "Runtime data dirs found in src/neutron_os/ (should be in runtime/):\n"
             + "\n".join(f"  {v}" for v in violations)
         )
 
@@ -112,6 +112,51 @@ class TestNoRuntimeDataInSrc:
         )
 
 
+class TestPRDIntegrity:
+    """Key PRDs must not be truncated or have formatting stripped.
+
+    AI agents doing bulk search-replace can accidentally damage markdown files.
+    This catches it before commit.
+    """
+
+    # Minimum line counts for key PRDs (set well below actual to catch truncation)
+    PRD_MINIMUMS = {
+        "prd_neutron-os-executive.md": 500,
+        "prd_reactor-ops-log.md": 200,
+        "prd_experiment-manager.md": 500,
+        "prd_data-platform.md": 300,
+        "prd_compliance-tracking.md": 300,
+        "prd_neut-cli.md": 300,
+        "prd_medical-isotope.md": 300,
+    }
+
+    def test_prd_not_truncated(self):
+        reqs = REPO_ROOT / "docs" / "requirements"
+        violations = []
+        for name, min_lines in self.PRD_MINIMUMS.items():
+            f = reqs / name
+            if not f.exists():
+                violations.append(f"{name}: MISSING")
+                continue
+            lines = len(f.read_text().splitlines())
+            if lines < min_lines:
+                violations.append(f"{name}: {lines} lines (minimum {min_lines})")
+        assert violations == [], (
+            "PRD integrity check failed — possible truncation:\n"
+            + "\n".join(f"  {v}" for v in violations)
+        )
+
+    def test_executive_prd_has_mermaid(self):
+        """Executive PRD must retain its mermaid diagrams."""
+        f = REPO_ROOT / "docs" / "requirements" / "prd_neutron-os-executive.md"
+        text = f.read_text()
+        mermaid_count = text.count("```mermaid")
+        assert mermaid_count >= 5, (
+            f"Executive PRD has only {mermaid_count} mermaid blocks (expected >=5). "
+            "Formatting may have been stripped."
+        )
+
+
 class TestRootDirPolicy:
     """Only approved directories should exist at repo root."""
 
@@ -121,8 +166,8 @@ class TestRootDirPolicy:
         # Hidden dirs
         ".git", ".github", ".claude", ".claude.example",
         ".venv", ".neut", ".pytest_cache", ".vscode",
-        # Personal (gitignored)
-        "ben-learning", "dist", "__pycache__",
+        # Personal / CI (gitignored)
+        "ben-learning", "dist", "__pycache__", ".pip-cache", ".ruff_cache",
     }
 
     def test_no_unexpected_root_dirs(self):

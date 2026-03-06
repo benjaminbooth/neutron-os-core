@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 from unittest import mock
 
-import pytest
 
 from neutron_os.extensions.contracts import (
     CLICommandDef,
@@ -28,7 +27,6 @@ from neutron_os.extensions.contracts import (
 from neutron_os.extensions.discovery import (
     _builtin_extensions_dir,
     _project_extensions_dir,
-    _user_extensions_dir,
     discover_cli_commands,
     discover_extensions,
     get_extension_dirs,

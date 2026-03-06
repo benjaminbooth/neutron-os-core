@@ -6,9 +6,7 @@ from pathlib import Path
 from neutron_os.review.models import ReviewSessionStore
 from neutron_os.extensions.builtins.chat_agent.tools_ext.review import (
     execute,
-    _get_store,
     _get_session,
-    _set_session,
 )
 
 SAMPLE_DRAFT = """\

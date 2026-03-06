@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone, timedelta
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from neutron_os.extensions.builtins.mo_agent.manager import MoManager
-from neutron_os.extensions.builtins.mo_agent.manifest import ScratchEntry
 from neutron_os.extensions.builtins.mo_agent.vitals import (
-    LeakSignal,
     PressureLevel,
     VitalsMonitor,
     VitalsSnapshot,
@@ -117,7 +112,7 @@ class TestVitalsMonitor:
         monitor = VitalsMonitor(mgr, ledger)
         leaks = monitor.detect_leaks()
         assert len(leaks) >= 1
-        assert any(l.pattern == "unreleased" for l in leaks)
+        assert any(ln.pattern == "unreleased" for ln in leaks)
 
     def test_detect_leaks_no_false_positives(self, tmp_path):
         mgr = self._make_mgr(tmp_path)
@@ -126,7 +121,7 @@ class TestVitalsMonitor:
         monitor = VitalsMonitor(mgr, ledger)
         leaks = monitor.detect_leaks()
         # Fresh session entry should not be a leak
-        unreleased = [l for l in leaks if l.pattern == "unreleased"]
+        unreleased = [ln for ln in leaks if ln.pattern == "unreleased"]
         assert len(unreleased) == 0
 
     def test_bus_events(self, tmp_path):

@@ -13,8 +13,7 @@ Requires:
     GITHUB_TOKEN environment variable
 """
 
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from datetime import datetime, timezone
 import json
 import pytest
 

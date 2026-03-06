@@ -1,4 +1,4 @@
-# `platform/` — Shared Platform Infrastructure
+# `infra/` — Shared Platform Infrastructure
 
 Shared infrastructure that extensions depend on but do not own. This is NOT
 an extension — it's the foundation layer.

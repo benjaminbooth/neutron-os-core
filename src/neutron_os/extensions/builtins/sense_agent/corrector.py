@@ -401,7 +401,7 @@ class TranscriptCorrector:
 
     def _correct_with_anthropic(self, transcript: str) -> CorrectionResult:
         """Fallback correction using Anthropic Claude via existing gateway."""
-        from neutron_os.platform.gateway import Gateway
+        from neutron_os.infra.gateway import Gateway
 
         gateway = Gateway()
         if not gateway.available:

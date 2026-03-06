@@ -9,8 +9,6 @@ Requires: GITLAB_TOKEN environment variable
           pip install python-gitlab
 """
 
-import json
-import os
 import pytest
 from pathlib import Path
 

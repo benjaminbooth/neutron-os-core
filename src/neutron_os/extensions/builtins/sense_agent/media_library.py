@@ -1207,7 +1207,7 @@ class NeutExplainer:
     def _get_gateway(self):
         """Lazy load gateway."""
         if self._gateway is None:
-            from neutron_os.platform.gateway import Gateway
+            from neutron_os.infra.gateway import Gateway
             self._gateway = Gateway()
         return self._gateway
 

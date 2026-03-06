@@ -11,7 +11,7 @@ from neutron_os.extensions.builtins.chat_agent.provider_factory import (
     create_render_provider,
     create_input_provider,
 )
-from neutron_os.platform.gateway import StreamChunk
+from neutron_os.infra.gateway import StreamChunk
 
 
 @pytest.fixture(autouse=True)
@@ -197,7 +197,7 @@ class TestAnsiRenderProvider:
         assert "5 messages" in captured.out
 
     def test_render_action_result_completed(self, capsys):
-        from neutron_os.platform.orchestrator.actions import Action, ActionStatus
+        from neutron_os.infra.orchestrator.actions import Action
         p = AnsiRenderProvider()
         action = Action(name="query_docs", params={})
         action.complete({"documents": []})
@@ -206,7 +206,7 @@ class TestAnsiRenderProvider:
         assert "No tracked documents" in captured.out
 
     def test_render_action_result_rejected(self, capsys):
-        from neutron_os.platform.orchestrator.actions import Action, ActionStatus
+        from neutron_os.infra.orchestrator.actions import Action
         p = AnsiRenderProvider()
         action = Action(name="doc_publish", params={})
         action.reject("Not ready")

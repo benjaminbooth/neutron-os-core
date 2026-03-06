@@ -6,7 +6,6 @@ import pytest
 
 from neutron_os.extensions.contracts import (
     Extension,
-    Skill,
     parse_manifest,
     validate_extension,
     _scan_skills,

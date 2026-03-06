@@ -2,7 +2,6 @@
 
 import pytest
 from datetime import datetime
-from pathlib import Path
 
 from neutron_os.extensions.builtins.sense_agent.multipart import (
     MultipartDetector,
@@ -50,10 +49,10 @@ class TestPartPatterns:
             "important_call",
         ]
         for name in regular_names:
-            matched = False
+            _matched = False
             for pattern in PART_PATTERNS:
                 if pattern.match(name):
-                    matched = True
+                    _matched = True
                     break
             # Some might match due to trailing patterns, that's okay
 

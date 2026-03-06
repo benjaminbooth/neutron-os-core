@@ -9,7 +9,6 @@ from neutron_os.extensions.builtins.sense_agent.extractors.freetext import Freet
 from neutron_os.extensions.builtins.sense_agent.extractors.voice import VoiceExtractor
 from neutron_os.extensions.builtins.sense_agent.extractors.transcript import TranscriptExtractor
 from neutron_os.extensions.builtins.sense_agent.correlator import Correlator
-from neutron_os.platform.gateway import Gateway
 
 
 def _make_export(

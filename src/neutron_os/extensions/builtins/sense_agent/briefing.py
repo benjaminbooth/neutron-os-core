@@ -432,7 +432,7 @@ Guidelines:
 Generate the briefing:"""
 
         try:
-            from neutron_os.platform.gateway import Gateway
+            from neutron_os.infra.gateway import Gateway
 
             gateway = Gateway()
             response = gateway.complete(prompt, task="briefing")
@@ -502,7 +502,7 @@ Generate the briefing:"""
 
         # Use LLM to detect category
         try:
-            from neutron_os.platform.gateway import Gateway
+            from neutron_os.infra.gateway import Gateway
 
             prompt = f"""Classify this briefing request into one of these categories:
 - people (about specific individuals)
@@ -639,7 +639,7 @@ Guidelines:
 Generate the focused briefing:"""
 
         try:
-            from neutron_os.platform.gateway import Gateway
+            from neutron_os.infra.gateway import Gateway
 
             gateway = Gateway()
             response = gateway.complete(prompt, task="briefing")

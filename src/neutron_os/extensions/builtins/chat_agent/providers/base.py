@@ -11,8 +11,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Iterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from neutron_os.platform.orchestrator.actions import Action
-    from neutron_os.platform.gateway import StreamChunk
+    from neutron_os.infra.orchestrator.actions import Action
+    from neutron_os.infra.gateway import StreamChunk
 
 
 class RenderProvider(ABC):

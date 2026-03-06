@@ -13,7 +13,6 @@ import threading
 import urllib.request
 import urllib.parse
 import pytest
-from pathlib import Path
 
 pytestmark = [pytest.mark.integration, pytest.mark.voice]
 
@@ -49,18 +48,18 @@ class TestVoiceMemoUpload:
         # Create a fake .m4a file (real transcription test needs whisper)
         fake_audio = b"\x00" * 1024  # Placeholder bytes
 
-        boundary = "----VoiceTest123"
+        _boundary = "----VoiceTest123"
         body = (
-            f"------VoiceTest123\r\n"
-            f'Content-Disposition: form-data; name="file"; filename="meeting_notes.m4a"\r\n'
-            f"Content-Type: audio/mp4\r\n"
-            f"\r\n"
+            "------VoiceTest123\r\n"
+            'Content-Disposition: form-data; name="file"; filename="meeting_notes.m4a"\r\n'
+            "Content-Type: audio/mp4\r\n"
+            "\r\n"
         ).encode() + fake_audio + b"\r\n------VoiceTest123--\r\n"
 
         req = urllib.request.Request(
             _url(server, "/upload"),
             data=body,
-            headers={"Content-Type": f"multipart/form-data; boundary=----VoiceTest123"},
+            headers={"Content-Type": "multipart/form-data; boundary=----VoiceTest123"},
             method="POST",
         )
         resp = urllib.request.urlopen(req)

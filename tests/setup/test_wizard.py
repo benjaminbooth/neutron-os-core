@@ -1,8 +1,5 @@
 """Tests for neutron_os.setup.wizard."""
 
-import json
-import os
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

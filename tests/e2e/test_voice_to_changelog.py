@@ -11,11 +11,10 @@ These tests use mocked external services but real filesystem operations.
 """
 
 import json
-import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, AsyncMock
 
 import pytest
 

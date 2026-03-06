@@ -1,10 +1,8 @@
 """Tests for neutron_os.setup.guides."""
 
-import pytest
 
 from neutron_os.setup.guides import (
     CREDENTIAL_GUIDES,
-    CredentialGuide,
     get_guide,
     get_llm_guides,
     get_optional_guides,

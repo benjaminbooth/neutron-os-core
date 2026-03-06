@@ -87,7 +87,7 @@ class SuggestingArgumentParser(argparse.ArgumentParser):
             super().error(message)
 
 # Resolve paths relative to tools/agents/
-from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os import REPO_ROOT as _REPO_ROOT  # noqa: E402
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 INBOX_RAW = _RUNTIME_DIR / "inbox" / "raw"
 INBOX_PROCESSED = _RUNTIME_DIR / "inbox" / "processed"
@@ -188,7 +188,7 @@ def cmd_status(args: argparse.Namespace) -> None:
     print(f"  initiatives.md: {'found' if init_path.exists() else 'missing'}")
 
     # Gateway
-    from neutron_os.platform.gateway import Gateway
+    from neutron_os.infra.gateway import Gateway
 
     gw = Gateway()
     print(f"  LLM gateway: {'available' if gw.available else 'no providers configured'}")
@@ -199,7 +199,7 @@ def cmd_ingest(args: argparse.Namespace) -> None:
     from datetime import datetime, timezone
     from pathlib import Path
     from .correlator import Correlator
-    from neutron_os.platform.gateway import Gateway
+    from neutron_os.infra.gateway import Gateway
     from .models import Signal
 
     correlator = Correlator()
@@ -1645,8 +1645,8 @@ def main():
         _dispatch(args)
     except (ValueError, TypeError, AttributeError) as e:
         import traceback
-        from neutron_os.platform.self_heal import attempt_recovery, emit_cli_error
-        from neutron_os.platform.orchestrator.bus import EventBus
+        from neutron_os.infra.self_heal import attempt_recovery, emit_cli_error
+        from neutron_os.infra.orchestrator.bus import EventBus
 
         # Capture the full traceback while we're still in the except block
         tb_str = traceback.format_exc()
@@ -1662,7 +1662,7 @@ def main():
 
         # GitLab as fallback for doctor failures (soft — no-ops if unavailable)
         try:
-            from neutron_os.platform.subscribers.gitlab_issues import gitlab_issue_handler
+            from neutron_os.infra.subscribers.gitlab_issues import gitlab_issue_handler
             bus.subscribe("doctor.patch_failed", gitlab_issue_handler)
             bus.subscribe("doctor.llm_unavailable", gitlab_issue_handler)
         except ImportError:
@@ -2069,7 +2069,7 @@ def _discuss_correction_with_ai(corr, context_display: str) -> tuple[str, bool]:
     Returns:
         (suggested_term, accepted) - The term agreed upon and whether to use it
     """
-    from neutron_os.platform.gateway import Gateway
+    from neutron_os.infra.gateway import Gateway
 
     gateway = Gateway()
     if not gateway.available:

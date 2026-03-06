@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from neutron_os.platform.gateway import Gateway
+from neutron_os.infra.gateway import Gateway
 from .models import Signal
 
 

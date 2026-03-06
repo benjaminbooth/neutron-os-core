@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 
-import pytest
 
 from neutron_os.extensions.builtins.demo.runner import DemoRunner
 from neutron_os.extensions.builtins.demo.scenarios.collaborator import build_scenario, FIXTURES_DIR

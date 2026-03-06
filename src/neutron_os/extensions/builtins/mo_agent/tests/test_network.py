@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-import time
-from datetime import datetime, timezone
 
-import pytest
 
 from neutron_os.extensions.builtins.mo_agent.network import (
-    CallerStats,
-    NetworkAnomaly,
     NetworkLedger,
-    NetworkStats,
     RequestRecord,
 )
 
@@ -169,7 +163,7 @@ class TestAnomalyDetection:
                 latency_ms=1000,  # 10x baseline
             ))
         anomalies = ledger.detect_anomalies()
-        latency_spikes = [a for a in anomalies if a.kind == "latency_spike"]
+        _latency_spikes = [a for a in anomalies if a.kind == "latency_spike"]
         # May or may not detect depending on EMA smoothing
         # The baseline EMA may have shifted, so this tests the mechanism exists
         assert isinstance(anomalies, list)
@@ -203,6 +197,6 @@ class TestAnomalyDetection:
                 error="service unavailable",
             ))
         anomalies = ledger.detect_anomalies()
-        bursts = [a for a in anomalies if a.kind == "error_burst"]
+        _bursts = [a for a in anomalies if a.kind == "error_burst"]
         # Should detect error burst given baseline was clean
         assert isinstance(anomalies, list)

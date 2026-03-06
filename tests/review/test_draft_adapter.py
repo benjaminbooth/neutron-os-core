@@ -1,7 +1,5 @@
 """Tests for neutron_os.review.adapters.draft_adapter — section parser, draft discovery, approved output."""
 
-import pytest
-from pathlib import Path
 
 from neutron_os.review.models import (
     ReviewDecision,

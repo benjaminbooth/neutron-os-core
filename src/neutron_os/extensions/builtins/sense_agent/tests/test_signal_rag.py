@@ -1,9 +1,6 @@
 """Unit tests for the Signal RAG system."""
 
-import json
 import pytest
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from neutron_os.extensions.builtins.sense_agent.signal_rag import (
     SignalRAG,
@@ -12,7 +9,6 @@ from neutron_os.extensions.builtins.sense_agent.signal_rag import (
     RetrievalResult,
     KeywordEmbeddings,
 )
-from neutron_os.extensions.builtins.sense_agent.models import Signal
 
 
 class TestSignalChunk:

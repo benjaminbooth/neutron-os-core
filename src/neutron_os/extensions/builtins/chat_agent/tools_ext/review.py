@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..tools import ToolDef
-from neutron_os.platform.orchestrator.actions import ActionCategory
+from neutron_os.infra.orchestrator.actions import ActionCategory
 from neutron_os.review.models import (
     ReviewDecision,
     ReviewSession,

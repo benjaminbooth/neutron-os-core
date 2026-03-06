@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from neutron_os.extensions.builtins.demo.runner import Act, DemoRunner, Scenario
 

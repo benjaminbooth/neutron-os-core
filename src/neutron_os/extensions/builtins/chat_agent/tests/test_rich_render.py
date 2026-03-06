@@ -1,7 +1,6 @@
 """Tests for rich render provider and markdown utilities."""
 
 import pytest
-from io import StringIO
 
 from neutron_os.extensions.builtins.chat_agent.providers.markdown_utils import (
     terminal_width,
@@ -83,7 +82,7 @@ class TestRichRenderProvider:
         assert isinstance(rich_provider, RenderProvider)
 
     def test_stream_text(self, rich_provider):
-        from neutron_os.platform.gateway import StreamChunk
+        from neutron_os.infra.gateway import StreamChunk
         chunks = iter([
             StreamChunk(type="text", text="Hello world!"),
             StreamChunk(type="done"),
@@ -112,7 +111,7 @@ class TestRichRenderProvider:
         rich_provider.render_tool_result("query_docs", {"documents": []}, 0.3)
 
     def test_render_action_result(self, rich_provider):
-        from neutron_os.platform.orchestrator.actions import Action
+        from neutron_os.infra.orchestrator.actions import Action
         action = Action(name="query_docs", params={})
         action.complete({"documents": []})
         rich_provider.render_action_result(action)

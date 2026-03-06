@@ -1,18 +1,16 @@
 """Tests for the chat agent — native tool-use loop."""
 
-import json
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock
 
-from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent, _BASE_SYSTEM_PROMPT
-from neutron_os.platform.orchestrator.bus import EventBus
-from neutron_os.platform.orchestrator.session import Session
-from neutron_os.platform.gateway import (
+from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+from neutron_os.infra.orchestrator.bus import EventBus
+from neutron_os.infra.orchestrator.session import Session
+from neutron_os.infra.gateway import (
     Gateway,
     GatewayResponse,
     CompletionResponse,
     ToolUseBlock,
-    StreamChunk,
 )
 
 
@@ -68,7 +66,7 @@ class TestChatAgent:
             ),
         ]
 
-        response = agent.turn("What providers are available?", stream=False)
+        _response = agent.turn("What providers are available?", stream=False)
 
         # Should have called complete_with_tools twice (tool loop)
         assert mock_gateway.complete_with_tools.call_count >= 1

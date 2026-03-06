@@ -12,17 +12,16 @@ from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
 from typing import Any, Callable, Iterator, Optional
 
-from neutron_os.platform.orchestrator.actions import (
+from neutron_os.infra.orchestrator.actions import (
     ActionCategory,
     ActionStatus,
     create_action,
 )
-from neutron_os.platform.orchestrator.approval import ApprovalGate
-from neutron_os.platform.orchestrator.bus import EventBus
-from neutron_os.platform.orchestrator.session import Session
+from neutron_os.infra.orchestrator.approval import ApprovalGate
+from neutron_os.infra.orchestrator.bus import EventBus
+from neutron_os.infra.orchestrator.session import Session
 from .tools import (
     execute_tool,
     get_all_tools,
@@ -30,7 +29,7 @@ from .tools import (
 )
 from .providers.base import RenderProvider
 from .usage import UsageTracker, TurnUsage
-from neutron_os.platform.gateway import (
+from neutron_os.infra.gateway import (
     Gateway,
     CompletionResponse,
     StreamChunk,
@@ -272,7 +271,7 @@ class ChatAgent:
         if thinking_parts and self._render:
             self._render.render_thinking("".join(thinking_parts))
 
-        from neutron_os.platform.gateway import ToolUseBlock
+        from neutron_os.infra.gateway import ToolUseBlock
         tool_use_list = []
         for tid, info in tool_blocks.items():
             try:
@@ -351,7 +350,7 @@ class ChatAgent:
 
     def _parse_legacy_tool_calls(self, text: str) -> list:
         """Extract tool calls from legacy [tool: name] {params} format."""
-        from neutron_os.platform.gateway import ToolUseBlock
+        from neutron_os.infra.gateway import ToolUseBlock
         calls = []
         for line in text.splitlines():
             line = line.strip()

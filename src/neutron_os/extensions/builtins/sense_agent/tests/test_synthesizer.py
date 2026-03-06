@@ -1,9 +1,8 @@
 """Unit tests for the signal synthesizer."""
 
 import pytest
-from pathlib import Path
 
-from neutron_os.extensions.builtins.sense_agent.models import Signal, Changelog
+from neutron_os.extensions.builtins.sense_agent.models import Signal
 from neutron_os.extensions.builtins.sense_agent.synthesizer import Synthesizer
 
 
@@ -121,7 +120,7 @@ class TestSynthesizer:
         lines = content.strip().splitlines()
 
         # Should have table header and separator
-        table_lines = [l for l in lines if l.startswith("|")]
+        table_lines = [ln for ln in lines if ln.startswith("|")]
         assert len(table_lines) >= 3  # Header + separator + at least 1 row
 
     def test_uncategorized_signals(self, tmp_path):

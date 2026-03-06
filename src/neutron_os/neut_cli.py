@@ -258,7 +258,7 @@ def _gather_diagnostics() -> dict:
     gateway_ok = False
     gateway_status = "Not configured"
     try:
-        from neutron_os.platform.gateway import Gateway
+        from neutron_os.infra.gateway import Gateway
         gw = Gateway()
         if gw.available:
             gateway_ok = True
@@ -299,7 +299,7 @@ def _gather_diagnostics() -> dict:
 def _llm_diagnose(diagnostics: dict, error_context: str | None = None) -> str | None:
     """Use LLM with project context to diagnose issues intelligently."""
     try:
-        from neutron_os.platform.gateway import Gateway
+        from neutron_os.infra.gateway import Gateway
         from pathlib import Path
 
         gateway = Gateway()

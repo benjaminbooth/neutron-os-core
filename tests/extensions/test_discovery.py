@@ -1,6 +1,5 @@
 """Tests for extension discovery and loading."""
 
-from pathlib import Path
 
 import pytest
 

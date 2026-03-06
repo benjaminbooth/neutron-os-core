@@ -1,9 +1,7 @@
 """Tests for chat session persistence."""
 
-import pytest
-from pathlib import Path
 
-from neutron_os.platform.orchestrator.session import Session, SessionStore, Message
+from neutron_os.infra.orchestrator.session import Session, SessionStore, Message
 
 
 class TestSession:

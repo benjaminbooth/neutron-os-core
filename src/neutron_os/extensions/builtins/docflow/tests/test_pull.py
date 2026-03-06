@@ -4,8 +4,7 @@ Tests the reverse flow: external storage → local .md updates.
 """
 
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
 from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine

@@ -1,7 +1,6 @@
 """Shared test fixtures for neut sense and docflow test suites."""
 
 import json
-import os
 import sys
 from pathlib import Path
 

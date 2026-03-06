@@ -1,7 +1,5 @@
 """Tests for the chat renderer — markdown formatting, streaming, approval UI."""
 
-import io
-import sys
 import pytest
 
 from neutron_os.setup.renderer import set_color_enabled
@@ -13,7 +11,7 @@ from neutron_os.extensions.builtins.chat_agent.renderer import (
     render_session_list,
     _format_params,
 )
-from neutron_os.platform.gateway import StreamChunk
+from neutron_os.infra.gateway import StreamChunk
 
 
 @pytest.fixture(autouse=True)
@@ -144,7 +142,7 @@ class TestRenderWelcome:
         assert "/help" in captured.out
 
     def test_welcome_with_gateway_stub(self, capsys, tmp_path):
-        from neutron_os.platform.gateway import Gateway
+        from neutron_os.infra.gateway import Gateway
         config_dir = tmp_path / "config"
         config_dir.mkdir()
         (config_dir / "models.toml").write_text("[gateway]\n")

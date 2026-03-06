@@ -7,8 +7,6 @@ These tests verify that:
 """
 
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 
 @pytest.fixture

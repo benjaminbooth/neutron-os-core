@@ -78,9 +78,9 @@ from .pulse_spinner import (
 
 if TYPE_CHECKING:
     from .agent import ChatAgent
-    from neutron_os.platform.orchestrator.actions import Action
-    from neutron_os.platform.orchestrator.session import SessionStore
-    from neutron_os.platform.gateway import StreamChunk
+    from neutron_os.infra.orchestrator.actions import Action
+    from neutron_os.infra.orchestrator.session import SessionStore
+    from neutron_os.infra.gateway import StreamChunk
 
 from neutron_os.extensions.builtins.update.background import BackgroundUpdateChecker
 from neutron_os.extensions.builtins.update.version_check import VersionInfo
@@ -2816,7 +2816,7 @@ class _TuiRenderProvider(RenderProvider):
         return req.choice
 
     def render_action_result(self, action: Action) -> None:
-        from neutron_os.platform.orchestrator.actions import ActionStatus
+        from neutron_os.infra.orchestrator.actions import ActionStatus
 
         if action.status == ActionStatus.COMPLETED:
             result = action.result or {}

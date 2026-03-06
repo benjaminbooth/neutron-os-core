@@ -4,7 +4,6 @@ These tests ensure that correction IDs remain stable across reprocessing runs,
 which is critical for maintaining audio clip linkages.
 """
 import hashlib
-import pytest
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 

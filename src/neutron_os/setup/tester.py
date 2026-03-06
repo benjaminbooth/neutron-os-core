@@ -187,7 +187,7 @@ class ChannelTester:
     def test_llm_gateway(self) -> TestResult:
         """Test LLM provider connectivity via the Gateway."""
         try:
-            from neutron_os.platform.gateway import Gateway
+            from neutron_os.infra.gateway import Gateway
             gw = Gateway()
             if not gw.available:
                 return TestResult(

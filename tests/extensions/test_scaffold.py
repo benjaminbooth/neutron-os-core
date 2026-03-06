@@ -1,6 +1,5 @@
 """Tests for extension scaffolding."""
 
-from pathlib import Path
 
 import pytest
 

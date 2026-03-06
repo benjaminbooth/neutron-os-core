@@ -1022,7 +1022,7 @@ class InboxHandler(BaseHTTPRequestHandler):
         """Process a voice file through the extractor."""
         try:
             from .extractors.voice import VoiceExtractor
-            from neutron_os.platform.gateway import Gateway
+            from neutron_os.infra.gateway import Gateway
             from .correlator import Correlator
 
             extractor = VoiceExtractor()

@@ -2,9 +2,8 @@
 
 import pytest
 from pathlib import Path
-from datetime import datetime, timezone
 
-from neutron_os.extensions.builtins.chat_agent.tools_ext.email import execute, _DRAFTS_DIR
+from neutron_os.extensions.builtins.chat_agent.tools_ext.email import execute
 
 
 @pytest.fixture

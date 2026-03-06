@@ -38,9 +38,9 @@ from .commands import (
 )
 from .provider_factory import create_render_provider, create_input_provider
 from .providers.base import RenderProvider, InputProvider
-from neutron_os.platform.orchestrator.bus import EventBus
-from neutron_os.platform.orchestrator.session import Session, SessionStore
-from neutron_os.platform.gateway import Gateway
+from neutron_os.infra.orchestrator.bus import EventBus
+from neutron_os.infra.orchestrator.session import Session, SessionStore
+from neutron_os.infra.gateway import Gateway
 from neutron_os.setup.renderer import _c, _Colors
 
 

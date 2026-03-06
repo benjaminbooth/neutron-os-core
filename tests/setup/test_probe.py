@@ -1,10 +1,7 @@
 """Tests for neutron_os.setup.probe."""
 
-import json
-import os
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from neutron_os.setup.probe import (
     DepStatus,

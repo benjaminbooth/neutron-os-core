@@ -1,7 +1,7 @@
 """Tests for the chat CLI — slash commands, REPL behavior."""
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from neutron_os.setup.renderer import set_color_enabled
 from neutron_os.extensions.builtins.chat_agent.commands import (
@@ -13,7 +13,6 @@ from neutron_os.extensions.builtins.chat_agent.commands import (
     cmd_new,
     find_close_command,
     get_slash_commands,
-    CHAT_META_COMMANDS,
 )
 from neutron_os.extensions.builtins.chat_agent.cli import _handle_slash_command
 
@@ -44,8 +43,8 @@ class TestSlashCommands:
     def test_cmd_status(self):
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
         from neutron_os.extensions.builtins.chat_agent.usage import UsageTracker
-        from neutron_os.platform.orchestrator.session import Session
-        from neutron_os.platform.gateway import Gateway
+        from neutron_os.infra.orchestrator.session import Session
+        from neutron_os.infra.gateway import Gateway
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session()
@@ -62,8 +61,8 @@ class TestSlashCommands:
     def test_cmd_status_with_provider(self):
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
         from neutron_os.extensions.builtins.chat_agent.usage import UsageTracker
-        from neutron_os.platform.orchestrator.session import Session
-        from neutron_os.platform.gateway import Gateway
+        from neutron_os.infra.orchestrator.session import Session
+        from neutron_os.infra.gateway import Gateway
 
         agent = MagicMock(spec=ChatAgent)
         agent.session = Session()
@@ -83,7 +82,7 @@ class TestSlashCommands:
         assert "Neut Sense Status" in result
 
     def test_cmd_sessions_empty(self):
-        from neutron_os.platform.orchestrator.session import SessionStore
+        from neutron_os.infra.orchestrator.session import SessionStore
         store = MagicMock(spec=SessionStore)
         store.list_sessions.return_value = []
 
@@ -91,7 +90,7 @@ class TestSlashCommands:
         assert "No saved sessions" in result
 
     def test_cmd_sessions_with_data(self):
-        from neutron_os.platform.orchestrator.session import SessionStore, Session
+        from neutron_os.infra.orchestrator.session import SessionStore, Session
         store = MagicMock(spec=SessionStore)
         store.list_sessions.return_value = ["abc123", "def456"]
 
@@ -105,7 +104,7 @@ class TestSlashCommands:
         assert "def456" in result
 
     def test_cmd_resume_found(self):
-        from neutron_os.platform.orchestrator.session import SessionStore, Session
+        from neutron_os.infra.orchestrator.session import SessionStore, Session
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
@@ -121,7 +120,7 @@ class TestSlashCommands:
         assert agent.session == session
 
     def test_cmd_resume_not_found(self):
-        from neutron_os.platform.orchestrator.session import SessionStore
+        from neutron_os.infra.orchestrator.session import SessionStore
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
@@ -132,7 +131,7 @@ class TestSlashCommands:
         assert "not found" in result.lower()
 
     def test_cmd_new(self):
-        from neutron_os.platform.orchestrator.session import SessionStore, Session
+        from neutron_os.infra.orchestrator.session import SessionStore, Session
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
 
         store = MagicMock(spec=SessionStore)
@@ -188,7 +187,7 @@ class TestSlashCommandDispatch:
         assert "Usage" in result
 
     def test_dispatch_resume_with_arg(self):
-        from neutron_os.platform.orchestrator.session import Session
+        from neutron_os.infra.orchestrator.session import Session
 
         agent = MagicMock()
         store = MagicMock()
@@ -203,7 +202,7 @@ class TestSessionsSubcommands:
     """Test /sessions rename and /sessions archive subcommand dispatch."""
 
     def test_dispatch_sessions_rename(self):
-        from neutron_os.platform.orchestrator.session import SessionStore, Session
+        from neutron_os.infra.orchestrator.session import SessionStore, Session
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
@@ -215,7 +214,7 @@ class TestSessionsSubcommands:
         assert agent.session.title == "My Title"
 
     def test_dispatch_sessions_archive(self):
-        from neutron_os.platform.orchestrator.session import SessionStore, Session
+        from neutron_os.infra.orchestrator.session import SessionStore, Session
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
@@ -236,7 +235,7 @@ class TestSessionsSubcommands:
         assert "foobar" in result
 
     def test_rename_backward_compat(self):
-        from neutron_os.platform.orchestrator.session import SessionStore, Session
+        from neutron_os.infra.orchestrator.session import SessionStore, Session
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
@@ -248,7 +247,7 @@ class TestSessionsSubcommands:
         assert agent.session.title == "My Title"
 
     def test_archive_backward_compat(self):
-        from neutron_os.platform.orchestrator.session import SessionStore, Session
+        from neutron_os.infra.orchestrator.session import SessionStore, Session
         from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
 
         agent = MagicMock(spec=ChatAgent)
@@ -268,7 +267,7 @@ class TestSessionsSubcommands:
         assert "/sessions archive" in all_commands
 
     def test_bare_sessions_lists(self):
-        from neutron_os.platform.orchestrator.session import SessionStore
+        from neutron_os.infra.orchestrator.session import SessionStore
 
         store = MagicMock(spec=SessionStore)
         store.list_sessions.return_value = []

@@ -1,9 +1,7 @@
 """Tests for neutron_os.setup.state."""
 
-import json
 from datetime import datetime, timedelta, timezone
 
-import pytest
 
 from neutron_os.setup.state import (
     SetupState,

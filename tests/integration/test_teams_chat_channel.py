@@ -14,7 +14,6 @@ Requires:
 """
 
 from datetime import datetime, timezone
-from pathlib import Path
 import json
 import pytest
 
@@ -198,7 +197,6 @@ class TestTeamsChatFreshness:
     
     def test_stale_after_timeout(self, extractor, freshness_tracker, monkeypatch):
         """Channel becomes stale after max_age_hours."""
-        from datetime import timedelta
         channel = "teams_chat"
         
         # Mark synced

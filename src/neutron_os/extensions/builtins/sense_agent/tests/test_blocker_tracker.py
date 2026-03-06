@@ -1,10 +1,9 @@
 """Unit tests for the BlockerTracker."""
 
-import json
 
 import pytest
 
-from neutron_os.extensions.builtins.sense_agent.blocker_tracker import BlockerTracker, TrackedBlocker, _blocker_id
+from neutron_os.extensions.builtins.sense_agent.blocker_tracker import BlockerTracker, _blocker_id
 from neutron_os.extensions.builtins.sense_agent.models import Signal
 
 
