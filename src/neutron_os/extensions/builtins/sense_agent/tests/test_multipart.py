@@ -63,13 +63,13 @@ class TestRecordingPart:
     def test_construction(self, tmp_path):
         audio_file = tmp_path / "test.m4a"
         audio_file.touch()
-        
+
         part = RecordingPart(
             path=audio_file,
             base_name="test",
             part_number=1,
         )
-        
+
         assert part.path == audio_file
         assert part.base_name == "test"
         assert part.part_number == 1
@@ -78,7 +78,7 @@ class TestRecordingPart:
     def test_explicit_timestamp(self, tmp_path):
         audio_file = tmp_path / "test.m4a"
         audio_file.touch()
-        
+
         ts = datetime(2026, 2, 15, 10, 0, 0)
         part = RecordingPart(
             path=audio_file,
@@ -86,7 +86,7 @@ class TestRecordingPart:
             part_number=1,
             timestamp=ts,
         )
-        
+
         assert part.timestamp == ts
 
 
@@ -100,10 +100,10 @@ class TestRecordingGroup:
             f = tmp_path / f"meeting_{i}.m4a"
             f.touch()
             parts.append(RecordingPart(path=f, base_name="meeting", part_number=i))
-        
+
         group = RecordingGroup(base_name="meeting", parts=parts)
         ordered = group.ordered_paths
-        
+
         # Should be ordered 1, 2, 3
         assert ordered[0].name == "meeting_1.m4a"
         assert ordered[1].name == "meeting_2.m4a"
@@ -115,7 +115,7 @@ class TestRecordingGroup:
             f = tmp_path / f"meeting_{i}.m4a"
             f.touch()
             parts.append(RecordingPart(path=f, base_name="meeting", part_number=i))
-        
+
         group = RecordingGroup(base_name="meeting", parts=parts)
         assert group.is_complete() is True
 
@@ -125,7 +125,7 @@ class TestRecordingGroup:
             f = tmp_path / f"meeting_{i}.m4a"
             f.touch()
             parts.append(RecordingPart(path=f, base_name="meeting", part_number=i))
-        
+
         group = RecordingGroup(base_name="meeting", parts=parts)
         assert group.is_complete() is False
 
@@ -135,7 +135,7 @@ class TestRecordingGroup:
             f = tmp_path / f"call_{i}.m4a"
             f.touch()
             parts.append(RecordingPart(path=f, base_name="call", part_number=i))
-        
+
         group = RecordingGroup(base_name="call", parts=parts)
         assert group.count == 2
 
@@ -147,20 +147,20 @@ class TestMultipartDetector:
         # Create standalone files
         (tmp_path / "standalone.m4a").touch()
         (tmp_path / "another.m4a").touch()
-        
+
         detector = MultipartDetector(tmp_path)
         groups = detector.find_groups()
-        
+
         assert len(groups) == 0
 
     def test_find_simple_group(self, tmp_path):
         # Create a two-part series
         (tmp_path / "meeting part 1.m4a").touch()
         (tmp_path / "meeting part 2.m4a").touch()
-        
+
         detector = MultipartDetector(tmp_path)
         groups = detector.find_groups()
-        
+
         assert len(groups) == 1
         assert "meeting" in groups
         assert groups["meeting"].count == 2
@@ -172,20 +172,20 @@ class TestMultipartDetector:
         (tmp_path / "call pt1.m4a").touch()
         (tmp_path / "call pt2.m4a").touch()
         (tmp_path / "call pt3.m4a").touch()
-        
+
         detector = MultipartDetector(tmp_path)
         groups = detector.find_groups()
-        
+
         assert len(groups) == 2
 
     def test_ignores_non_audio_files(self, tmp_path):
         # Create non-audio files with part patterns
         (tmp_path / "notes part 1.txt").touch()
         (tmp_path / "notes part 2.txt").touch()
-        
+
         detector = MultipartDetector(tmp_path)
         groups = detector.find_groups()
-        
+
         assert len(groups) == 0
 
     def test_minimum_parts_threshold(self, tmp_path):

@@ -24,7 +24,7 @@ tests/
 ## What belongs here
 
 - Tests that exercise multiple extensions together
-- Tests for platform infrastructure (`platform/`)
+- Tests for platform infrastructure (`infra/`)
 - Tests for the CLI framework itself
 - End-to-end integration tests
 - Shared test fixtures in `conftest.py`
