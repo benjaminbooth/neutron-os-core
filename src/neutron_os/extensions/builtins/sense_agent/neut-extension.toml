@@ -1,0 +1,13 @@
+[extension]
+name = "sense"
+version = "0.3.0"
+description = "Agentic signal ingestion pipeline"
+author = "NeutronOS"
+builtin = true
+kind = "agent"
+module = "platform"
+
+[[cli.commands]]
+noun = "sense"
+module = "neutron_os.extensions.builtins.sense_agent.cli"
+description = "Agentic signal ingestion pipeline"

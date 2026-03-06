@@ -23,15 +23,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tools.extensions.builtins.sense.models import Signal, Extraction, Changelog, ChangelogEntry
-from tools.extensions.builtins.sense.synthesizer import Synthesizer
-from tools.extensions.builtins.sense.extractors.docflow_review import (
+from neutron_os.extensions.builtins.sense_agent.models import Signal, Extraction, Changelog, ChangelogEntry
+from neutron_os.extensions.builtins.sense_agent.synthesizer import Synthesizer
+from neutron_os.extensions.builtins.sense_agent.extractors.docflow_review import (
     ExternalChange,
     ChangeType,
     DivergenceReport,
     DocFormat,
 )
-from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord
+from neutron_os.extensions.builtins.docflow.state import DocumentState, PublicationRecord
 
 
 # ============================================================================

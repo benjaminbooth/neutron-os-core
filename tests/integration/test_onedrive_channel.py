@@ -43,7 +43,7 @@ class TestOneDriveUpload:
 
     def test_provider_initializes(self, ms_graph_creds):
         """OneDriveStorageProvider accepts credentials and authenticates."""
-        from tools.extensions.builtins.docflow.providers.storage.onedrive import OneDriveStorageProvider
+        from neutron_os.extensions.builtins.docflow.providers.storage.onedrive import OneDriveStorageProvider
 
         provider = OneDriveStorageProvider(config=ms_graph_creds)
         # Trigger authentication
@@ -56,7 +56,7 @@ class TestOneDriveUpload:
 
     def test_upload_and_cleanup(self, ms_graph_creds, tmp_path):
         """Upload a test doc, verify it arrives, then delete it."""
-        from tools.extensions.builtins.docflow.providers.storage.onedrive import OneDriveStorageProvider
+        from neutron_os.extensions.builtins.docflow.providers.storage.onedrive import OneDriveStorageProvider
 
         provider = OneDriveStorageProvider(config=ms_graph_creds)
 
@@ -88,8 +88,8 @@ class TestDocFlowPublishToOneDrive:
 
     def test_generate_and_publish(self, ms_graph_creds, tmp_path):
         """Full pipeline: .md → .docx → OneDrive upload."""
-        from tools.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
-        from tools.extensions.builtins.docflow.engine import DocFlowEngine
+        from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
+        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
 
         config = DocFlowConfig(
             git=GitPolicy(require_clean=False, publish_branches=["*"]),

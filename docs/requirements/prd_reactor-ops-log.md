@@ -2,10 +2,11 @@
 
 **Module:** Reactor Ops Log  
 **Status:** Draft  
-**Last Updated:** January 22, 2026  
-**Stakeholder Input:** Jim (TJ), Nick Luciano (Jan 2026)  
+**Last Updated:** March 5, 2026  
+**Stakeholder Input:** Jim (TJ), Nick Luciano (Jan 2026), Jay Torres (eLogger prototype)  
 **Parent:** [Executive PRD](neutron-os-executive-prd.md)  
-**Historical Reference:** Previously referred to as "elog" in some contexts
+**Historical Reference:** Previously referred to as "elog" in some contexts  
+**Prior Art:** Jay Torres' NETL eLogger prototype ([triga_dt_website/routes/operation_log_routes.py](../../TRIGA_Digital_Twin/triga_dt_website/routes/operation_log_routes.py))
 
 ---
 
@@ -282,6 +283,115 @@ From Jim: Categories help with searchability and NRC inspection preparation.
 
 ---
 
+## Run Number Tracking
+
+Each operating day is assigned a sequential **Run Number** that groups all entries for that operational period. Run numbers provide shift-level granularity for reporting and export.
+
+| Field | Description | Example |
+|-------|-------------|--------|
+| **Run Number** | Sequential identifier within calendar year | `2026-047` |
+| **Run Date** | Calendar date of operating day | `2026-03-05` |
+| **Shift(s)** | Shifts covered by this run | Day, Night, or both |
+
+**Run Number Behavior:**
+- Run numbers are unique and sequential within a calendar year
+- A run begins when the reactor transitions from shutdown to operating
+- A run ends when the reactor returns to shutdown (or at shift boundary)
+- Entries are grouped by run number for shift-level views and exports
+- Run number appears on all exports (PDF, plain text, NRC package)
+
+**User Story:** *"As a reactor manager, I want to pull all log entries for Run 2026-047 so I can review that operating day's activities in context."*
+
+---
+
+## Keyboard Shortcuts
+
+**Design Origin:** Adapted from Jay Torres' NETL eLogger prototype, which demonstrated significant efficiency gains from keyboard shortcuts for common operational phrases.
+
+Operators log the same phrases repeatedly during operations. Keyboard shortcuts eliminate repetitive typing and reduce entry time.
+
+### Standard Shortcuts (Facility-Configurable)
+
+| Shortcut | Default Phrase | Entry Type | Customizable |
+|----------|---------------|------------|---------------|
+| `Ctrl+Shift+1` | "Commence reactor startup checks" | `STARTUP` | Yes |
+| `Ctrl+Shift+2` | "Reactor startup checks complete" | `STARTUP` | Yes |
+| `Ctrl+Shift+3` | "Commence reactor startup" | `STARTUP` | Yes |
+| `Ctrl+Shift+4` | "Increasing reactor power" | `POWER_CHANGE` | Yes |
+| `Ctrl+Shift+5` | "Reactor at power" | `STEADY_STATE` | Yes |
+| `Ctrl+Shift+6` | "Decreasing reactor power" | `POWER_CHANGE` | Yes |
+| `Ctrl+Shift+7` | "Commence reactor shutdown" | `SHUTDOWN` | Yes |
+| `Ctrl+Shift+8` | "Reactor shutdown" | `SHUTDOWN` | Yes |
+| `Ctrl+Shift+9` | "Commence reactor shutdown checks" | `SHUTDOWN` | Yes |
+| `Ctrl+Shift+0` | "Reactor shutdown checks complete" | `SHUTDOWN` | Yes |
+
+### Voice Equivalents
+
+Voice shortcuts provide the same efficiency for hands-free operation (see [Agent Capabilities PRD](prd_neutron-os-agents.md) GOAL_PLT_001):
+
+| Voice Command | Action |
+|---------------|--------|
+| "Log: Commence startup checks" | Creates STARTUP entry with phrase |
+| "Log: Reactor at power" | Creates STEADY_STATE entry |
+| "Log: Console check complete" | Creates CONSOLE_CHECK entry |
+
+### Facility Customization
+
+Shortcuts are defined in `config/keyboard_shortcuts.yaml`:
+
+```yaml
+keyboard_shortcuts:
+  ctrl_shift_1:
+    phrase: "Commence reactor startup checks"
+    entry_type: STARTUP
+    voice_trigger: "commence startup checks"
+    
+  ctrl_shift_5:
+    phrase: "Reactor at power"
+    entry_type: STEADY_STATE
+    voice_trigger: "reactor at power"
+    
+  # Facility-specific additions
+  ctrl_shift_q:
+    phrase: "Pneumatic sample inserted"
+    entry_type: EXPERIMENT_LOG
+    voice_trigger: "sample inserted"
+```
+
+---
+
+## Auto-Save Behavior
+
+The Ops Log supports low-friction data entry inspired by paper logbook workflows, where operators write continuously without explicit "save" actions.
+
+### Entry States
+
+| State | Description | Audit Status |
+|-------|-------------|-------------|
+| **Draft** | Entry being composed; auto-saved on blur/keystroke | Not in audit trail |
+| **Submitted** | Entry explicitly submitted; timestamp + hash assigned | In audit trail |
+| **Closed** | Entry from closed shift; read-only | Immutable |
+
+### Auto-Save Rules
+
+1. **Drafts auto-save** on:
+   - Every 5 seconds while typing (debounced)
+   - Focus blur (operator clicks away)
+   - Enter key (if not submitting)
+   
+2. **Explicit submit required** for official entry:
+   - Submit button or `Ctrl+Enter`
+   - Assigns immutable timestamp + cryptographic hash
+   - Entry enters audit trail
+
+3. **Inline editing** (contenteditable cells) permitted for drafts:
+   - Once submitted, editing is disabled
+   - Corrections via supplement only
+
+**User Story:** *"As a reactor operator, I want my log entries to save automatically as I type so I don't lose work if I'm interrupted."*
+
+---
+
 ## Data Schema
 
 ### Entry Schema
@@ -463,13 +573,15 @@ From Jim: "Export to PDF would work, but a simple text file for archive and futu
 
 ### Console View (Primary Interface During Operations)
 
+*Note: UI header and entry buttons are facility-configurable. Example shows research reactor profile.*
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  NETL OPERATIONS LOG                    [2026-01-21]  [Shift: Day] │
+│  {FACILITY_NAME} OPERATIONS LOG         [2026-01-21]  [Shift: Day] │
 │  Operator: J. Smith (RO)        ┌────────────────────────────────┐ │
 │  Power: 950 kW                  │  NEXT CHECK IN: 12:45          │ │
 │  Status: OPERATING              │  ████████████░░░░░░░░░  [Log]  │ │
-│                                 └────────────────────────────────┘ │
+│  Run #: 2026-047                └────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  [+ New Entry ▼]  [Console Check]  [Experiment]  [General Note]    │
@@ -805,10 +917,12 @@ Design consideration for Phase 2:
 
 **Hand-Log Form Layout:**
 
+*Note: Header is facility-configurable.*
+
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                     NETL REACTOR OPS LOG                             │
-│                   EMERGENCY BACKUP ENTRY FORM                        │
+│                   {FACILITY_NAME} REACTOR OPS LOG                    │
+│                     EMERGENCY BACKUP ENTRY FORM                      │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  ENTRY #: __________    DATE: __/__/____  SHIFT: □ Day □ Night     │
@@ -924,14 +1038,226 @@ Design consideration for Phase 2:
 
 ---
 
+## Reactor-Agnostic Configuration
+
+The Ops Log is designed to work for **any commercial reactor type** — not just research reactors like TRIGA. Facility-specific configuration adapts the system to different reactor types, regulatory frameworks, and operational procedures.
+
+### Supported Reactor Types
+
+| Reactor Type | Examples | Configuration Profile |
+|--------------|----------|----------------------|
+| **Research Reactor** | TRIGA, PULSTAR, MIT NRL | `profile: research` |
+| **Pressurized Water Reactor (PWR)** | Westinghouse AP1000, Vogtle | `profile: pwr` |
+| **Boiling Water Reactor (BWR)** | GE ABWR, Peach Bottom | `profile: bwr` |
+| **Small Modular Reactor (SMR)** | NuScale, BWRX-300 | `profile: smr` |
+| **Advanced Reactor** | Xe-100, Natrium, Kairos | `profile: advanced` |
+| **Molten Salt Reactor (MSR)** | MSRE heritage, Terrestrial | `profile: msr` |
+
+### Configuration Profiles
+
+Each reactor profile defines:
+
+| Configuration | Research | PWR/BWR | SMR | Advanced |
+|--------------|----------|---------|-----|----------|
+| **Console check interval** | 30 min | 2 hours | 1 hour | Configurable |
+| **Mandatory entry types** | CONSOLE_CHECK, STARTUP, SHUTDOWN, SCRAM | + TURBINE_TRIP, TECH_SPEC_ENTRY | + PASSIVE_SAFETY_CHECK | + FUEL_SALT_STATUS |
+| **Operating modes** | Shutdown, Startup, Steady-State | + Hot Standby, Hot Shutdown, Cold Shutdown | + Passive Cooling | + Drain Tank |
+| **Instrument readings** | Power, Pool Temp, Rods | RCS Temp/Pressure, SG Levels, Containment | Module-specific | Salt Temp, Flow, Chem |
+| **Regulatory framework** | 10 CFR 50 (non-power) | 10 CFR 50 (power) | 10 CFR 50/52 | 10 CFR 50/52 |
+| **Shift structure** | Day/Night | 12-hour rotating | Varies | Varies |
+
+### Facility Configuration File
+
+```yaml
+# config/facility.yaml
+facility:
+  name: "Example Nuclear Station Unit 1"
+  reactor_type: pwr
+  profile: pwr
+  regulatory_basis: "10 CFR 50"
+  
+  # Override defaults
+  console_check_interval_minutes: 120
+  shifts:
+    - name: "A Shift"
+      start: "07:00"
+      end: "19:00"
+    - name: "B Shift"
+      start: "19:00"
+      end: "07:00"
+      
+  # Operating modes for this facility
+  operating_modes:
+    - id: MODE_1
+      name: "Power Operation"
+      power_range: ">5% RTP"
+    - id: MODE_2
+      name: "Startup"
+      power_range: "≤5% RTP, Keff ≥ 0.99"
+    - id: MODE_3
+      name: "Hot Standby"
+      power_range: "Keff < 0.99, Tavg ≥ 350°F"
+    - id: MODE_4
+      name: "Hot Shutdown"
+      power_range: "Keff < 0.99, 200°F ≤ Tavg < 350°F"
+    - id: MODE_5
+      name: "Cold Shutdown"
+      power_range: "Keff < 0.99, Tavg < 200°F"
+    - id: MODE_6
+      name: "Refueling"
+      power_range: "Keff < 0.95, ≥23 ft water above vessel flange"
+      
+  # Instrument readings for console checks
+  instrument_readings:
+    - id: rcs_tavg
+      name: "RCS Tavg"
+      unit: "°F"
+      display_order: 1
+    - id: rcs_pressure
+      name: "RCS Pressure"
+      unit: "psig"
+      display_order: 2
+    - id: przr_level
+      name: "Pressurizer Level"
+      unit: "%"
+      display_order: 3
+    # ... additional instruments
+```
+
+### Entry Type Extensions
+
+Facilities can define custom entry types beyond the core set:
+
+```yaml
+# config/entry_types.yaml
+entry_types:
+  # Core types (always available)
+  core:
+    - CONSOLE_CHECK
+    - STARTUP
+    - SHUTDOWN
+    - SCRAM
+    - GENERAL_NOTE
+    - SUPPLEMENT
+    
+  # Profile-specific types
+  pwr:
+    - TECH_SPEC_ENTRY      # LCO entry/exit
+    - TURBINE_TRIP
+    - LOAD_CHANGE
+    - BORATION
+    - DILUTION
+    - MODE_CHANGE
+    - CONTAINMENT_ENTRY
+    
+  research:
+    - EXPERIMENT_LOG
+    - RADIATION_SURVEY
+    - EXCESS_REACTIVITY
+    - DOSE_RATE
+    - VISITOR
+    
+  # Facility-specific custom types
+  custom:
+    - id: FUEL_HANDLING
+      name: "Fuel Handling Activity"
+      requires_cosign: true
+      fields:
+        - assembly_id
+        - from_location
+        - to_location
+```
+
+### Keyboard Shortcut Profiles
+
+Shortcuts are profile-aware:
+
+| Profile | Ctrl+Shift+1 | Ctrl+Shift+5 | Ctrl+Shift+7 |
+|---------|--------------|--------------|---------------|
+| **Research** | "Commence startup checks" | "Reactor at power" | "Commence shutdown" |
+| **PWR** | "Entering Mode 2" | "Reactor at 100% power" | "Commencing plant shutdown" |
+| **BWR** | "Reactor startup initiated" | "Generator synchronized" | "Initiating normal shutdown" |
+
+### Multi-Unit Support
+
+For multi-unit sites, the Ops Log supports unit-aware logging:
+
+```yaml
+site:
+  name: "Example Nuclear Station"
+  units:
+    - id: unit_1
+      name: "Unit 1"
+      reactor_type: pwr
+    - id: unit_2
+      name: "Unit 2"
+      reactor_type: pwr
+      
+  # Shared entries (site-wide events)
+  shared_entry_types:
+    - SITE_EMERGENCY
+    - GRID_EVENT
+    - WEATHER_CONDITION
+```
+
+---
+
+## Export Format: OPER-2 and Facility Procedures
+
+**Design Origin:** Jay Torres' NETL eLogger exports PDFs matching the OPER-2 procedure format. This approach generalizes to any facility's operational procedures.
+
+### PDF Export Template
+
+Export PDFs match facility procedure formatting:
+
+| Element | Location | Content |
+|---------|----------|--------|
+| **Header** | Top center | Procedure number/revision (e.g., "OPER-2 chg 4") |
+| **Title** | Below header | Procedure title (e.g., "Reactor Startup and Shutdown") |
+| **Date/Run** | Top right | Date and Run Number |
+| **Table** | Body | Time \| Comments (or custom columns) |
+| **Footer** | Bottom center | Page X / Y |
+
+### Export Configuration
+
+```yaml
+# config/export_templates.yaml
+export_templates:
+  netl_oper2:
+    header_line_1: "Number-Rev: OPER-2 chg 4"
+    header_line_2: "Procedure Title: Reactor Startup and Shutdown"
+    columns:
+      - time
+      - comments
+    filename_pattern: "oper2_log_{date}_{run_number}.pdf"
+    
+  pwr_control_room_log:
+    header_line_1: "Control Room Narrative Log"
+    header_line_2: "Unit 1 - {date}"
+    columns:
+      - time
+      - mode
+      - power_level
+      - entry_type
+      - comments
+      - operator
+    filename_pattern: "cr_log_U1_{date}.pdf"
+```
+
+---
+
 ## MVP Scope (Phase 1)
 
 ### In Scope
 - Basic entry creation (CONSOLE_CHECK, STARTUP, SHUTDOWN, GENERAL_NOTE)
 - Supplement addition (no edit/delete of originals)
-- 30-minute timer with alerts
-- Export to PDF and plain text
-- Search by date, type, author
+- 30-minute timer with alerts (configurable interval)
+- Keyboard shortcuts for common phrases (10 default shortcuts)
+- Run number tracking
+- Auto-save drafts
+- Export to PDF (facility template) and plain text
+- Search by date, type, author, run number
+- Reactor-agnostic configuration (research profile first)
 
 ### Out of Scope (Future)
 - Auto-population from DCS instruments
@@ -939,6 +1265,7 @@ Design consideration for Phase 2:
 - Digital signature (cryptographic)
 - Integration with experiment manager
 - Mobile interface
+- PWR/BWR/SMR profiles (Phase 2)
 
 ---
 

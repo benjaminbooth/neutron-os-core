@@ -19,13 +19,13 @@ from unittest import mock
 
 import pytest
 
-from tools.extensions.contracts import (
+from neutron_os.extensions.contracts import (
     CLICommandDef,
     Extension,
     parse_manifest,
     validate_extension,
 )
-from tools.extensions.discovery import (
+from neutron_os.extensions.discovery import (
     _builtin_extensions_dir,
     _project_extensions_dir,
     _user_extensions_dir,
@@ -35,7 +35,7 @@ from tools.extensions.discovery import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-NEUT_CLI = str(REPO_ROOT / "tools" / "neut_cli.py")
+NEUT_CLI = str(REPO_ROOT / "src" / "neutron_os" / "neut_cli.py")
 
 
 # ---------------------------------------------------------------------------
@@ -58,8 +58,8 @@ class TestBuiltinExtensionsDir:
     def test_relative_to_file_not_cwd(self):
         """Builtins resolve from __file__, not cwd — works after pip install."""
         d = _builtin_extensions_dir()
-        # Should be inside the tools package, not relative to cwd
-        assert "tools" in str(d) and "extensions" in str(d)
+        # Should be inside the neutron_os package, not relative to cwd
+        assert "neutron_os" in str(d) and "extensions" in str(d)
 
 
 # ---------------------------------------------------------------------------
@@ -70,7 +70,7 @@ class TestBuiltinExtensionsDir:
 class TestProjectExtensionsDir:
     def test_returns_none_in_clean_dir(self, tmp_path):
         """No .neut/ anywhere → None, no crash."""
-        with mock.patch("tools.extensions.discovery.Path.cwd", return_value=tmp_path):
+        with mock.patch("neutron_os.extensions.discovery.Path.cwd", return_value=tmp_path):
             result = _project_extensions_dir()
         assert result is None
 
@@ -82,7 +82,7 @@ class TestProjectExtensionsDir:
         child = project / "src" / "deep" / "nested"
         child.mkdir(parents=True)
 
-        with mock.patch("tools.extensions.discovery.Path.cwd", return_value=child):
+        with mock.patch("neutron_os.extensions.discovery.Path.cwd", return_value=child):
             result = _project_extensions_dir()
         assert result == ext_dir
 
@@ -126,7 +126,7 @@ class TestGetExtensionDirs:
         ext_dir = project / ".neut" / "extensions"
         ext_dir.mkdir(parents=True)
 
-        with mock.patch("tools.extensions.discovery.Path.cwd", return_value=project):
+        with mock.patch("neutron_os.extensions.discovery.Path.cwd", return_value=project):
             dirs = get_extension_dirs()
         assert dirs[0] == ext_dir
         assert dirs[-1].name == "builtins"
@@ -173,10 +173,10 @@ class TestBuiltinManifests:
                 )
 
     def test_builtin_count(self):
-        """Sanity: we expect 9 builtins (infra is a core SUBCOMMAND, not an extension)."""
+        """Sanity: we expect 12 builtins (infra is a core SUBCOMMAND, not an extension)."""
         builtins_dir = _builtin_extensions_dir()
         manifests = list(builtins_dir.glob("*/neut-extension.toml"))
-        assert len(manifests) == 9
+        assert len(manifests) == 12
 
 
 # ---------------------------------------------------------------------------
@@ -191,9 +191,9 @@ class TestBuiltinValidation:
             version="0.1.0",
             description="test",
             author="test",
-            root=_builtin_extensions_dir() / "sense",
+            root=_builtin_extensions_dir() / "sense_agent",
             builtin=True,
-            cli_commands=[CLICommandDef(noun="sense", module="tools.extensions.builtins.sense.cli")],
+            cli_commands=[CLICommandDef(noun="sense", module="neutron_os.extensions.builtins.sense_agent.cli")],
         )
         issues = validate_extension(ext)
         assert issues == []
@@ -204,9 +204,9 @@ class TestBuiltinValidation:
             version="0.1.0",
             description="test",
             author="test",
-            root=_builtin_extensions_dir() / "sense",
+            root=_builtin_extensions_dir() / "sense_agent",
             builtin=True,
-            cli_commands=[CLICommandDef(noun="x", module="tools.nonexistent.module")],
+            cli_commands=[CLICommandDef(noun="x", module="neutron_os.nonexistent.module")],
         )
         issues = validate_extension(ext)
         assert any("not importable" in i for i in issues)
@@ -253,7 +253,7 @@ class TestDiscoverCLICommandsBuiltinFlag:
 
     def test_user_ext_not_builtin(self, tmp_path):
         """User extension commands have builtin=False."""
-        from tools.extensions.scaffold import scaffold_extension
+        from neutron_os.extensions.scaffold import scaffold_extension
 
         scaffold_extension("user-test", base_dir=tmp_path)
         cmds = discover_cli_commands(tmp_path)
@@ -306,7 +306,7 @@ class TestCLIDispatch:
     def test_ext_list_shows_builtin_count(self):
         result = _run_neut("ext")
         assert result.returncode == 0
-        assert "9 builtin" in result.stdout
+        assert "12 builtin" in result.stdout
 
     def test_help_all_shows_builtins_section(self):
         result = _run_neut("--help-all")
@@ -326,7 +326,7 @@ class TestCLIDispatch:
 
 class TestCLIRegistryIntegration:
     def test_registry_includes_builtins(self):
-        from tools.cli_registry import _get_cli_modules
+        from neutron_os.cli_registry import _get_cli_modules
 
         modules = _get_cli_modules()
         assert "sense" in modules
@@ -334,7 +334,7 @@ class TestCLIRegistryIntegration:
         assert "config" in modules  # core, always present
 
     def test_registry_core_plus_extensions(self):
-        from tools.cli_registry import _get_cli_modules
+        from neutron_os.cli_registry import _get_cli_modules
 
         modules = _get_cli_modules()
         # Should have at least core (config, ext) + 10 builtins

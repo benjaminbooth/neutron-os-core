@@ -1,13 +1,13 @@
-"""Tests for tools.extensions.builtins.docflow.providers.notification.smtp — SMTP email provider."""
+"""Tests for neutron_os.extensions.builtins.docflow.providers.notification.smtp — SMTP email provider."""
 
 import pytest
 from unittest.mock import patch, MagicMock
 
-from tools.extensions.builtins.docflow.providers.notification.smtp import (
+from neutron_os.extensions.builtins.docflow.providers.notification.smtp import (
     SMTPNotificationProvider,
     _markdown_to_html,
 )
-from tools.extensions.builtins.docflow.factory import DocFlowFactory
+from neutron_os.extensions.builtins.docflow.factory import DocFlowFactory
 
 
 # ── _markdown_to_html ────────────────────────────────────────────────
@@ -72,7 +72,7 @@ class TestSMTPProvider:
         result = provider.send([], "Subject", "Body")
         assert result is False
 
-    @patch("tools.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
+    @patch("neutron_os.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
     def test_send_success(self, mock_smtp_class):
         mock_server = MagicMock()
         mock_smtp_class.return_value = mock_server
@@ -96,7 +96,7 @@ class TestSMTPProvider:
         msg_str = call_args[0][2]
         assert "Test Subject" in msg_str
 
-    @patch("tools.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
+    @patch("neutron_os.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
     def test_send_with_tls(self, mock_smtp_class):
         mock_server = MagicMock()
         mock_smtp_class.return_value = mock_server
@@ -109,7 +109,7 @@ class TestSMTPProvider:
 
         mock_server.starttls.assert_called_once()
 
-    @patch("tools.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
+    @patch("neutron_os.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
     def test_send_with_auth(self, mock_smtp_class):
         mock_server = MagicMock()
         mock_smtp_class.return_value = mock_server
@@ -124,7 +124,7 @@ class TestSMTPProvider:
 
         mock_server.login.assert_called_once_with("myuser", "mypass")
 
-    @patch("tools.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
+    @patch("neutron_os.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
     def test_send_priority_header(self, mock_smtp_class):
         mock_server = MagicMock()
         mock_smtp_class.return_value = mock_server
@@ -138,7 +138,7 @@ class TestSMTPProvider:
         msg_str = mock_server.sendmail.call_args[0][2]
         assert "X-Priority: 1" in msg_str
 
-    @patch("tools.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
+    @patch("neutron_os.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
     def test_send_smtp_failure(self, mock_smtp_class):
         mock_smtp_class.side_effect = ConnectionRefusedError("Connection refused")
 
@@ -149,7 +149,7 @@ class TestSMTPProvider:
         result = provider.send(["user@example.com"], "Subject", "Body")
         assert result is False
 
-    @patch("tools.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
+    @patch("neutron_os.extensions.builtins.docflow.providers.notification.smtp.smtplib.SMTP")
     def test_send_from_name(self, mock_smtp_class):
         mock_server = MagicMock()
         mock_smtp_class.return_value = mock_server

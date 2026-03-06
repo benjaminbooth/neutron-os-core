@@ -28,7 +28,7 @@ class TestGitHubExtractor:
     @pytest.fixture
     def extractor(self, github_token):
         """Create extractor with real credentials."""
-        from tools.extensions.builtins.sense.extractors.github import GitHubExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.github import GitHubExtractor
         return GitHubExtractor(token=github_token)
     
     def test_extractor_is_available(self, extractor):
@@ -104,7 +104,7 @@ class TestGitHubFreshness:
     
     @pytest.fixture
     def extractor(self, github_token):
-        from tools.extensions.builtins.sense.extractors.github import GitHubExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.github import GitHubExtractor
         return GitHubExtractor(token=github_token)
     
     def test_freshness_tracking(self, extractor, freshness_tracker):
@@ -144,12 +144,12 @@ class TestGitHubSignalQuality:
     
     @pytest.fixture
     def extractor(self, github_token):
-        from tools.extensions.builtins.sense.extractors.github import GitHubExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.github import GitHubExtractor
         return GitHubExtractor(token=github_token)
     
     def test_commit_classification(self, extractor, tmp_path):
         """Verify commit messages are classified correctly."""
-        from tools.extensions.builtins.sense.extractors.github import GitHubActivity
+        from neutron_os.extensions.builtins.sense_agent.extractors.github import GitHubActivity
 
         # Test data with different commit types (commits are plain dicts)
         activity = GitHubActivity(

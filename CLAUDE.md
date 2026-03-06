@@ -22,7 +22,8 @@ integrated digital tools.
 
 ### Key Design Principles
 
-- **Reactor-agnostic core** with reactor-specific plugins (`plugins/`)
+- **Everything is an extension** — web apps, agents, tools, utilities are all extensions
+- **Reactor-agnostic core** with reactor-specific extensions (external repos)
 - **Offline-first** — nuclear facilities lose network; queue locally, sync on restore
 - **Human-in-the-loop** for all writes in safety-adjacent contexts
 - **No vendor lock-in** — model-agnostic, cloud-agnostic, IDE-agnostic
@@ -31,33 +32,103 @@ integrated digital tools.
 
 ```
 Neutron_OS/
-  docs/
-    requirements/           # PRDs (prd_*), ADRs (adr_*), strategy, OKRs
-    specs/                  # Technical specs, design, standards
-    research/               # Surveys, analyses, use-case scenarios
-    analysis/               # Data and cost analyses
-    proposals/              # Grant portfolio (NEUP 2026)
-    _tools/                 # Generated artifacts (docx, etc.)
-    _archive/               # Retired documents
-  archive/                  # Historical spikes and retired plans
-  spikes/                   # Experimental prototypes
-  tools/
-    agents/                 # Agents (chat, doctor, sense orchestrator)
-    pipelines/              # Data processing flows (sense)
-    docflow/                # Document lifecycle engine
-    infra/                  # Shared infrastructure (orchestrator, gateway)
-    extensions/             # Extension system and scaffold
-    setup/                  # Config wizard and onboarding
-    mo/                     # M-O resource steward
-    mcp_server/             # IDE integration (MCP)
-    exports/                # GitLab/GitHub weekly data exports
-    repo_sensing/           # Multi-source repo analytics
-    cost_estimation/        # Infrastructure cost models
-    neut_cli.py             # CLI entry point
-  tests/                    # Test suites (unit + integration)
-  infra/                    # Terraform, Helm, k8s configs
-  scripts/                  # Bootstrap and installation scripts
-  data/                     # Data schemas and seed data
+  src/neutron_os/              # Python package root (importable)
+    neut_cli.py                #   CLI entry point
+    cli_registry.py            #   Command discovery
+    platform/                  #   Shared infra (gateway, orchestrator, auth)
+    extensions/                #   Extension system
+      builtins/                #   Domain-agnostic builtin extensions
+        sense_agent/           #     Signal ingestion agent
+        chat_agent/            #     Interactive LLM assistant agent
+        mo_agent/              #     M-O resource steward agent
+        doctor_agent/          #     AI diagnostics agent
+        docflow/               #     Document lifecycle tool
+        db/                    #     Database management tool
+        demo/                  #     Guided walkthroughs
+        repo/                  #     Repository analytics
+        cost_estimation/       #     Cost modeling
+        status/                #     System health utility
+        test/                  #     Test orchestration utility
+        update/                #     Dependency updates utility
+    setup/                     #   Config wizard and onboarding
+    review/                    #   Review workflow engine
+    exports/                   #   Data export utilities
+  runtime/                     # Instance-specific data (mostly gitignored)
+    config.example/            #   Template configs (tracked)
+    config/                    #   Facility config (gitignored)
+    inbox/                     #   Signal inbox (gitignored)
+    sessions/                  #   Agent sessions
+  tests/                       # Cross-cutting tests ONLY
+  docs/                        # Cross-cutting documentation
+    requirements/              #   PRDs, ADRs, strategy, OKRs
+    specs/                     #   Architecture specs
+    proposals/                 #   Grant portfolio (NEUP 2026)
+    research/ | _tools/ | _archive/
+  infra/                       # Deployment (Terraform, Helm)
+  scripts/                     # Global bootstrap/install scripts
+  data/                        # Schemas and seed data
+  archive/                     # Retired code (M-O managed)
+  spikes/                      # Active experiments (M-O managed)
+```
+
+### Root Directory Policy
+
+**AI agents: Do NOT create new root-level directories or files.** Every directory
+at root level has a specific purpose. If you're unsure where something goes:
+- New functionality → `src/neutron_os/extensions/builtins/{name}/`
+- Runtime data → `runtime/`
+- Documentation → `docs/`
+- Tests → extension `tests/` or root `tests/`
+
+### Where Does New Code Go?
+
+| I want to... | Location |
+|---|---|
+| Add a domain-agnostic extension | `src/neutron_os/extensions/builtins/{name}/` |
+| Build a domain-specific extension | External repo → `.neut/extensions/` |
+| Add shared platform code (auth, gateway) | `src/neutron_os/platform/` |
+| Store facility config | `runtime/config/` |
+| Write cross-cutting tests | `tests/` |
+| Write extension tests | `src/neutron_os/extensions/builtins/{ext}/tests/` |
+
+---
+
+## Extension System
+
+### Everything is an Extension
+
+Web apps, agents, tools, utilities — all extensions. The only question is
+builtin (ships with this repo, domain-agnostic) or external (domain-specific,
+separate repo, installed to `.neut/extensions/`).
+
+### 3-Tier Discovery
+
+1. **Project-local**: `.neut/extensions/` (highest priority)
+2. **User-global**: `~/.neut/extensions/`
+3. **Builtin**: `src/neutron_os/extensions/builtins/`
+
+### Extension Kinds
+
+- `agent` — Has LLM autonomy. **Directory name MUST end with `_agent`.**
+  Examples: `sense_agent`, `chat_agent`, `mo_agent`, `doctor_agent`
+- `tool` — Capability invoked by agents or CLI (docflow, db, demo)
+- `utility` — Platform plumbing (status, test, update)
+
+### Extension Layout
+
+Every extension MUST have a `neut-extension.toml` manifest:
+```toml
+[extension]
+name = "my-extension"
+version = "0.1.0"
+description = "What it does"
+builtin = true
+kind = "tool"        # agent | tool | utility
+module = "platform"  # PRD-level grouping
+
+[[cli.commands]]
+noun = "myext"
+module = "neutron_os.extensions.builtins.my_extension.cli"
 ```
 
 ---
@@ -70,64 +141,15 @@ Neutron_OS/
 - **CONTRIBUTING.md** — Git workflow, branching, .gitignore maintenance
 - **CLAUDE.md** (this file) — Terminology, tech choices, project memory, AI assistant context
 - **docs/README.md** — Documentation folder structure (ADR/PRD/specs)
-- **PUBLISHER_USAGE.md** — OneDrive publishing workflow
 
 **Golden Rule:** Link, don't duplicate. If you're repeating information, move it
 to the appropriate doc and link from others.
 
-**Example:** Don't repeat terminology in CONTRIBUTING.md. Instead, write
-"See CLAUDE.md terminology standards" with a link.
+### Documentation Conventions
 
-### When to Update Documentation
-
-1. **Add a new tool/language?** → Update .gitignore + add pattern reference to CONTRIBUTING.md
-2. **New architectural decision?** → Create ADR in `docs/requirements/adr_*.md` + link from `docs/README.md`
-3. **New terminology or naming convention?** → Add to CLAUDE.md → link from CONTRIBUTING.md if relevant
-4. **New publishing workflow?** → Update PUBLISHER_USAGE.md → link from CONTRIBUTING.md
-
----
-
-## Git & Repository Standards
-
-### .gitignore Philosophy
-
-- **Automate exclusions** for all generated/environment files
-- **Never commit** build artifacts, dependencies, secrets, or data files
-- **Update .gitignore** when adding new tools/languages (separate commit)
-- Base patterns on [GitHub's Python template](https://github.com/github/gitignore/blob/main/Python.gitignore)
-- See [CONTRIBUTING.md](CONTRIBUTING.md) for maintenance workflow
-
-### Why This Matters
-
-Large binary files, data, and build artifacts bloat git history and slow cloning.
-Consistent .gitignore standards across all 6 digital twin projects ensure:
-- Clean repository history
-- Fast clone/pull operations
-- No accidental secrets in commits
-- Consistent developer experience
-
----
-
-## Documentation Conventions
-
-### Generated Files
-
-- **Word docs (.docx)** go to `docs/_tools/generated/` subdirectories, NOT alongside source markdown
-- Structure mirrors source: `docs/specs/*.md` → `docs/_tools/generated/specs/*.docx`
-- Pandoc command for tech spec:
-  ```bash
-  cd docs/specs
-  pandoc neutron-os-master-tech-spec.md -o ../\_tools/generated/specs/neutron-os-master-tech-spec.docx --toc --toc-depth=3
-  ```
-
-### Mermaid Diagrams (for Word export)
-
-- **NEVER use ASCII diagrams** — always use Mermaid diagrams for better rendering
-- ASCII art boxes (┌─┐│└┘) should be converted to Mermaid format
-- Subgraph titles: **<16 characters** to prevent text clipping
-- Use `TB` (top-to-bottom) flow for portrait-oriented Word docs
-- No `**bold**` or bullet lists inside diagram nodes
-- Color contrast: `#000000` on light fills, `#ffffff` on dark fills
+- **Word docs (.docx)** go to `docs/_tools/generated/`, NOT alongside source markdown
+- **Mermaid diagrams** only (never ASCII art). Subgraph titles <16 chars, TB flow.
+- **Extension-specific docs** live in `src/neutron_os/extensions/builtins/{ext}/docs/`
 
 ---
 
@@ -136,35 +158,136 @@ Consistent .gitignore standards across all 6 digital twin projects ensure:
 | Use This | Not This | Why |
 |----------|----------|-----|
 | Provider | Plugin | "Plugin" implies runtime loading; Providers are static |
-| Factory | — | Internal pattern for Provider instantiation |
-| Extension Point | Plugin hook | Consistency with Provider terminology |
-| Priority Module | Active Module | Clarity about what's being built now |
-| Future Module | Planned Module | Conveys intent without commitment |
+| Extension | Plugin | Everything is an extension in NeutronOS |
+| Extension Point | Plugin hook | Consistency with extension terminology |
 | DataTransformer | Transformer | Avoids collision with ML transformer terminology |
 
 ---
 
 ## Tech Stack
 
-### Local Dev
-
-- K3D for local Kubernetes
-- PostgreSQL for all environments (no SQLite)
-- Terraform for AWS/Azure/GCP
-
-### Full Stack Reference
-
 | Layer | Technology | Notes |
 |-------|-----------|-------|
 | CLI | Python (argparse + argcomplete) | `neut` command, offline-first |
-| Agent tooling | Python | `tools/agents/` |
+| Package | `neutron_os` (src layout) | `pip install -e ".[all]"` |
+| Extensions | Python + `neut-extension.toml` | 3-tier discovery |
 | Data platform | Apache Iceberg + DuckDB + Dagster + dbt | Medallion architecture |
 | Object storage | MinIO | S3-compatible, on-premise |
-| Analytics | Apache Superset | Self-service dashboards |
-| Streaming | Redpanda | Kafka-compatible, lighter weight |
 | Database | PostgreSQL | All environments (never SQLite) |
 | Infrastructure | Terraform | AWS/Azure/GCP |
 | Compute | TACC Lonestar 6 | A100 GPU nodes, UT allocation |
+
+---
+
+## CLI Command Structure
+
+The `neut` CLI uses a noun-verb pattern:
+```
+neut <noun> <verb> [args] [--flags]
+```
+
+Each noun is registered by an extension via `neut-extension.toml`.
+See `docs/requirements/prd_neut-cli.md` for full spec.
+
+---
+
+## Sense Pipeline (`neut sense`)
+
+Proactive program awareness — ingesting signals from multiple sources,
+extracting structured information, and maintaining program state.
+
+```
+Sources (voice memos, Teams, GitLab, Linear, freetext)
+  → Inbox (runtime/inbox/raw/)
+  → Extractors (src/neutron_os/extensions/builtins/sense_agent/extractors/)
+  → Correlator → Synthesizer → Review gate → Publisher
+```
+
+### Key Files
+
+- `src/neutron_os/platform/gateway.py` — Model-agnostic LLM routing
+- `src/neutron_os/extensions/builtins/sense_agent/extractors/` — Source-specific extraction
+- `src/neutron_os/extensions/builtins/sense_agent/correlator.py` — Entity resolution
+- `src/neutron_os/extensions/builtins/sense_agent/synthesizer.py` — Cross-source merging
+
+Full design: `docs/specs/neutron-os-agent-architecture.md`
+
+---
+
+## Document Lifecycle (`neut pub`)
+
+DocFlow extension manages document lifecycle: markdown → docx → published.
+
+### Key Files
+
+- `src/neutron_os/extensions/builtins/docflow/engine.py` — Core engine
+- `src/neutron_os/extensions/builtins/docflow/factory.py` — Provider factory
+- `src/neutron_os/extensions/builtins/docflow/providers/` — Generation, storage, feedback
+
+### Configuration
+
+Copy `.docflow/workflow.yaml.example` to `.docflow/workflow.yaml` (gitignored).
+
+---
+
+## Local Development
+
+### Quick Start
+
+```bash
+cd /path/to/Neutron_OS
+./scripts/bootstrap.sh
+```
+
+### Manual Setup
+
+```bash
+cd /path/to/UT_Computational_NE
+python3 -m venv .venv
+source .venv/bin/activate
+cd Neutron_OS
+pip install -e ".[all]"
+neut --help
+```
+
+### direnv (Recommended)
+
+```bash
+brew install direnv
+eval "$(direnv hook zsh)"
+cd /path/to/Neutron_OS && direnv allow
+```
+
+### Testing
+
+```bash
+# All tests
+pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short
+
+# Unit only
+pytest -m "not integration"
+
+# Single extension
+pytest src/neutron_os/extensions/builtins/sense_agent/tests/ -v
+```
+
+### Direct Module Execution
+
+```bash
+python -m neutron_os.neut_cli sense status
+```
+
+---
+
+## Contributor Setup with AI Tools
+
+```bash
+# Personal AI context (gitignored)
+cp -r .claude.example/ .claude/
+
+# Facility config (gitignored)
+cp -r runtime/config.example/ runtime/config/
+```
 
 ---
 
@@ -174,257 +297,9 @@ Consistent .gitignore standards across all 6 digital twin projects ensure:
 
 - Position Neutron OS and DeepLynx as **independent peer platforms**
 - Avoid implying Neutron OS is subordinate or "built atop" DeepLynx
-- Use hypothetical language ("proposed", "potential", "would") for partnership details
+- Use hypothetical language ("proposed", "potential", "would")
 
 ### General
 
 - NeutronOS is complementary to existing DOE infrastructure, not competitive
 - Maintain flexibility on formal collaboration commitments not yet secured
-
----
-
-## CLI Command Structure
-
-The `neut` CLI uses a noun-verb pattern. When building new features, follow
-this structure:
-
-```
-neut <noun> <verb> [args] [--flags]
-
-Nouns:
-  log       Reactor operations logging
-  sim       Simulation orchestration
-  model     Surrogate model management
-  twin      Digital twin state
-  data      Data platform queries
-  chat      Agentic assistant (interactive)
-  sense     Program awareness (proactive sensing)
-  ext       Extension management
-  infra     Infrastructure management
-```
-
-Each noun has its own verb set. See `docs/requirements/prd_neut-cli.md` for full spec.
-
----
-
-## Sense Pipeline (`neut sense`)
-
-The `sense` noun handles proactive program awareness — ingesting signals from
-multiple sources, extracting structured information, and maintaining program state.
-
-### Architecture
-
-```
-Sources (voice memos, Teams, GitLab, Linear, freetext)
-  → Inbox (tools/agents/inbox/raw/)
-  → Extractors (tools/pipelines/sense/extractors/)
-  → Correlator (maps to people, initiatives, issues)
-  → Synthesizer (merges into weekly draft)
-  → Review gate (human approval)
-  → Publisher (tracker, OneDrive, GitLab, Linear)
-```
-
-### Key Files
-
-- `tools/infra/gateway.py` — Model-agnostic LLM routing
-- `tools/pipelines/sense/extractors/` — Source-specific signal extraction
-- `tools/pipelines/sense/correlator.py` — Entity resolution
-- `tools/pipelines/sense/synthesizer.py` — Cross-source signal merging
-- `tools/pipelines/sense/publisher.py` — Multi-target publishing (planned)
-### Design Principles
-- **Human-in-the-loop:** All writes require explicit approval
-- **Model-agnostic:** Gateway routes to any OpenAI-compatible endpoint
-- **IDE-agnostic:** CLI-first, no IDE plugins
-- **Offline-first:** Follows neut CLI spec — queue locally, sync on restore
-- **Instance separation:** Platform code is generic; `tools/agents/config/` is facility-specific
-
-### Architecture Spec
-
-Full design: `docs/specs/neutron-os-agent-architecture.md`
-
----
-
-## Local Development
-
-### Quick Start (One Command)
-
-```bash
-cd /path/to/Neutron_OS
-./scripts/bootstrap.sh
-```
-
-This creates the venv, installs the package, and sets up direnv if available.
-
-### Manual Setup
-
-```bash
-# Create venv at project root (one level above Neutron_OS)
-cd /path/to/UT_Computational_NE
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install Neutron_OS in editable mode with all extras
-cd Neutron_OS
-pip install -e ".[all]"
-
-# Verify
-neut --help
-neut sense status
-```
-
-### Recommended: direnv for Automatic venv Activation
-
-Using [direnv](https://direnv.net) eliminates the need to manually activate the venv:
-
-```bash
-# Install direnv
-brew install direnv  # macOS
-# or: sudo apt install direnv  # Linux
-
-# Add to your shell config (~/.zshrc or ~/.bashrc)
-eval "$(direnv hook zsh)"  # or bash
-
-# Allow the .envrc in Neutron_OS
-cd /path/to/Neutron_OS
-direnv allow
-```
-
-Now when you `cd` into Neutron_OS, the venv activates automatically.
-The `neut` command will work without manual activation.
-
-### Common Issues
-
-**`neut: command not found` or `ModuleNotFoundError`:**
-```bash
-# Quick fix: reinstall
-cd Neutron_OS && ../.venv/bin/pip install -e ".[all]"
-
-# Or run bootstrap to fully reset
-./scripts/bootstrap.sh
-```
-
-**Options to make `neut` available:**
-1. **direnv** (recommended) - Auto-activates venv when you enter the directory
-2. **Manual activation**: `source ../.venv/bin/activate`
-3. **Add to PATH permanently** - Add to ~/.zshrc or ~/.bashrc:
-   ```bash
-   export PATH="/path/to/UT_Computational_NE/.venv/bin:$PATH"
-   ```
-
-**Import errors like `neut.cli` not found:**
-- Don't create files named `neut.py` in your working directory (shadows the command)
-- Run from venv: `source ../.venv/bin/activate` or use full path `../.venv/bin/neut`
-
-**Testing new features:**
-```bash
-# Always work with activated venv
-source ../.venv/bin/activate
-
-# Run CLI commands directly
-neut sense ingest --source voice
-neut sense corrections --guided
-
-# Or run tests
-pytest tests/sense/ -v
-```
-
-### Alternative: Direct Module Execution
-
-If you need to bypass the entry point:
-```bash
-python -m tools.pipelines.sense.cli status
-python -m tools.neut_cli sense status
-```
-
----
-
-## Contributor Setup with AI Tools
-
-### Personal Context
-
-Your AI assistant works better when it knows your role and priorities.
-This info is private and `.gitignored`:
-
-```bash
-# One-time setup
-cp -r .claude.example/ .claude/
-# Edit .claude/context.md with your name, role, focus areas
-
-# For agent config (if running neut sense)
-cp -r tools/agents/config.example/ tools/agents/config/
-# Edit facility.toml, people.md, etc. for your facility
-```
-
-### Claude Code
-
-CLAUDE.md is read automatically. Personal context from `.claude/context.md`
-is also picked up if present.
-
-### Cursor
-
-Add to `.cursorrules`:
-```
-Read CLAUDE.md for project context.
-If .claude/context.md exists, read it for contributor-specific context.
-```
-
-### Any Other AI Tool
-
-This file is plain markdown. Copy relevant sections into your tool's system
-prompt or context window as needed.
-
----
-
-## Document Lifecycle (`neut doc` / `neut docflow`)
-
-DocFlow manages the document lifecycle: markdown source files → generated
-artifacts → published to storage → review cycles. It treats .md files as
-source code and published artifacts as deployment outputs.
-
-### Architecture
-
-DocFlow uses the same Factory/Provider pattern as the Digital Twin spec.
-Five independent Provider contracts, a central Factory, and a core engine
-that **never imports any specific provider**.
-
-| Contract | Purpose | Phase 1 Implementations |
-|----------|---------|------------------------|
-| `GenerationProvider` | md → artifact | `PandocDocxProvider` |
-| `StorageProvider` | Upload, URLs | `LocalStorageProvider`, `OneDriveStorageProvider` |
-| `FeedbackProvider` | Reviewer comments | `DocxFeedbackProvider` |
-| `NotificationProvider` | Alerts | `TerminalNotificationProvider` |
-| `EmbeddingProvider` | RAG indexing | — (Phase 2) |
-
-### Key Files
-
-- `tools/docflow/engine.py` — Core workflow engine (provider-agnostic)
-- `tools/docflow/factory.py` — DocFlowFactory with register/create/available
-- `tools/docflow/providers/base.py` — All five Provider ABCs
-- `tools/docflow/registry.py` — Link registry (.doc-registry.json)
-- `tools/docflow/state.py` — Document state persistence (.doc-state.json)
-- `tools/docflow/config.py` — Load .doc-workflow.yaml
-- `tools/docflow/cli.py` — CLI handler for `neut doc`
-
-### CLI Commands
-
-```bash
-neut doc publish docs/requirements/prd_foo.md    # Generate + publish
-neut doc publish --storage local foo.md    # Override storage provider
-neut doc generate docs/requirements/prd_foo.md   # Generate locally only
-neut doc status                            # All doc states
-neut doc check-links                       # Verify cross-doc links
-neut doc diff                              # Changed since last publish
-neut doc providers                         # List registered providers
-```
-
-### Configuration
-
-Copy `.doc-workflow.yaml.example` to `.doc-workflow.yaml` (gitignored).
-Swap providers in YAML — zero changes to engine.py.
-
-### Design Principles
-
-- **Core Knows Nothing:** `engine.py` imports only ABCs, never providers
-- **Link registry is the killer feature:** `.doc-registry.json` maps docs → URLs
-- **Factory with self-registration:** Each provider file registers on import
-- **Extracts from existing code:** Reuses logic from `publish_to_onedrive.py`

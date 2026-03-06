@@ -27,7 +27,7 @@ def inbox(tmp_path):
 
 @pytest.fixture
 def server(inbox):
-    from tools.extensions.builtins.sense.serve import create_server
+    from neutron_os.extensions.builtins.sense_agent.serve import create_server
 
     srv = create_server(host="127.0.0.1", port=0, inbox_root=inbox)
     thread = threading.Thread(target=srv.serve_forever, daemon=True)

@@ -13,14 +13,14 @@ from pathlib import Path
 
 import pytest
 
-from tools.extensions.discovery import (
+from neutron_os.extensions.discovery import (
     discover_extensions,
     discover_and_load_chat_tools,
     discover_cli_commands,
     execute_extension_tool,
     load_chat_tools,
 )
-from tools.extensions.scaffold import scaffold_extension
+from neutron_os.extensions.scaffold import scaffold_extension
 
 
 class TestExtensionHotReload:
@@ -138,7 +138,7 @@ class TestExtensionHotReload:
 
     def test_skills_available_immediately(self, tmp_path):
         """Skills from SKILL.md are available after scaffolding."""
-        from tools.extensions.discovery import discover_all_skills
+        from neutron_os.extensions.discovery import discover_all_skills
 
         ext_dir = tmp_path / "extensions"
         ext_dir.mkdir()

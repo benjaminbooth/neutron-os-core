@@ -1,14 +1,8 @@
 # Contributing to Neutron OS
 
-**Sections:**
-- [Development Setup](#development-setup)
-- [Branching & Merge Requests](#branching--merge-requests)
-- [Installing Dev Builds](#installing-dev-builds)
-- [Code Conventions](#code-conventions)
-- [Documentation](#documentation)
-- [CI/CD Pipeline](#cicd-pipeline)
-- [GitLab Settings (Maintainers)](#gitlab-settings-maintainers)
-- [Runner Setup](#runner-setup)
+This guide covers the mechanics of contributing — setup, branching, testing,
+and releasing. For project architecture, terminology, and AI assistant context,
+see [CLAUDE.md](CLAUDE.md).
 
 ## Development Setup
 
@@ -20,8 +14,8 @@ cd Neutron_OS
 ./scripts/bootstrap.sh
 ```
 
-This creates a venv, installs the package in editable mode, and sets up direnv
-if available. After bootstrap, `neut --help` should work.
+This creates a venv, installs in editable mode, and configures direnv.
+After bootstrap, `neut --help` should work.
 
 ### Manual Setup
 
@@ -34,68 +28,146 @@ pip install -e ".[all]"
 neut --help
 ```
 
-### Agent & Facility Config (Optional)
+### Facility Config (Optional)
 
 If you're running `neut sense` or `neut chat`, copy the example configs:
 
 ```bash
-cp -r tools/agents/config.example/ tools/agents/config/
-# Edit tools/agents/config/facility.toml and models.toml for your facility
+cp -r runtime/config.example/ runtime/config/
+# Edit runtime/config/facility.toml and models.toml for your facility
 ```
 
-See [CLAUDE.md](CLAUDE.md) for detailed setup and troubleshooting.
+### AI Tool Setup
+
+```bash
+cp -r .claude.example/ .claude/
+# Add your API keys and personal context to .claude/
+```
+
+## Everything Is an Extension
+
+New functionality goes into extensions, not scattered across the repo.
+Before writing code, decide:
+
+| What I'm building | Where it goes |
+|---|---|
+| Domain-agnostic CLI feature | `src/neutron_os/extensions/builtins/{name}/` |
+| Domain-specific feature (reactor-ops, isotopes) | External repo → `.neut/extensions/` |
+| Shared platform plumbing (auth, gateway) | `src/neutron_os/platform/` |
+
+Every extension needs a `neut-extension.toml` manifest. Use `neut ext init` to
+scaffold one, or copy from an existing builtin. Agent extensions must have
+directory names ending with `_agent`.
+
+See [CLAUDE.md](CLAUDE.md) for the full "Where Does New Code Go?" table.
+
+## Testing
+
+### Running Tests
+
+```bash
+# All tests (unit + colocated extension tests)
+make test
+
+# Verbose with traceback
+pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short
+
+# Single extension
+pytest src/neutron_os/extensions/builtins/sense_agent/tests/ -v
+
+# Unit tests only (no credentials needed)
+pytest -m "not integration"
+
+# Lint
+make lint
+```
+
+### Test Organization
+
+- **Extension tests** live colocated in `src/neutron_os/extensions/builtins/{ext}/tests/`
+- **Cross-cutting tests** (framework, integration, e2e) live in `tests/`
+- **Repo hygiene checks** in `tests/test_repo_hygiene.py` catch stale imports,
+  misplaced files, and naming violations — these run on every `make test`
+
+### Writing Tests
+
+- Extension tests go in the extension's `tests/` directory, not root `tests/`
+- Shared fixtures are in `tests/conftest.py` (available everywhere via root `conftest.py`)
+- Mark tests needing credentials with `@pytest.mark.integration`
+- Mark tests needing network with `@pytest.mark.skipif` or similar guards
 
 ## Branching & Merge Requests
 
 ### Branch Naming
 
-Use prefixed branch names:
-
 | Prefix | Use for |
 |--------|---------|
-| `feat/` | New features |
+| `feat/` | New features or extensions |
 | `fix/` | Bug fixes |
 | `docs/` | Documentation changes |
 | `refactor/` | Code restructuring (no behavior change) |
 | `ci/` | CI/CD pipeline changes |
 | `test/` | Test additions or fixes |
 
-Examples: `feat/experiment-scheduler`, `fix/voice-ingest-timeout`, `docs/api-reference`
-
 ### Workflow
 
-1. Create a branch from `main`:
+1. Branch from `main`:
    ```bash
    git checkout -b feat/my-feature main
    ```
-2. Make changes and commit with clear messages
-3. Push and open a merge request into `main`:
+2. Make changes, commit with clear messages
+3. Push and open a merge request:
    ```bash
    git push -u origin feat/my-feature
    ```
-4. MR triggers CI — tests, lint, and a downloadable wheel artifact
+4. MR triggers CI — tests, lint, wheel artifact
 5. Get review, address feedback
 6. **Squash and merge** — each MR becomes one commit on `main`
 
 ### MR Checklist
 
-Before requesting review, verify:
-
 - [ ] Tests pass locally: `make test`
 - [ ] Lint is clean: `make lint`
 - [ ] MR description explains the **why**, not just the what
-- [ ] New features have tests
+- [ ] New features have tests (colocated with the extension)
 - [ ] No secrets or credentials in committed files
+- [ ] No new root-level directories without approval
 
 ### No `develop` Branch
 
 We use `main` as the sole integration branch. Feature branches are short-lived.
-Tagged releases (e.g., `v0.1.0`) cut directly from `main`.
+Tagged releases cut directly from `main`.
 
-## Installing Dev Builds
+## Code Conventions
 
-Every merge to `main` publishes a dev build to the GitLab Package Registry.
-Teammates can install the latest without cloning the repo:
+For terminology, tech stack, and architecture, see [CLAUDE.md](CLAUDE.md).
+
+**Key rules:**
+- `Provider`, not `Plugin` — everything is an extension with providers
+- `DataTransformer`, not `Transformer` — avoids ML collision
+- PostgreSQL everywhere, no SQLite
+- Mermaid diagrams only, no ASCII art
+
+## CI/CD Pipeline
+
+| Trigger | What runs |
+|---------|-----------|
+| Push to any branch | Unit tests + lint |
+| MR opened/updated | Unit tests + lint + build wheel (downloadable artifact) |
+| Merge to `main` | All tests + build + publish dev build to Package Registry |
+| Tag `v*` pushed | All tests + build + publish stable release |
+
+### Creating a Release
+
+```bash
+# Bump version in pyproject.toml, then:
+git tag v0.3.1
+git push origin v0.3.1
+```
+
+CI builds and publishes to the GitLab Package Registry.
+
+### Installing Dev Builds
 
 ```bash
 pip install neutron-os --upgrade \
@@ -103,125 +175,40 @@ pip install neutron-os --upgrade \
   --trusted-host rsicc-gitlab.tacc.utexas.edu
 ```
 
-Replace `<PROJECT_ID>` with the GitLab project ID (visible on the project homepage).
-
-Or use the Makefile shortcut (requires `GITLAB_PROJECT_ID` env var):
-
-```bash
-export GITLAB_PROJECT_ID=<PROJECT_ID>
-make install-preview
-```
-
-Dev versions follow [PEP 440](https://peps.python.org/pep-0440/) format:
-`0.1.0.dev42` where `42` is the CI pipeline number. `pip install --upgrade`
-always fetches the latest.
-
-## Code Conventions
-
-For naming, terminology, and architectural patterns, see [CLAUDE.md](CLAUDE.md).
-
-**Key rules:**
-- Use `DataTransformer` not `Transformer` (see terminology standards in CLAUDE.md)
-- Use `Provider` not `Plugin` for extension system
-- PostgreSQL everywhere, no SQLite (see CLAUDE.md tech stack section)
-
-### Running Tests
-
-```bash
-make test           # Unit tests (no credentials needed)
-make integration    # Integration tests (needs .env with credentials)
-make test-all       # Both
-make lint           # Ruff linter
-```
-
-### Validating .gitignore
-
-```bash
-git check-ignore -v your_file_pattern
-```
+Dev versions follow PEP 440: `0.3.1.dev42` where `42` is the CI pipeline number.
 
 ## Documentation
 
-### Writing Documentation
-
-See [docs/README.md](docs/README.md) for folder structure and conventions:
-- **ADR/** — Architecture Decision Records (technical decisions, immutable)
-- **PRD/** — Product Requirements (what we're building, user journeys)
+- **ADR/** — Architecture Decision Records (immutable once merged)
+- **PRD/** — Product Requirements (what we're building)
 - **specs/** — Technical Specifications (how to build it)
 
-### Publishing Documentation
-
-See [PUBLISHER_USAGE.md](PUBLISHER_USAGE.md) for publishing to OneDrive.
-First-time publishers: start with [PUBLISH_CHECKLIST.md](PUBLISH_CHECKLIST.md).
-
-### Generated Outputs
-
-- Generated Word docs go to `docs/_tools/generated/` (not alongside source markdown)
-- Mermaid diagrams for Word export: see CLAUDE.md Mermaid Diagrams section
-
-## CI/CD Pipeline
-
-The pipeline runs automatically on GitLab. Here's what happens at each trigger:
-
-| Trigger | What runs |
-|---------|-----------|
-| Push to any branch | Unit tests + lint |
-| MR opened/updated | Unit tests + lint + integration tests + build wheel (downloadable artifact) |
-| Merge to `main` | All tests + build + **publish dev build** to Package Registry |
-| Tag `v*` pushed | All tests + build + **publish stable release** to Package Registry |
-
-### Creating a Release
-
-```bash
-# Ensure pyproject.toml has the correct version
-# Then tag and push:
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The CI pipeline builds and publishes the release to the GitLab Package Registry.
+Extension-specific docs live in the extension: `src/neutron_os/extensions/builtins/{ext}/docs/`.
+Cross-cutting docs go in `docs/`. See [docs/README.md](docs/README.md).
 
 ## GitLab Settings (Maintainers)
 
-These must be configured in the GitLab UI — they can't be set via code:
-
 1. **Settings > Repository > Protected Branches**
-   - Protect `main`
-   - Allowed to push: **Maintainers only**
-   - Allowed to merge: **Maintainers only** (or Developers, depending on team size)
+   - Protect `main`, push = Maintainers only
 
 2. **Settings > Merge Requests**
-   - Squash commits: **Encourage** or **Require**
-   - Merge checks: **Pipelines must succeed**
+   - Squash commits: Encourage or Require
+   - Merge checks: Pipelines must succeed
 
 3. **Settings > CI/CD > Variables** (masked, protected):
-   - `GITLAB_TOKEN` — Personal access token
-   - `MS_GRAPH_CLIENT_ID`, `MS_GRAPH_CLIENT_SECRET`, `MS_GRAPH_TENANT_ID` — Azure AD
+   - `GITLAB_TOKEN`
+   - `MS_GRAPH_CLIENT_ID`, `MS_GRAPH_CLIENT_SECRET`, `MS_GRAPH_TENANT_ID`
 
 ## Runner Setup
 
-If TACC GitLab has no shared runners, register a project-specific shell runner:
+If TACC GitLab has no shared runners:
 
 ```bash
-# Install
 brew install gitlab-runner   # macOS
-# or: sudo apt install gitlab-runner  # Linux
-
-# Register (get token from Settings → CI/CD → Runners → New project runner)
 gitlab-runner register \
   --url https://rsicc-gitlab.tacc.utexas.edu \
   --token <RUNNER_TOKEN> \
   --executor shell \
   --description "neutron-os-dev"
-
-# Start
 gitlab-runner run
 ```
-
-Or use `make runner-register` for a guided walkthrough.
-
-## Standards & References
-
-**Project Standards:**
-- [CLAUDE.md](CLAUDE.md) — Terminology, tech stack, project memory
-- [docs/README.md](docs/README.md) — Documentation structure & conventions

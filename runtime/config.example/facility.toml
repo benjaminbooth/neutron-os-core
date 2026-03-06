@@ -1,0 +1,31 @@
+# Facility Configuration
+# Copy to runtime/config/facility.toml and customize.
+
+[facility]
+name = "Example Research Reactor"
+type = "research"              # research | commercial | government
+reactor = "triga"              # triga | msr | lwr | htgr | sfr | fusion | ...
+plugin = "plugin-triga"        # maps to plugins/ directory
+
+[sense.sources]
+voice_memos = true             # Watch iCloud Voice Memos directory
+teams_recordings = true        # Poll Microsoft Graph for Teams recordings
+gitlab_export = true           # Process weekly GitLab JSON exports
+email_forwarding = false       # Process forwarded emails (future)
+
+[sense.heartbeat]
+interval_minutes = 30
+active_hours = "08:00-18:00"
+active_days = "Mon-Fri"
+timezone = "America/Chicago"
+
+[sense.publish]
+onedrive_enabled = true
+onedrive_path = ""             # e.g., "Documents/Program_Tracker.xlsx"
+teams_webhook = ""             # Optional: post summaries to Teams channel
+gitlab_enabled = true
+
+[sense.transcription]
+engine = "whisper"             # whisper | teams-native | deepgram
+whisper_model = "large-v3"     # tiny | base | small | medium | large-v3
+prefer_local = true            # Use local transcription over cloud

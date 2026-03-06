@@ -78,11 +78,11 @@ spec:
           volumeMounts:
             {{- if .Values.persistence.inbox.enabled }}
             - name: inbox
-              mountPath: /app/tools/agents/inbox
+              mountPath: /app/runtime/inbox
             {{- end }}
             {{- if .Values.persistence.media.enabled }}
             - name: media
-              mountPath: /app/tools/agents/inbox/raw
+              mountPath: /app/runtime/inbox/raw
             {{- end }}
       volumes:
         {{- if .Values.persistence.inbox.enabled }}

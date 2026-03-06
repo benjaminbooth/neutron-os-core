@@ -1,0 +1,8 @@
+[extension]
+name = "cost-estimation"
+version = "0.1.0"
+description = "Infrastructure cost modeling for Neutron OS deployments"
+author = "Neutron OS Team"
+builtin = true
+kind = "tool"
+module = "platform"

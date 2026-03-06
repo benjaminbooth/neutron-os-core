@@ -1,4 +1,4 @@
-"""Tests for tools.setup.wizard."""
+"""Tests for neutron_os.setup.wizard."""
 
 import json
 import os
@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tools.setup.renderer import set_color_enabled
-from tools.setup.state import SetupState, save_state
-from tools.setup.wizard import PHASES, SetupWizard
+from neutron_os.setup.renderer import set_color_enabled
+from neutron_os.setup.state import SetupState, save_state
+from neutron_os.setup.wizard import PHASES, SetupWizard
 
 
 @pytest.fixture(autouse=True)
@@ -103,7 +103,7 @@ class TestWizardSummary:
 class TestWizardConfig:
     def test_generates_files(self, tmp_path, monkeypatch):
         # Set up template files
-        config_example = tmp_path / "tools" / "agents" / "config.example"
+        config_example = tmp_path / "runtime" / "config.example"
         config_example.mkdir(parents=True)
         (config_example / "facility.toml").write_text(
             '[facility]\nname = "UT TRIGA Mark II"\ntype = "research"\n'
@@ -122,24 +122,24 @@ class TestWizardConfig:
         # Mock user input
         monkeypatch.setattr("builtins.input", lambda _: "1")  # Research reactor
         monkeypatch.setattr(
-            "tools.setup.renderer.prompt_text",
+            "neutron_os.setup.renderer.prompt_text",
             lambda label, default="": "Test Facility",
         )
         monkeypatch.setattr(
-            "tools.setup.renderer.prompt_choice",
+            "neutron_os.setup.renderer.prompt_choice",
             lambda q, opts: 0,
         )
 
         wizard._phase_config()
 
-        assert (tmp_path / "tools" / "agents" / "config" / "facility.toml").exists()
-        assert (tmp_path / "tools" / "agents" / "config" / "models.toml").exists()
+        assert (tmp_path / "runtime" / "config" / "facility.toml").exists()
+        assert (tmp_path / "runtime" / "config" / "models.toml").exists()
         assert (tmp_path / ".doc-workflow.yaml").exists()
         assert (tmp_path / ".claude" / "context.md").exists()
 
     def test_skips_existing_files(self, tmp_path, monkeypatch):
         # Create existing files
-        config_dir = tmp_path / "tools" / "agents" / "config"
+        config_dir = tmp_path / "runtime" / "config"
         config_dir.mkdir(parents=True)
         (config_dir / "facility.toml").write_text("existing")
         (config_dir / "models.toml").write_text("existing")
@@ -150,11 +150,11 @@ class TestWizardConfig:
 
         wizard = SetupWizard(root=tmp_path)
         monkeypatch.setattr(
-            "tools.setup.renderer.prompt_text",
+            "neutron_os.setup.renderer.prompt_text",
             lambda label, default="": "Test",
         )
         monkeypatch.setattr(
-            "tools.setup.renderer.prompt_choice",
+            "neutron_os.setup.renderer.prompt_choice",
             lambda q, opts: 0,
         )
 
@@ -233,7 +233,7 @@ class TestWizardFix:
         wizard = SetupWizard(root=tmp_path)
         # Skip the credential setup
         monkeypatch.setattr(
-            "tools.setup.renderer.prompt_yn",
+            "neutron_os.setup.renderer.prompt_yn",
             lambda q, default=True: False,
         )
         wizard.fix("GITLAB_TOKEN")
@@ -298,7 +298,7 @@ class TestCrossPlatformAlias:
 
         wizard = SetupWizard(root=tmp_path)
         with patch("shutil.which", return_value=None):
-            with patch("tools.setup.wizard.platform") as mock_plat:
+            with patch("neutron_os.setup.wizard.platform") as mock_plat:
                 mock_plat.system.return_value = "Linux"
                 wizard._offer_shell_alias()
 
@@ -312,7 +312,7 @@ class TestCrossPlatformAlias:
 
         wizard = SetupWizard(root=tmp_path)
         with patch("shutil.which", return_value=None):
-            with patch("tools.setup.wizard.platform") as mock_plat:
+            with patch("neutron_os.setup.wizard.platform") as mock_plat:
                 mock_plat.system.return_value = "Linux"
                 wizard._offer_shell_alias()
 
@@ -326,7 +326,7 @@ class TestCrossPlatformAlias:
 
         wizard = SetupWizard(root=tmp_path)
         with patch("shutil.which", return_value=None):
-            with patch("tools.setup.wizard.platform") as mock_plat:
+            with patch("neutron_os.setup.wizard.platform") as mock_plat:
                 mock_plat.system.return_value = "Windows"
                 # Mock powershell command that returns profile path
                 mock_result = MagicMock()
@@ -348,7 +348,7 @@ class TestCrossPlatformAlias:
 
         wizard = SetupWizard(root=tmp_path)
         with patch("shutil.which", return_value=None):
-            with patch("tools.setup.wizard.platform") as mock_plat:
+            with patch("neutron_os.setup.wizard.platform") as mock_plat:
                 mock_plat.system.return_value = "Windows"
                 mock_result = MagicMock()
                 mock_result.stdout = str(ps_profile)
@@ -362,7 +362,7 @@ class TestCrossPlatformAlias:
         """Windows without PowerShell available — skips gracefully."""
         wizard = SetupWizard(root=tmp_path)
         with patch("shutil.which", return_value=None):
-            with patch("tools.setup.wizard.platform") as mock_plat:
+            with patch("neutron_os.setup.wizard.platform") as mock_plat:
                 mock_plat.system.return_value = "Windows"
                 with patch("subprocess.run", side_effect=FileNotFoundError):
                     wizard._offer_shell_alias()
@@ -375,7 +375,7 @@ class TestCrossPlatformSummary:
     """Tests that summary displays correctly for different OS platforms."""
 
     def test_summary_linux(self, tmp_path, capsys):
-        from tools.setup.probe import ProbeResult
+        from neutron_os.setup.probe import ProbeResult
         wizard = SetupWizard(root=tmp_path)
         wizard.probe_result = ProbeResult(
             os_name="Linux",
@@ -394,7 +394,7 @@ class TestCrossPlatformSummary:
         assert "Darwin" not in out
 
     def test_summary_windows(self, tmp_path, capsys):
-        from tools.setup.probe import ProbeResult
+        from neutron_os.setup.probe import ProbeResult
         wizard = SetupWizard(root=tmp_path)
         wizard.probe_result = ProbeResult(
             os_name="Windows",

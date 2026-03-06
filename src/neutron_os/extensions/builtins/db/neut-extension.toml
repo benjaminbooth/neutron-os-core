@@ -1,0 +1,13 @@
+[extension]
+name = "db"
+version = "0.3.0"
+description = "PostgreSQL + pgvector infrastructure"
+author = "NeutronOS"
+builtin = true
+kind = "tool"
+module = "platform"
+
+[[cli.commands]]
+noun = "db"
+module = "neutron_os.extensions.builtins.db.cli"
+description = "PostgreSQL + pgvector infrastructure"

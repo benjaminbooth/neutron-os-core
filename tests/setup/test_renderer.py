@@ -1,11 +1,11 @@
-"""Tests for tools.setup.renderer."""
+"""Tests for neutron_os.setup.renderer."""
 
 import io
 import sys
 
 import pytest
 
-from tools.setup.renderer import (
+from neutron_os.setup.renderer import (
     JARGON_MAP,
     _Colors,
     _c,

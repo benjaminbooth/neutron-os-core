@@ -2,13 +2,13 @@
 
 import pytest
 
-from tools.infra.orchestrator.actions import (
+from neutron_os.platform.orchestrator.actions import (
     Action,
     ActionCategory,
     ActionStatus,
     create_action,
 )
-from tools.infra.orchestrator.approval import ApprovalGate
+from neutron_os.platform.orchestrator.approval import ApprovalGate
 
 
 class TestApprovalGate:

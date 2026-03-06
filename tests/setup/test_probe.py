@@ -1,4 +1,4 @@
-"""Tests for tools.setup.probe."""
+"""Tests for neutron_os.setup.probe."""
 
 import json
 import os
@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tools.setup.probe import (
+from neutron_os.setup.probe import (
     DepStatus,
     ProbeResult,
     _check_python_module,
@@ -161,7 +161,7 @@ class TestCrossPlatformProbe:
     def test_linux_probe_system(self):
         """Simulate running on Linux."""
         result = ProbeResult()
-        with patch("tools.setup.probe.platform") as mock_platform:
+        with patch("neutron_os.setup.probe.platform") as mock_platform:
             mock_platform.system.return_value = "Linux"
             mock_platform.release.return_value = "6.1.0-generic"
             mock_platform.python_version.return_value = "3.11.0"
@@ -180,11 +180,11 @@ class TestCrossPlatformProbe:
     def test_windows_probe_system(self):
         """Simulate running on Windows — memory falls back gracefully."""
         result = ProbeResult()
-        with patch("tools.setup.probe.platform") as mock_platform:
+        with patch("neutron_os.setup.probe.platform") as mock_platform:
             mock_platform.system.return_value = "Windows"
             mock_platform.release.return_value = "10"
             mock_platform.python_version.return_value = "3.11.0"
-            with patch("tools.setup.probe.os") as mock_os:
+            with patch("neutron_os.setup.probe.os") as mock_os:
                 mock_os.cpu_count.return_value = 8
                 mock_os.environ = {"COMSPEC": "cmd.exe"}
                 _probe_system(result)
@@ -204,17 +204,17 @@ class TestCrossPlatformProbe:
     def test_config_files_use_pathlib(self, tmp_path):
         """Config file checks work with forward-slash strings via pathlib."""
         # Create a nested config file using pathlib (cross-platform)
-        config_dir = tmp_path / "tools" / "agents" / "config"
+        config_dir = tmp_path / "runtime" / "config"
         config_dir.mkdir(parents=True)
         (config_dir / "facility.toml").write_text("test")
 
         result = ProbeResult()
         _probe_existing_config(result, tmp_path)
-        assert result.config_files_exist["tools/agents/config/facility.toml"] is True
+        assert result.config_files_exist["runtime/config/facility.toml"] is True
 
     def test_git_not_on_path(self, tmp_path):
         """On a system without git, probe still completes."""
-        with patch("tools.setup.probe.shutil.which", return_value=None):
+        with patch("neutron_os.setup.probe.shutil.which", return_value=None):
             found, version = _check_tool("git", ["git", "--version"])
         assert found is False
         assert version == ""

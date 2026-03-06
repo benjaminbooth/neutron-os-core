@@ -1,0 +1,18 @@
+[extension]
+name = "docflow"
+version = "0.3.0"
+description = "Document lifecycle management"
+author = "NeutronOS"
+builtin = true
+kind = "tool"
+module = "platform"
+
+[[cli.commands]]
+noun = "pub"
+module = "neutron_os.extensions.builtins.docflow.cli"
+description = "Document publishing lifecycle"
+
+[[cli.commands]]
+noun = "doc"
+module = "neutron_os.extensions.builtins.docflow.cli"
+description = "Document publishing lifecycle (alias for pub)"

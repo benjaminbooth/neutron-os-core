@@ -13,7 +13,7 @@ Planned flow:
   3. Route text through freetext extractor
   4. Route attachments through appropriate extractors (.m4a → voice, etc.)
 
-See: tools/agents/config.example/facility.toml
+See: runtime/config.example/facility.toml
      [sense.sources] email_forwarding = false
 """
 
@@ -30,7 +30,7 @@ class TestOutlookEmail:
         pytest.skip(
             "Outlook email extractor not yet implemented. "
             "Needs: MS Graph API + Mail.Read scope + new extractor in "
-            "tools/pipelines/sense/extractors/email.py. "
+            "src/neutron_os/extensions/builtins/sense_agent/extractors/email.py. "
             "Enable in facility.toml: [sense.sources] email_forwarding = true"
         )
 

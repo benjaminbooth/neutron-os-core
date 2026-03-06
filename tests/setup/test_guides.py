@@ -1,8 +1,8 @@
-"""Tests for tools.setup.guides."""
+"""Tests for neutron_os.setup.guides."""
 
 import pytest
 
-from tools.setup.guides import (
+from neutron_os.setup.guides import (
     CREDENTIAL_GUIDES,
     CredentialGuide,
     get_guide,

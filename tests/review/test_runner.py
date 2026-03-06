@@ -1,15 +1,15 @@
-"""Tests for tools.review.runner — ReviewRunner with mock adapter."""
+"""Tests for neutron_os.review.runner — ReviewRunner with mock adapter."""
 
 import pytest
 from unittest.mock import patch
 
-from tools.review.models import (
+from neutron_os.review.models import (
     ReviewDecision,
     ReviewItem,
     ReviewSession,
     ReviewSessionStore,
 )
-from tools.review.runner import ReviewRunner
+from neutron_os.review.runner import ReviewRunner
 
 
 # ── mock adapter ─────────────────────────────────────────────────────

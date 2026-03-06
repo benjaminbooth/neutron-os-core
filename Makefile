@@ -1,15 +1,14 @@
 # Neutron OS — Development Makefile
 #
-# Three tiers:
-#   make test          → Unit tests (no credentials needed)
-#   make integration   → Live channel tests (needs .env credentials)
-#   make test-all      → Both
-#
 # Setup:
 #   make install       → pip install -e .[all]
 #   make env           → Copy .env.example to .env
+#
+# Testing:
+#   make test          → Unit tests (no credentials needed)
+#   make test-all      → All tests (unit + integration)
 
-.PHONY: install env test integration test-all lint build clean serve install-preview ci-version help
+.PHONY: install env config test test-all lint build clean help
 
 # ─── Setup ───────────────────────────────────────────────────────────────────
 
@@ -20,44 +19,22 @@ env:  ## Copy .env.example to .env (won't overwrite existing)
 	@test -f .env && echo ".env already exists — not overwriting" || cp .env.example .env
 	@echo "Edit .env with your credentials, then: source .env"
 
-config:  ## Copy agent config examples to live config
-	@test -d tools/agents/config && echo "tools/agents/config/ already exists" || cp -r tools/agents/config.example tools/agents/config
-	@echo "Edit tools/agents/config/facility.toml and models.toml"
+config:  ## Copy runtime config examples to live config
+	@test -d runtime/config && echo "runtime/config/ already exists" || cp -r runtime/config.example runtime/config
+	@echo "Edit runtime/config/facility.toml and models.toml"
 
 # ─── Testing ─────────────────────────────────────────────────────────────────
 
 test:  ## Run unit tests (no credentials needed)
-	pytest tests/ -v --tb=short -m "not integration"
-
-integration:  ## Run integration tests against live services (needs .env)
-	@test -n "$$GITLAB_TOKEN" || (echo "Run: source .env" && exit 1)
-	pytest tests/integration/ -v --tb=short -m "integration"
+	pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short -m "not integration"
 
 test-all:  ## Run all tests (unit + integration)
-	pytest tests/ -v --tb=short
-
-test-gitlab:  ## Test GitLab channel only
-	pytest tests/integration/test_gitlab_channel.py -v --tb=short
-
-test-onedrive:  ## Test OneDrive channel only
-	pytest tests/integration/test_onedrive_channel.py -v --tb=short
-
-test-teams:  ## Test Teams channel only
-	pytest tests/integration/test_teams_channel.py -v --tb=short
-
-test-voice:  ## Test voice/serve channel only
-	pytest tests/integration/test_voice_channel.py -v --tb=short
+	pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short
 
 # ─── Development ─────────────────────────────────────────────────────────────
 
 lint:  ## Run ruff linter
-	ruff check tools/ --select E,F,W --ignore E501
-
-serve:  ## Start the inbox ingestion server on port 8765
-	neut sense serve --port 8765
-
-status:  ## Show sense pipeline status
-	neut sense status
+	ruff check src/ --select E,F,W --ignore E501
 
 # ─── Build & Distribution ────────────────────────────────────────────────────
 
@@ -67,37 +44,6 @@ build:  ## Build wheel and sdist
 clean:  ## Remove build artifacts
 	rm -rf dist/ build/ *.egg-info .pytest_cache .pip-cache
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-
-install-preview:  ## Install latest dev build from GitLab Package Registry
-	@test -n "$${GITLAB_PROJECT_ID}" || (echo "Set GITLAB_PROJECT_ID first (find it on the GitLab project homepage)" && exit 1)
-	pip install neutron-os --upgrade \
-		--index-url https://rsicc-gitlab.tacc.utexas.edu/api/v4/projects/$${GITLAB_PROJECT_ID}/packages/pypi/simple \
-		--trusted-host rsicc-gitlab.tacc.utexas.edu
-
-ci-version:  ## Show the dev version that CI would stamp for this pipeline
-	@python -c "import tomllib; v=tomllib.load(open('pyproject.toml','rb'))['project']['version']; print(f'{v}.dev<CI_PIPELINE_IID>')"
-
-# ─── GitLab Runner ───────────────────────────────────────────────────────────
-
-runner-register:  ## Register a GitLab CI runner (interactive)
-	@echo "Register a shell runner for TACC GitLab:"
-	@echo ""
-	@echo "  1. Go to: https://rsicc-gitlab.tacc.utexas.edu/<your-project>/-/settings/ci_cd"
-	@echo "  2. Expand 'Runners' → click 'New project runner'"
-	@echo "  3. Copy the runner token"
-	@echo "  4. Run:"
-	@echo ""
-	@echo "     gitlab-runner register \\"
-	@echo "       --url https://rsicc-gitlab.tacc.utexas.edu \\"
-	@echo "       --token <RUNNER_TOKEN> \\"
-	@echo "       --executor shell \\"
-	@echo "       --description \"neutron-os-dev\""
-	@echo ""
-	@echo "  5. Start the runner:"
-	@echo ""
-	@echo "     gitlab-runner run"
-	@echo ""
-	@echo "Install gitlab-runner: brew install gitlab-runner (macOS)"
 
 # ─── Help ────────────────────────────────────────────────────────────────────
 

@@ -216,7 +216,7 @@ def sample_gitlab_export_previous(tmp_path):
 @pytest.fixture
 def docflow_config(tmp_path):
     """Create a minimal docflow config for testing."""
-    from tools.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
+    from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
 
     return DocFlowConfig(
         git=GitPolicy(require_clean=False, require_pushed=False),

@@ -1,11 +1,11 @@
-"""Tests for tools.setup.tester."""
+"""Tests for neutron_os.setup.tester."""
 
 import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tools.setup.tester import ChannelTester, TestResult
+from neutron_os.setup.tester import ChannelTester, TestResult
 
 
 class TestTestResult:
@@ -40,14 +40,14 @@ class TestChannelTester:
             result = tester.test_gitlab()
             assert result.passed is False
 
-    @patch("tools.setup.tester.subprocess.check_output")
+    @patch("neutron_os.setup.tester.subprocess.check_output")
     def test_pandoc_found(self, mock_check, tester):
         mock_check.return_value = b"pandoc 3.1.0\n"
         result = tester.test_pandoc()
         assert result.passed is True
         assert "pandoc" in result.message.lower()
 
-    @patch("tools.setup.tester.subprocess.check_output")
+    @patch("neutron_os.setup.tester.subprocess.check_output")
     def test_pandoc_not_found(self, mock_check, tester):
         mock_check.side_effect = FileNotFoundError()
         result = tester.test_pandoc()

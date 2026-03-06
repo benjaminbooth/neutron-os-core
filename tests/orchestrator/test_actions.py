@@ -2,7 +2,7 @@
 
 import pytest
 
-from tools.infra.orchestrator.actions import (
+from neutron_os.platform.orchestrator.actions import (
     Action,
     ActionCategory,
     ActionStatus,

@@ -1,16 +1,16 @@
-"""Tests for tools.extensions.builtins.chat.tools_ext.email — email chat tools."""
+"""Tests for neutron_os.extensions.builtins.chat_agent.tools_ext.email — email chat tools."""
 
 import pytest
 from pathlib import Path
 from datetime import datetime, timezone
 
-from tools.extensions.builtins.chat.tools_ext.email import execute, _DRAFTS_DIR
+from neutron_os.extensions.builtins.chat_agent.tools_ext.email import execute, _DRAFTS_DIR
 
 
 @pytest.fixture
 def drafts_dir(tmp_path, monkeypatch):
     """Override the drafts directory to use tmp_path."""
-    import tools.extensions.builtins.chat.tools_ext.email as mod
+    import neutron_os.extensions.builtins.chat_agent.tools_ext.email as mod
     monkeypatch.setattr(mod, "_DRAFTS_DIR", tmp_path)
     return tmp_path
 
@@ -140,7 +140,7 @@ class TestEmailSend:
         })
 
         # Mock _load_smtp_config to return empty
-        import tools.extensions.builtins.chat.tools_ext.email as mod
+        import neutron_os.extensions.builtins.chat_agent.tools_ext.email as mod
         monkeypatch.setattr(mod, "_load_smtp_config", lambda: {})
 
         result = execute("email_send", {"confirm": True})

@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-NEUT_CLI = str(REPO_ROOT / "tools" / "neut_cli.py")
+NEUT_CLI = str(REPO_ROOT / "src" / "neutron_os" / "neut_cli.py")
 
 
 # ─── Subprocess Tests (true external invocation) ───
@@ -140,14 +140,14 @@ class TestDocflowFullPipeline:
 
     def _make_engine(self, workspace):
         """Create an engine rooted at the workspace."""
-        from tools.extensions.builtins.docflow.config import load_config
+        from neutron_os.extensions.builtins.docflow.config import load_config
 
         config = load_config(workspace / ".doc-workflow.yaml")
         config.repo_root = workspace
         config.git.publish_branches = ["*"]
         config.git.require_clean = False
 
-        from tools.extensions.builtins.docflow.engine import DocFlowEngine
+        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
         return DocFlowEngine(config)
 
     def test_generate_creates_docx(self, workspace):

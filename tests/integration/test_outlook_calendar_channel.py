@@ -32,7 +32,7 @@ class TestOutlookCalendarProvider:
         MICROSOFT_CLIENT_SECRET env vars or a JSON credentials file.
         The ms_graph_creds fixture ensures the env vars are set.
         """
-        from tools.extensions.builtins.sense.calendar_context import OutlookCalendarProvider
+        from neutron_os.extensions.builtins.sense_agent.calendar_context import OutlookCalendarProvider
         return OutlookCalendarProvider()
 
     def test_provider_is_available(self, provider):
@@ -46,7 +46,7 @@ class TestCalendarContext:
     @pytest.fixture
     def calendar_context(self, ms_graph_creds):
         """Create CalendarContext — auto-discovers available providers."""
-        from tools.extensions.builtins.sense.calendar_context import CalendarContext
+        from neutron_os.extensions.builtins.sense_agent.calendar_context import CalendarContext
         return CalendarContext()
 
     def test_context_registers_provider(self, calendar_context):
@@ -59,12 +59,12 @@ class TestCalendarEventCorrelation:
 
     @pytest.fixture
     def calendar_context(self, ms_graph_creds):
-        from tools.extensions.builtins.sense.calendar_context import CalendarContext
+        from neutron_os.extensions.builtins.sense_agent.calendar_context import CalendarContext
         return CalendarContext()
 
     def test_event_format(self, calendar_context):
         """Verify calendar events have expected format."""
-        from tools.extensions.builtins.sense.calendar_context import CalendarEvent
+        from neutron_os.extensions.builtins.sense_agent.calendar_context import CalendarEvent
 
         # Create a mock event to test structure
         event = CalendarEvent(
@@ -89,7 +89,7 @@ class TestOutlookCalendarFreshness:
 
     @pytest.fixture
     def provider(self, ms_graph_creds):
-        from tools.extensions.builtins.sense.calendar_context import OutlookCalendarProvider
+        from neutron_os.extensions.builtins.sense_agent.calendar_context import OutlookCalendarProvider
         return OutlookCalendarProvider()
 
     def test_freshness_tracking(self, provider, freshness_tracker):
@@ -124,8 +124,8 @@ class TestCalendarSignalEnrichment:
 
     def test_signal_meeting_correlation(self, ms_graph_creds, tmp_path):
         """Signals can be correlated with nearby meetings."""
-        from tools.extensions.builtins.sense.calendar_context import CalendarEvent
-        from tools.extensions.builtins.sense.models import Signal
+        from neutron_os.extensions.builtins.sense_agent.calendar_context import CalendarEvent
+        from neutron_os.extensions.builtins.sense_agent.models import Signal
 
         # Create a signal from a voice memo
         signal = Signal(
@@ -168,7 +168,7 @@ class TestMultiProviderCalendar:
 
     def test_provider_fallback(self, ms_graph_creds):
         """CalendarContext gracefully handles provider failures."""
-        from tools.extensions.builtins.sense.calendar_context import (
+        from neutron_os.extensions.builtins.sense_agent.calendar_context import (
             CalendarContext,
             ICalFileProvider,
         )

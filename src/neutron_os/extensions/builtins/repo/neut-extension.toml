@@ -1,0 +1,8 @@
+[extension]
+name = "repo"
+version = "0.1.0"
+description = "Multi-source repository analytics and export"
+author = "Neutron OS Team"
+builtin = true
+kind = "tool"
+module = "platform"

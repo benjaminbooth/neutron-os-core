@@ -8,9 +8,9 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from tools.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
-from tools.extensions.builtins.docflow.engine import DocFlowEngine
-from tools.extensions.builtins.docflow.state import DocumentState, PublicationRecord
+from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
+from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
+from neutron_os.extensions.builtins.docflow.state import DocumentState, PublicationRecord
 
 
 @pytest.fixture

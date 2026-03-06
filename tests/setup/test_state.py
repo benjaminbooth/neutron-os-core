@@ -1,11 +1,11 @@
-"""Tests for tools.setup.state."""
+"""Tests for neutron_os.setup.state."""
 
 import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from tools.setup.state import (
+from neutron_os.setup.state import (
     SetupState,
     clear_state,
     load_state,

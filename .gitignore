@@ -1,9 +1,6 @@
 # Personal learning space (not shared)
 ben-learning/
 
-# Experimental prototypes (contributor-specific sandbox)
-spikes/
-
 # Bazel
 bazel-*
 .bazelrc.user
@@ -105,9 +102,8 @@ transcripts/
 
 # GitLab tracker exports
 gitlab_export_*.json
-tools/exports/*
-!tools/exports/.gitkeep
-tools/.env
+src/neutron_os/exports/*
+!src/neutron_os/exports/.gitkeep
 
 # Generated documentation
 docs/_tools/generated/
@@ -124,15 +120,13 @@ docs/analysis/
 # NeutronOS runtime state
 .neut/
 
-# Agent instance config (facility-specific, contains people/keys)
-tools/agents/config/
-!tools/agents/config.example/
-
-# Agent runtime data (inbox, drafts, approvals)
-tools/agents/inbox/
-!tools/agents/inbox/.gitkeep
-tools/agents/drafts/
-tools/agents/approved/
+# Runtime data (facility-specific config, inbox, drafts)
+runtime/config/
+!runtime/config.example/
+runtime/inbox/
+runtime/drafts/
+runtime/approved/
+runtime/subscribers/
 
 # Voice memo and meeting recording files
 *.m4a
@@ -140,13 +134,11 @@ tools/agents/approved/
 *.webm
 *.wav
 
-# Transcription outputs
-tools/agents/inbox/processed/
-
 # Speaker profiles (voice identification data)
 speaker_profiles.json
 
-# DocFlow state files (repo-root, runtime)
+# DocFlow state files (inside .neut/)
+# .neut/ is already gitignored above; workflow.yaml.example is force-tracked
 .doc-registry.json
 .doc-state.json
 .doc-workflow.yaml

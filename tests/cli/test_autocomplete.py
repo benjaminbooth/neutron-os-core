@@ -11,7 +11,7 @@ import tempfile
 
 import pytest
 
-NEUT_MODULE = "tools.neut_cli"
+NEUT_MODULE = "neutron_os.neut_cli"
 
 
 def _get_completions(partial_command: str) -> list[str]:

@@ -1,0 +1,13 @@
+[extension]
+name = "demo"
+version = "0.3.0"
+description = "Guided demonstrations and walkthroughs"
+author = "NeutronOS"
+builtin = true
+kind = "tool"
+module = "platform"
+
+[[cli.commands]]
+noun = "demo"
+module = "neutron_os.extensions.builtins.demo.cli"
+description = "Guided demonstrations and walkthroughs"

@@ -28,7 +28,7 @@ class TestTeamsChatExtractor:
     @pytest.fixture
     def extractor(self, ms_graph_creds):
         """Create extractor with real credentials."""
-        from tools.extensions.builtins.sense.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.teams_chat import TeamsChatExtractor
         return TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
@@ -55,7 +55,7 @@ class TestTeamsChatExtraction:
     
     @pytest.fixture
     def extractor(self, ms_graph_creds):
-        from tools.extensions.builtins.sense.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.teams_chat import TeamsChatExtractor
         return TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
@@ -178,7 +178,7 @@ class TestTeamsChatFreshness:
     
     @pytest.fixture
     def extractor(self, ms_graph_creds):
-        from tools.extensions.builtins.sense.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.teams_chat import TeamsChatExtractor
         return TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
@@ -217,7 +217,7 @@ class TestTeamsChannelMessages:
     
     @pytest.fixture
     def extractor(self, ms_graph_creds):
-        from tools.extensions.builtins.sense.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.teams_chat import TeamsChatExtractor
         return TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],

@@ -1,10 +1,10 @@
-"""Tests for tools.review.models — ReviewItem, ReviewSession, ReviewSessionStore."""
+"""Tests for neutron_os.review.models — ReviewItem, ReviewSession, ReviewSessionStore."""
 
 import json
 import pytest
 from pathlib import Path
 
-from tools.review.models import (
+from neutron_os.review.models import (
     ReviewDecision,
     ReviewItem,
     ReviewSession,

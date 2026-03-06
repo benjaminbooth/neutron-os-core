@@ -70,9 +70,9 @@ def main():
         content = neut_path.read_text()
         
         # Check if it's our shell wrapper or pip entry point
-        if "-m tools.neut_cli" in content:
+        if "-m neutron_os.neut_cli" in content:
             print(f"   ✓ Shell wrapper at {neut_script}")
-        elif "from tools.neut_cli import main" in content:
+        elif "from neutron_os.neut_cli import main" in content:
             print(f"   ✓ Pip entry point at {neut_script}")
         else:
             issues.append("neut entry point is stale")
@@ -109,8 +109,8 @@ def main():
     try:
         # Add repo root to path temporarily
         sys.path.insert(0, str(repo_root))
-        from tools.neut_cli import main as neut_main
-        print(f"   ✓ tools.neut_cli imports successfully")
+        from neutron_os.neut_cli import main as neut_main
+        print(f"   ✓ neutron_os.neut_cli imports successfully")
     except ImportError as e:
         issues.append(f"Import failed: {e}")
         print(f"   ✗ {e}")

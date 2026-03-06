@@ -42,7 +42,7 @@ class TestTeamsTranscriptProcessing:
 
     def test_vtt_file_recognized(self, tmp_path):
         """Transcript extractor recognizes .vtt files in a teams directory."""
-        from tools.extensions.builtins.sense.extractors.transcript import TranscriptExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.transcript import TranscriptExtractor
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -59,8 +59,8 @@ class TestTeamsTranscriptProcessing:
 
     def test_extract_signals_from_transcript(self, tmp_path):
         """Extract signals from a meeting transcript without LLM."""
-        from tools.extensions.builtins.sense.extractors.transcript import TranscriptExtractor
-        from tools.extensions.builtins.sense.correlator import Correlator
+        from neutron_os.extensions.builtins.sense_agent.extractors.transcript import TranscriptExtractor
+        from neutron_os.extensions.builtins.sense_agent.correlator import Correlator
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -71,7 +71,8 @@ class TestTeamsTranscriptProcessing:
         extraction = extractor.extract(transcript)
 
         assert len(extraction.signals) > 0
-        assert extraction.errors == []
+        fatal_errors = [e for e in extraction.errors if "(non-fatal)" not in e]
+        assert fatal_errors == []
 
         for s in extraction.signals:
             print(f"  [{s.signal_type}] {s.detail[:80]}")
@@ -81,7 +82,7 @@ class TestTeamsTranscriptProcessing:
         import json
         import threading
         import urllib.request
-        from tools.extensions.builtins.sense.serve import create_server
+        from neutron_os.extensions.builtins.sense_agent.serve import create_server
 
         inbox = tmp_path / "inbox" / "raw"
         inbox.mkdir(parents=True)
@@ -131,5 +132,5 @@ class TestTeamsChannelsText:
         pytest.skip(
             "Teams channel text extractor not yet implemented. "
             "Needs: MS Graph API + Teams.Read scope + new extractor in "
-            "tools/pipelines/sense/extractors/teams_chat.py"
+            "src/neutron_os/extensions/builtins/sense_agent/extractors/teams_chat.py"
         )

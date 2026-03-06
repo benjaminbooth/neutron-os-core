@@ -1,0 +1,13 @@
+[extension]
+name = "mo"
+version = "0.3.0"
+description = "M-O resource steward (scratch, vitals, cleanup)"
+author = "NeutronOS"
+builtin = true
+kind = "agent"
+module = "platform"
+
+[[cli.commands]]
+noun = "mo"
+module = "neutron_os.extensions.builtins.mo_agent.cli"
+description = "M-O resource steward (scratch, vitals, cleanup)"

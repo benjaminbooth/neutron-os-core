@@ -78,12 +78,12 @@ class TestGitLabExport:
 
     def test_extractor_on_existing_export(self, tmp_path):
         """If a GitLab export JSON exists, the extractor processes it."""
-        from tools.extensions.builtins.sense.extractors.gitlab_diff import GitLabDiffExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.gitlab_diff import GitLabDiffExtractor
 
         # Check if real exports exist
-        exports_dir = Path(__file__).resolve().parents[2] / "tools" / "exports"
+        exports_dir = Path(__file__).resolve().parents[2] / "src" / "neutron_os" / "exports"
         if not exports_dir.exists():
-            pytest.skip("No tools/exports/ directory")
+            pytest.skip("No src/neutron_os/exports/ directory")
 
         exports = sorted(exports_dir.glob("gitlab_export_*.json"), reverse=True)
         if not exports:

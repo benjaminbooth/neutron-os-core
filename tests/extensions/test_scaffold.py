@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from tools.extensions.scaffold import scaffold_extension
-from tools.extensions.contracts import parse_manifest
+from neutron_os.extensions.scaffold import scaffold_extension
+from neutron_os.extensions.contracts import parse_manifest
 
 
 class TestScaffoldExtension:

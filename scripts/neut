@@ -20,10 +20,10 @@ find_repo_root() {
     if [[ "$script_dir" == */.venv/bin ]]; then
         local parent="$(dirname "$(dirname "$script_dir")")"
         # Check common layouts: parent/Neutron_OS or parent itself
-        if [[ -f "$parent/Neutron_OS/tools/neut_cli.py" ]]; then
+        if [[ -f "$parent/Neutron_OS/src/neutron_os/neut_cli.py" ]]; then
             echo "$parent/Neutron_OS"
             return
-        elif [[ -f "$parent/tools/neut_cli.py" ]]; then
+        elif [[ -f "$parent/src/neutron_os/neut_cli.py" ]]; then
             echo "$parent"
             return
         fi
@@ -35,10 +35,10 @@ find_repo_root() {
         return
     fi
     
-    # Last resort: search upward for tools/neut_cli.py
+    # Last resort: search upward for src/neutron_os/neut_cli.py
     local dir="$script_dir"
     while [[ "$dir" != "/" ]]; do
-        if [[ -f "$dir/tools/neut_cli.py" ]]; then
+        if [[ -f "$dir/src/neutron_os/neut_cli.py" ]]; then
             echo "$dir"
             return
         fi
@@ -50,8 +50,8 @@ find_repo_root() {
 
 REPO_ROOT=$(find_repo_root)
 
-if [[ -z "$REPO_ROOT" || ! -f "$REPO_ROOT/tools/neut_cli.py" ]]; then
-    echo "neut: error: Cannot find Neutron_OS repo (looking for tools/neut_cli.py)" >&2
+if [[ -z "$REPO_ROOT" || ! -f "$REPO_ROOT/src/neutron_os/neut_cli.py" ]]; then
+    echo "neut: error: Cannot find Neutron_OS repo (looking for src/neutron_os/neut_cli.py)" >&2
     echo "Script location: $(dirname "${BASH_SOURCE[0]}")" >&2
     exit 1
 fi
@@ -82,4 +82,4 @@ if [[ -z "$PYTHON" ]]; then
 fi
 
 cd "$REPO_ROOT"
-exec "$PYTHON" -m tools.neut_cli "$@"
+exec "$PYTHON" -m neutron_os.neut_cli "$@"

@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-NEUT_CLI = str(REPO_ROOT / "tools" / "neut_cli.py")
+NEUT_CLI = str(REPO_ROOT / "src" / "neutron_os" / "neut_cli.py")
 
 
 # ─── Subprocess Tests (true external invocation) ───
@@ -148,8 +148,8 @@ class TestSenseIngestPipeline:
 
     def test_gitlab_ingest_single_export(self, workspace):
         """Ingest a single GitLab export — produces signals."""
-        from tools.extensions.builtins.sense.extractors.gitlab_diff import GitLabDiffExtractor
-        from tools.extensions.builtins.sense.correlator import Correlator
+        from neutron_os.extensions.builtins.sense_agent.extractors.gitlab_diff import GitLabDiffExtractor
+        from neutron_os.extensions.builtins.sense_agent.correlator import Correlator
 
         export_data = self._make_gitlab_export("2026-02-17", [
             {
@@ -176,7 +176,7 @@ class TestSenseIngestPipeline:
 
     def test_gitlab_diff_ingest(self, workspace):
         """Diff two GitLab exports — detects new commits and issues."""
-        from tools.extensions.builtins.sense.extractors.gitlab_diff import GitLabDiffExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.gitlab_diff import GitLabDiffExtractor
 
         old = self._make_gitlab_export("2026-02-10", [
             {
@@ -232,8 +232,8 @@ class TestSenseIngestPipeline:
 
     def test_freetext_ingest(self, workspace):
         """Drop a text file in inbox/raw → freetext extractor picks it up."""
-        from tools.extensions.builtins.sense.extractors.freetext import FreetextExtractor
-        from tools.extensions.builtins.sense.correlator import Correlator
+        from neutron_os.extensions.builtins.sense_agent.extractors.freetext import FreetextExtractor
+        from neutron_os.extensions.builtins.sense_agent.correlator import Correlator
 
         note = workspace / "agents" / "inbox" / "raw" / "meeting-notes.md"
         note.write_text(
@@ -260,7 +260,7 @@ class TestSenseIngestPipeline:
 
     def test_transcript_ingest(self, workspace):
         """Place a transcript file in inbox/raw/teams → transcript extractor processes it."""
-        from tools.extensions.builtins.sense.extractors.transcript import TranscriptExtractor
+        from neutron_os.extensions.builtins.sense_agent.extractors.transcript import TranscriptExtractor
 
         transcript = workspace / "agents" / "inbox" / "raw" / "teams" / "standup_transcript.md"
         transcript.write_text(
@@ -282,8 +282,8 @@ class TestSenseDraftPipeline:
 
     def test_synthesize_from_signals(self, tmp_path):
         """Given raw signals, synthesizer produces changelog and summary files."""
-        from tools.extensions.builtins.sense.models import Signal
-        from tools.extensions.builtins.sense.synthesizer import Synthesizer
+        from neutron_os.extensions.builtins.sense_agent.models import Signal
+        from neutron_os.extensions.builtins.sense_agent.synthesizer import Synthesizer
 
         signals = [
             Signal(
@@ -346,10 +346,10 @@ class TestSenseDraftPipeline:
 
     def test_full_ingest_to_draft_pipeline(self, tmp_path):
         """Complete pipeline: export → ingest → save signals → load → synthesize → files."""
-        from tools.extensions.builtins.sense.extractors.gitlab_diff import GitLabDiffExtractor
-        from tools.extensions.builtins.sense.correlator import Correlator
-        from tools.extensions.builtins.sense.models import Signal
-        from tools.extensions.builtins.sense.synthesizer import Synthesizer
+        from neutron_os.extensions.builtins.sense_agent.extractors.gitlab_diff import GitLabDiffExtractor
+        from neutron_os.extensions.builtins.sense_agent.correlator import Correlator
+        from neutron_os.extensions.builtins.sense_agent.models import Signal
+        from neutron_os.extensions.builtins.sense_agent.synthesizer import Synthesizer
 
         # 1. Set up config
         config_dir = tmp_path / "config"
@@ -444,13 +444,13 @@ class TestSenseRealData:
 
     def test_ingest_real_gitlab_export(self):
         """Run GitLab diff extractor against the real export file."""
-        exports_dir = REPO_ROOT / "tools" / "exports"
+        exports_dir = REPO_ROOT / "src" / "neutron_os" / "exports"
         exports = sorted(exports_dir.glob("gitlab_export_*.json"), reverse=True)
         if not exports:
             pytest.skip("No real GitLab exports found")
 
-        from tools.extensions.builtins.sense.extractors.gitlab_diff import GitLabDiffExtractor
-        from tools.extensions.builtins.sense.correlator import Correlator
+        from neutron_os.extensions.builtins.sense_agent.extractors.gitlab_diff import GitLabDiffExtractor
+        from neutron_os.extensions.builtins.sense_agent.correlator import Correlator
 
         extractor = GitLabDiffExtractor()
         correlator = Correlator()

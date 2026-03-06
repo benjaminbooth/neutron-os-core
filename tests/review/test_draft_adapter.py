@@ -1,15 +1,15 @@
-"""Tests for tools.review.adapters.draft_adapter — section parser, draft discovery, approved output."""
+"""Tests for neutron_os.review.adapters.draft_adapter — section parser, draft discovery, approved output."""
 
 import pytest
 from pathlib import Path
 
-from tools.review.models import (
+from neutron_os.review.models import (
     ReviewDecision,
     ReviewItem,
     ReviewSession,
     ReviewSessionStore,
 )
-from tools.review.adapters.draft_adapter import (
+from neutron_os.review.adapters.draft_adapter import (
     parse_draft_sections,
     find_draft,
     write_approved_draft,

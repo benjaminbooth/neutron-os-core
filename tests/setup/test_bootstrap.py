@@ -116,15 +116,15 @@ class TestProjectStructure:
         """neut CLI entry point is correctly configured."""
         pyproject = REPO_ROOT / "pyproject.toml"
         content = pyproject.read_text()
-        assert 'neut = "tools.neut_cli:main"' in content
+        assert 'neut = "neutron_os.neut_cli:main"' in content
 
-    def test_tools_directory_structure(self):
-        """Required tools directories exist."""
-        tools_dir = REPO_ROOT / "tools"
-        assert tools_dir.exists()
-        assert (tools_dir / "neut_cli.py").exists()
-        assert (tools_dir / "extensions" / "builtins").is_dir()
-        assert (tools_dir / "agents").is_dir()
+    def test_source_directory_structure(self):
+        """Required source directories exist."""
+        src_dir = REPO_ROOT / "src" / "neutron_os"
+        assert src_dir.exists()
+        assert (src_dir / "neut_cli.py").exists()
+        assert (src_dir / "extensions" / "builtins").is_dir()
+        assert (REPO_ROOT / "runtime").is_dir()
 
     def test_claude_md_exists(self):
         """CLAUDE.md documentation exists."""
@@ -165,7 +165,7 @@ class TestDevelopmentSetup:
 
         if venv_python.exists():
             result = subprocess.run(
-                [str(venv_python), "-m", "tools.extensions.builtins.sense.cli", "status"],
+                [str(venv_python), "-m", "neutron_os.extensions.builtins.sense_agent.cli", "status"],
                 capture_output=True,
                 text=True,
                 cwd=str(REPO_ROOT),
@@ -181,7 +181,7 @@ class TestDevelopmentSetup:
 
         if venv_python.exists():
             result = subprocess.run(
-                [str(venv_python), str(REPO_ROOT / "tools" / "neut_cli.py"), "doc", "providers"],
+                [str(venv_python), str(REPO_ROOT / "src" / "neutron_os" / "neut_cli.py"), "doc", "providers"],
                 capture_output=True,
                 text=True,
                 cwd=str(REPO_ROOT),

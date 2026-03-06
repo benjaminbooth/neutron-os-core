@@ -2,7 +2,7 @@
   "mcpServers": {
     "neutron-os": {
       "command": "python",
-      "args": ["-m", "tools.mcp_server.server"],
+      "args": ["-m", "neutron_os.mcp_server"],
       "cwd": "."
     }
   }

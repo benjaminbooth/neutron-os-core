@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.extensions.discovery import (
+from neutron_os.extensions.discovery import (
     discover_extensions,
     discover_cli_commands,
     discover_all_skills,
@@ -13,7 +13,7 @@ from tools.extensions.discovery import (
     execute_extension_tool,
     generate_contract_docs,
 )
-from tools.extensions.scaffold import scaffold_extension
+from neutron_os.extensions.scaffold import scaffold_extension
 
 
 @pytest.fixture

@@ -1,0 +1,13 @@
+[extension]
+name = "update"
+version = "0.3.0"
+description = "Dependency and migration updates"
+author = "NeutronOS"
+builtin = true
+kind = "utility"
+module = "platform"
+
+[[cli.commands]]
+noun = "update"
+module = "neutron_os.extensions.builtins.update.cli"
+description = "Dependency and migration updates"

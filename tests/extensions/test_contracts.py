@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.extensions.contracts import (
+from neutron_os.extensions.contracts import (
     Extension,
     Skill,
     parse_manifest,
