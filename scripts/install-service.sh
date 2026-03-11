@@ -87,6 +87,7 @@ sed -e "s|{{USER}}|$SERVICE_USER|g" \
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
+systemctl restart "$SERVICE_NAME" 2>/dev/null || systemctl start "$SERVICE_NAME"
 systemctl start "$SERVICE_NAME"
 
 echo ""
