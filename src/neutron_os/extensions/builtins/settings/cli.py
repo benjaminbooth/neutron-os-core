@@ -108,7 +108,7 @@ def main():
                 value = raw
 
         store.set(args.key, value, scope=scope)
-        target = "~/.neut/settings.toml" if scope == "global" else "runtime/config/settings.toml"
+        target = "~/.neut/settings.toml" if scope == "global" else ".neut/settings.toml"
         print(f"  {args.key} = {_fmt_value(value)}  →  {target}")
         return
 

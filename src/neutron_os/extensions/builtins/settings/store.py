@@ -1,8 +1,14 @@
 """Settings store — reads and writes neut settings.toml at global and project scope.
 
-Two scopes:
-  global   → ~/.neut/settings.toml          (user-wide defaults)
-  project  → runtime/config/settings.toml   (facility/project overrides, gitignored)
+Two scopes (mirrors Claude Code's .claude/ pattern):
+  global   → ~/.neut/settings.toml    user-wide preferences
+  project  → .neut/settings.toml      repo-local overrides (gitignored)
+
+Deliberately separate from runtime/config/ which is owned by `neut config`
+(the facility setup wizard: API keys, reactor config, model config).
+
+  neut config   → runtime/config/     facility setup (admin, one-time onboarding)
+  neut settings → .neut/ + ~/.neut/   user preferences (runtime, per-user)
 
 Project settings take precedence over global.
 """
@@ -16,7 +22,7 @@ from typing import Any
 from neutron_os import REPO_ROOT as _REPO_ROOT
 
 _GLOBAL_SETTINGS_PATH = Path.home() / ".neut" / "settings.toml"
-_PROJECT_SETTINGS_PATH = _REPO_ROOT / "runtime" / "config" / "settings.toml"
+_PROJECT_SETTINGS_PATH = _REPO_ROOT / ".neut" / "settings.toml"
 
 _DEFAULTS: dict[str, Any] = {
     "routing.default_mode": "auto",
@@ -47,7 +53,6 @@ def _save_toml(path: Path, data: dict[str, Any]) -> None:
     try:
         import tomli_w  # type: ignore[import]
     except ImportError:
-        # Manual minimal TOML writer (handles nested dicts + simple scalar values)
         path.parent.mkdir(parents=True, exist_ok=True)
         lines = _dict_to_toml(data)
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -78,7 +83,6 @@ def _dict_to_toml(data: dict[str, Any], prefix: str = "") -> list[str]:
 
 
 def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, Any]:
-    """Flatten {'routing': {'default_mode': 'auto'}} → {'routing.default_mode': 'auto'}"""
     result: dict[str, Any] = {}
     for k, v in data.items():
         key = f"{prefix}.{k}" if prefix else k
@@ -90,7 +94,6 @@ def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, Any]:
 
 
 def _unflatten(flat: dict[str, Any]) -> dict[str, Any]:
-    """Unflatten {'routing.default_mode': 'auto'} → {'routing': {'default_mode': 'auto'}}"""
     result: dict[str, Any] = {}
     for dotted_key, value in flat.items():
         parts = dotted_key.split(".")
@@ -109,7 +112,6 @@ class SettingsStore:
         self._project = _flatten(_load_toml(_PROJECT_SETTINGS_PATH))
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Get a setting value. Project overrides global; global overrides defaults."""
         if key in self._project:
             return self._project[key]
         if key in self._global:
@@ -117,14 +119,12 @@ class SettingsStore:
         return _DEFAULTS.get(key, default)
 
     def all(self) -> dict[str, Any]:
-        """Return merged settings (project > global > defaults) as flat dict."""
         merged = dict(_DEFAULTS)
         merged.update(self._global)
         merged.update(self._project)
         return merged
 
     def set(self, key: str, value: Any, scope: str = "project") -> None:
-        """Set a value in the given scope ('project' or 'global')."""
         if scope == "global":
             self._global[key] = value
             _save_toml(_GLOBAL_SETTINGS_PATH, _unflatten(self._global))
@@ -133,7 +133,6 @@ class SettingsStore:
             _save_toml(_PROJECT_SETTINGS_PATH, _unflatten(self._project))
 
     def reset(self, key: str, scope: str = "project") -> bool:
-        """Remove a key override from the given scope. Returns True if key existed."""
         target = self._project if scope == "project" else self._global
         path = _PROJECT_SETTINGS_PATH if scope == "project" else _GLOBAL_SETTINGS_PATH
         if key in target:

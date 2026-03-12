@@ -217,7 +217,11 @@ def complete_with_tools(self, messages, system="", tools=None, max_tokens=4096,
 | Location | Path | Scope |
 |----------|------|-------|
 | Global | `~/.neut/settings.toml` | User-wide defaults |
-| Project | `runtime/config/settings.toml` | Instance overrides (gitignored) |
+| Project | `.neut/settings.toml` | Repo-local overrides (gitignored via `.neut/`) |
+
+**Separation of concerns:**
+- `neut config` → `runtime/config/` — facility setup (API keys, models, reactor config). Admin-owned, one-time.
+- `neut settings` → `.neut/` + `~/.neut/` — user preferences (routing mode, theme, stream). Per-user, anytime.
 
 Project settings take precedence over global.
 
