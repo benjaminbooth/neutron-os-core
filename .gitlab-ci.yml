@@ -344,3 +344,16 @@ mirror:github:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   allow_failure: true  # Mirror failure should not block main pipeline
+
+mirror:smoke-test:
+  stage: mirror
+  extends: .python-setup
+  script:
+    - pytest tests/test_mirror_linkage.py -v --tb=short
+  variables:
+    GITHUB_TOKEN: $GITHUB_TOKEN
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - mirror:github
+  allow_failure: true
