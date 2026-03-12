@@ -377,6 +377,18 @@ mirror:github:
     - git config --global user.email "ci@neutron-os"
     - git config --global user.name "Neutron OS CI"
   script:
+    # Fast-fail: verify GitHub token and repo access before doing any work
+    - |
+      echo "==> Verifying GitHub token and repo access..."
+      HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+        -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/repos/benjaminbooth/neutron-os-core")
+      if [ "$HTTP" != "200" ]; then
+        echo "ERROR: GitHub API returned HTTP $HTTP — check GITHUB_TOKEN CI variable"
+        exit 1
+      fi
+      echo "GitHub token valid (HTTP $HTTP)"
     - GITHUB_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/benjaminbooth/neutron-os-core.git"
     - git remote add github "$GITHUB_REMOTE_URL" || git remote set-url github "$GITHUB_REMOTE_URL"
     - bash scripts/push-public.sh --push --yes
