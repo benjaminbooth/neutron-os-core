@@ -16,8 +16,9 @@ A modular digital platform for nuclear facilities that unifies data management, 
 ## Quick Start
 
 ```bash
-# Clone and install
-git clone <repo-url> && cd Neutron_OS
+# Clone
+git clone https://github.com/benjaminbooth/neutron-os-core.git
+cd neutron-os-core
 pip install -e ".[all]"
 
 # Or use the bootstrap script (creates venv, installs, sets up direnv)
@@ -26,46 +27,42 @@ pip install -e ".[all]"
 # Verify
 neut --help
 neut doctor
+
+# Run the onboarding demo
+neut demo run collaborator
 ```
 
-See [CLAUDE.md](CLAUDE.md) for detailed setup instructions including direnv, venv, and troubleshooting.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions including direnv, venv, and troubleshooting.
 
 ## Repository Structure
 
 ```
 Neutron_OS/
-├── tools/                # Core application code
-│   ├── agents/           #   Chat agent, doctor, inbox
-│   ├── pipelines/        #   Sense pipeline (extractors, correlator, synthesizer)
-│   ├── docflow/          #   Document lifecycle engine
-│   ├── infra/            #   Shared infra (gateway, orchestrator)
-│   ├── setup/            #   Config wizard and onboarding
-│   ├── extensions/       #   Extension system and scaffold
-│   ├── mo/               #   M-O resource steward
-│   ├── mcp_server/       #   IDE integration server
-│   └── neut_cli.py       #   CLI entry point
-├── tests/                # Test suites (unit + integration)
+├── src/neutron_os/       # Python package root
+│   ├── neut_cli.py       #   CLI entry point
+│   ├── infra/            #   Shared infra (gateway, orchestrator, auth)
+│   └── extensions/       #   Extension system
+│       └── builtins/     #     Builtin extensions (sense, docflow, chat, demo…)
+├── runtime/              # Instance data (config, inbox, sessions — gitignored)
+├── tests/                # Cross-cutting tests
 ├── docs/                 # Architecture specs, PRDs, design docs
 ├── infra/                # Terraform, Helm, K3D configs
-├── data/                 # Iceberg schemas, dbt, data models
 ├── scripts/              # Bootstrap and installation scripts
-├── spikes/               # Experimental prototypes
 ├── pyproject.toml        # Package definition (Hatchling)
 ├── Makefile              # Dev commands (test, build, lint, clean)
-├── .gitlab-ci.yml        # CI/CD pipeline
 └── CLAUDE.md             # AI assistant context and project conventions
 ```
 
 ## CLI
 
 ```bash
-neut chat              # Interactive agent
-neut sense ingest      # Run signal ingestion
-neut sense status      # Pipeline health
-neut doc publish       # Generate and publish documents
-neut doctor            # AI-powered diagnostics
-neut ext scaffold      # Create a new extension
-neut config            # Onboarding wizard
+neut chat                              # Interactive agent
+neut sense pipeline ingest             # Run signal ingestion
+neut sense status                      # Pipeline health
+neut doc publish                       # Generate and publish documents
+neut doctor                            # AI-powered diagnostics
+neut ext init my-extension             # Create a new extension
+neut demo run collaborator             # Guided onboarding walkthrough
 ```
 
 ## Development
@@ -104,4 +101,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, git practices, 
 
 ## License
 
-Apache 2.0
+MIT
