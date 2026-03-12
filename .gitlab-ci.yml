@@ -531,8 +531,6 @@ mirror:smoke-test:
     - echo "Waiting 15s for GitHub to propagate the mirror push..."
     - sleep 15
     - pytest tests/test_mirror_linkage.py -v --tb=short
-  variables:
-    GITHUB_TOKEN: $GITHUB_TOKEN
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *changes-mirror

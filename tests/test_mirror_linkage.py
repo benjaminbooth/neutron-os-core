@@ -182,28 +182,25 @@ class TestScriptDryRun:
 
 @pytest.mark.integration
 class TestGitHubMirrorReachability:
-    """Requires GITHUB_TOKEN env var with repo read access."""
+    """Verifies the public GitHub mirror is reachable and up to date.
 
-    GITHUB_REPO = "UT-Computational-NE/neutron-os-core"
+    Uses unauthenticated requests — the repo is public so no token is needed
+    for reads. Fine-grained PATs with repo restrictions would cause 404 even
+    on public repos, so we deliberately avoid auth here.
+    """
+
+    GITHUB_REPO = "benjaminbooth/neutron-os-core"
     API_BASE = "https://api.github.com"
-
-    @pytest.fixture(autouse=True)
-    def require_token(self):
-        token = os.environ.get("GITHUB_TOKEN")
-        if not token:
-            pytest.skip("GITHUB_TOKEN not set — skipping GitHub reachability tests")
-        self.token = token
-        self.headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
+    HEADERS = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
 
     def _get(self, path: str) -> dict:
         import urllib.request
         import json
         url = f"{self.API_BASE}{path}"
-        req = urllib.request.Request(url, headers=self.headers)
+        req = urllib.request.Request(url, headers=self.HEADERS)
         with urllib.request.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read())
 
