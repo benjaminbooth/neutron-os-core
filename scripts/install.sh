@@ -5,17 +5,19 @@
 #   curl -fsSL https://raw.githubusercontent.com/benjaminbooth/neutron-os-core/main/scripts/install.sh | bash
 #
 # What this does:
-#   1. Installs the `neut` CLI from the public GitHub mirror
-#   2. Adds ~/.local/bin to your PATH (if not already there)
-#   3. Verifies the installation
+#   1. Installs the `neut` CLI via pipx (manages its own isolated venv)
+#   2. Falls back to pip --user if pipx is unavailable
+#   3. Adds the install location to your PATH if needed
+#   4. Verifies the installation
 #
 # Requirements:
 #   - Python 3.10+
-#   - pip (usually bundled with Python)
 #   - git
+#   - pipx (recommended) or pip
 #
 # To update later:
-#   pip install --upgrade "git+https://github.com/benjaminbooth/neutron-os-core.git"
+#   pipx upgrade neutron-os
+#   # or: pipx install --force "git+https://github.com/benjaminbooth/neutron-os-core.git"
 
 set -euo pipefail
 
@@ -33,14 +35,16 @@ if [ -t 1 ]; then
     CYAN="\033[36m"
     GREEN="\033[32m"
     RED="\033[31m"
+    YELLOW="\033[33m"
     RESET="\033[0m"
 else
-    BOLD="" DIM="" CYAN="" GREEN="" RED="" RESET=""
+    BOLD="" DIM="" CYAN="" GREEN="" RED="" YELLOW="" RESET=""
 fi
 
 info()  { echo -e "  ${CYAN}>${RESET} $*"; }
-ok()    { echo -e "  ${GREEN}v${RESET} $*"; }
-err()   { echo -e "  ${RED}x${RESET} $*" >&2; }
+ok()    { echo -e "  ${GREEN}✓${RESET} $*"; }
+warn()  { echo -e "  ${YELLOW}!${RESET} $*"; }
+err()   { echo -e "  ${RED}✗${RESET} $*" >&2; }
 dim()   { echo -e "  ${DIM}$*${RESET}"; }
 
 # --- Preflight ---------------------------------------------------------------
@@ -66,28 +70,43 @@ if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 10 ]; }
 fi
 ok "Python $PY_VERSION"
 
-# Check pip
-if ! python3 -m pip --version &>/dev/null; then
-    err "pip not found. Install pip first: python3 -m ensurepip"
-    exit 1
-fi
-ok "pip available"
-
 # Check git
 if ! command -v git &>/dev/null; then
-    err "git not found. Install git first."
+    err "git not found. Install git first (brew install git)."
     exit 1
 fi
 ok "git available"
 
 # --- Install -----------------------------------------------------------------
 
-info "Installing ${PACKAGE_NAME} from GitHub..."
-echo
+if command -v pipx &>/dev/null; then
+    ok "pipx available"
+    echo
+    info "Installing ${PACKAGE_NAME} via pipx..."
+    echo
+    pipx install "git+${GITHUB_REPO}" \
+        2>&1 | while IFS= read -r line; do dim "$line"; done
+    INSTALL_DIR="$(pipx environment --value PIPX_BIN_DIR 2>/dev/null || echo "${HOME}/.local/bin")"
+else
+    warn "pipx not found — falling back to pip install --user"
+    warn "For a cleaner setup, install pipx first: brew install pipx"
+    echo
 
-python3 -m pip install --user --upgrade \
-    "git+${GITHUB_REPO}" \
-    2>&1 | while IFS= read -r line; do dim "  $line"; done
+    if ! python3 -m pip --version &>/dev/null; then
+        err "pip not found either. Install pipx: brew install pipx"
+        exit 1
+    fi
+
+    info "Installing ${PACKAGE_NAME} via pip..."
+    echo
+    python3 -m pip install --user --upgrade \
+        "git+${GITHUB_REPO}" \
+        2>&1 | while IFS= read -r line; do dim "$line"; done
+
+    # Resolve actual user scripts dir (may differ from ~/.local/bin on macOS)
+    USER_BIN=$(python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))" 2>/dev/null || echo "${HOME}/.local/bin")
+    INSTALL_DIR="$USER_BIN"
+fi
 
 echo
 ok "Package installed"
@@ -99,17 +118,7 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "${INSTALL_DIR}"; then
     NEEDS_PATH=true
 fi
 
-# Also check Python's user base bin (may differ from ~/.local/bin)
-USER_BIN=$(python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))" 2>/dev/null || echo "")
-if [ -n "$USER_BIN" ] && [ "$USER_BIN" != "$INSTALL_DIR" ]; then
-    if ! echo "$PATH" | tr ':' '\n' | grep -qx "${USER_BIN}"; then
-        INSTALL_DIR="$USER_BIN"
-        NEEDS_PATH=true
-    fi
-fi
-
 if $NEEDS_PATH; then
-    # Detect shell config file
     SHELL_NAME=$(basename "${SHELL:-/bin/bash}")
     case "$SHELL_NAME" in
         zsh)  RC_FILE="$HOME/.zshrc" ;;
@@ -118,7 +127,6 @@ if $NEEDS_PATH; then
         *)    RC_FILE="$HOME/.profile" ;;
     esac
 
-    # Check if PATH line already exists in rc file
     PATH_LINE="export PATH=\"${INSTALL_DIR}:\$PATH\""
     if [ "$SHELL_NAME" = "fish" ]; then
         PATH_LINE="set -gx PATH ${INSTALL_DIR} \$PATH"
@@ -129,13 +137,12 @@ if $NEEDS_PATH; then
         echo "# Neutron OS CLI" >> "$RC_FILE"
         echo "$PATH_LINE" >> "$RC_FILE"
         ok "Added ${INSTALL_DIR} to PATH in ${RC_FILE}"
-        info "Run: ${CYAN}source ${RC_FILE}${RESET}  (or open a new terminal)"
     else
         ok "PATH already configured in ${RC_FILE}"
     fi
 
-    # Make it available in this session too
     export PATH="${INSTALL_DIR}:$PATH"
+    info "Run: ${CYAN}source ${RC_FILE}${RESET}  (or open a new terminal)"
 else
     ok "PATH already includes ${INSTALL_DIR}"
 fi
@@ -152,7 +159,6 @@ if command -v neut &>/dev/null; then
     dim "  neut chat"
     dim "  neut sense status"
 else
-    # Binary might not be on PATH yet in this shell session
     if [ -f "${INSTALL_DIR}/neut" ]; then
         ok "neut installed to ${INSTALL_DIR}/neut"
         info "Open a new terminal or run: source ${RC_FILE:-~/.zshrc}"
