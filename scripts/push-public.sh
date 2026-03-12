@@ -112,11 +112,21 @@ for p in "${EXCLUDE_FROM_SRC[@]}"; do
 done
 git filter-repo "${EXCLUDE_ARGS[@]}" --invert-paths --force
 
+echo "==> Squashing to a single clean commit (zero history)..."
+# Create an orphan branch so the public repo has no internal commit history.
+# Every push is a fresh single commit — internal development history stays private.
+git checkout --orphan public-release
+git add -A
+COMMIT_DATE="$(git -C "$REPO_ROOT" log -1 --format="%aI")"
+GIT_COMMITTER_DATE="$COMMIT_DATE" git commit \
+    --date="$COMMIT_DATE" \
+    -m "Initial release"
+
 echo "==> Adding GitHub remote..."
 git remote add github "$(git -C "$REPO_ROOT" remote get-url $GITHUB_REMOTE)"
 
-echo "==> Pushing to GitHub (force)..."
-git push github "$BRANCH" --force --tags
+echo "==> Pushing to GitHub (force — single orphan commit)..."
+git push github "public-release:$BRANCH" --force
 
 echo ""
 echo "Done. Public mirror updated: $(git -C "$REPO_ROOT" remote get-url $GITHUB_REMOTE)"
