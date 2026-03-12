@@ -18,6 +18,8 @@ from typing import Optional
 class TestResult:
     """Result of a single channel test."""
 
+    __test__ = False  # Prevent pytest from collecting this dataclass as a test class
+
     channel: str
     display_name: str
     passed: bool
