@@ -42,6 +42,7 @@ class Scenario:
     acts: list[Act] = field(default_factory=list)
     setup_fn: Callable[[], None] | None = None
     teardown_fn: Callable[[], None] | None = None
+    next_steps: list[str] = field(default_factory=list)  # Appended to outro
 
 
 class DemoRunner:
@@ -149,14 +150,15 @@ class DemoRunner:
         )
         renderer.blank()
         renderer.text("What's next:")
-        renderer.numbered_steps(
-            [
-                "Explore your extension: neut ext",
-                "Enter chat: neut chat",
-                "Generate contract docs: neut ext docs",
-                "Read the extension contracts: ~/.neut/EXTENSION_CONTRACTS.md",
-            ]
-        )
+        steps = [
+            "Explore your extension: neut ext",
+            "Enter chat: neut chat",
+            "Generate contract docs: neut ext docs",
+            "Read the extension contracts: ~/.neut/EXTENSION_CONTRACTS.md",
+        ]
+        if self.scenario.next_steps:
+            steps.extend(self.scenario.next_steps)
+        renderer.numbered_steps(steps)
 
     def _print_act_banner(self, act: Act) -> None:
         total = len(self.scenario.acts)

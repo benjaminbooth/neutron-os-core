@@ -78,9 +78,40 @@ def build_scenario() -> Scenario:
         ),
         setup_fn=_setup,
         teardown_fn=_teardown,
+        next_steps=[
+            "Complete full onboarding (GitLab, Teams, Linear): neut config",
+            "Add your repositories as signal sources: neut sense pipeline sources --init",
+            "Run your first real ingestion: neut sense pipeline ingest --source github",
+        ],
         acts=[
             Act(
                 number=1,
+                title="Connect",
+                description=(
+                    "Two keys unlock the demo:\n\n"
+                    "  1. An LLM API key (Anthropic or OpenAI) — powers chat and review\n"
+                    "  2. A GitHub token (read:repo scope) — gives Neut visibility into your repos\n\n"
+                    "We'll configure just these two now so the rest of the demo is live. "
+                    "Full onboarding (GitLab, Microsoft 365, Linear) happens after the demo."
+                ),
+                mode="cli",
+                commands=[
+                    "neut config --set anthropic_api_key",
+                    "neut config --set github_token",
+                    "neut sense pipeline sources --check",
+                ],
+                hints=[
+                    "Credentials are stored in runtime/config/ — gitignored, never committed.",
+                    "Skip a key with Ctrl+C if you don't have it yet; Neut degrades gracefully.",
+                    "Run 'neut doctor' at any time to check what's connected.",
+                ],
+                fallback_message=(
+                    "No credentials configured — demo continues with fixture data. "
+                    "AI-powered features (chat review, briefing) will show fallback output."
+                ),
+            ),
+            Act(
+                number=2,
                 title="Ingest",
                 description=(
                     "Process signals into structured data. If you have GitLab export "
@@ -104,7 +135,7 @@ def build_scenario() -> Scenario:
                 ),
             ),
             Act(
-                number=2,
+                number=3,
                 title="Orient",
                 description=(
                     "What does the pipeline know? Check sense and docflow status "
@@ -123,7 +154,7 @@ def build_scenario() -> Scenario:
                 validator=_check_doc_status,
             ),
             Act(
-                number=3,
+                number=4,
                 title="Review (CLI)",
                 description=(
                     "Review the weekly draft section-by-section in the terminal. "
@@ -142,7 +173,7 @@ def build_scenario() -> Scenario:
                 ],
             ),
             Act(
-                number=4,
+                number=5,
                 title="Review (Chat)",
                 description=(
                     "Same draft, now conversational. Chat mode lets you give "
@@ -162,7 +193,7 @@ def build_scenario() -> Scenario:
                 ],
             ),
             Act(
-                number=5,
+                number=6,
                 title="Publish",
                 description=(
                     "Generate a .docx artifact from the approved draft and track it "
@@ -182,7 +213,7 @@ def build_scenario() -> Scenario:
                 validator=_check_doc_status,
             ),
             Act(
-                number=6,
+                number=7,
                 title="Make It Yours",
                 description=(
                     "Scaffold a personal extension with a reactor log query tool, "
