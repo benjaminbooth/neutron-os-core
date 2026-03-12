@@ -2,27 +2,26 @@
 # Neutron OS — One-Line Installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/UT-Computational-NE/neutron-os-core/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/benjaminbooth/neutron-os-core/main/scripts/install.sh | bash
 #
 # What this does:
-#   1. Installs the `neut` CLI from PyPI
+#   1. Installs the `neut` CLI from the public GitHub mirror
 #   2. Adds ~/.local/bin to your PATH (if not already there)
 #   3. Verifies the installation
 #
 # Requirements:
 #   - Python 3.10+
 #   - pip (usually bundled with Python)
+#   - git
 #
 # To update later:
-#   neut self-update    (or: pip install --upgrade neutron-os --index-url ...)
+#   pip install --upgrade "git+https://github.com/benjaminbooth/neutron-os-core.git"
 
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
 
-
-# Install from PyPI — no project ID needed
-PACKAGE_INDEX="https://pypi.org/simple"
+GITHUB_REPO="https://github.com/benjaminbooth/neutron-os-core.git"
 PACKAGE_NAME="neutron-os"
 INSTALL_DIR="${HOME}/.local/bin"
 
@@ -74,14 +73,20 @@ if ! python3 -m pip --version &>/dev/null; then
 fi
 ok "pip available"
 
+# Check git
+if ! command -v git &>/dev/null; then
+    err "git not found. Install git first."
+    exit 1
+fi
+ok "git available"
+
 # --- Install -----------------------------------------------------------------
 
-info "Installing ${PACKAGE_NAME} from PyPI..."
+info "Installing ${PACKAGE_NAME} from GitHub..."
 echo
 
 python3 -m pip install --user --upgrade \
-    --index-url "${PACKAGE_INDEX}" \
-    "${PACKAGE_NAME}" \
+    "git+${GITHUB_REPO}" \
     2>&1 | while IFS= read -r line; do dim "  $line"; done
 
 echo
@@ -154,6 +159,7 @@ else
     else
         err "Installation completed but 'neut' not found on PATH"
         dim "Check: python3 -m pip show ${PACKAGE_NAME}"
+        dim "Source: ${GITHUB_REPO}"
     fi
 fi
 echo
