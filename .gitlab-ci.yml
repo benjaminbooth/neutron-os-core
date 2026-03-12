@@ -69,6 +69,13 @@ variables:
 preflight:connections:
   stage: preflight
   image: python:3.12-slim
+  variables:
+    GITLAB_TOKEN: $GITLAB_TOKEN
+    GITHUB_TOKEN: $GITHUB_TOKEN
+    MS_GRAPH_CLIENT_ID: $MS_GRAPH_CLIENT_ID
+    MS_GRAPH_CLIENT_SECRET: $MS_GRAPH_CLIENT_SECRET
+    MS_GRAPH_TENANT_ID: $MS_GRAPH_TENANT_ID
+    ANTHROPIC_API_KEY: $ANTHROPIC_API_KEY
   before_script:
     - pip install --quiet --break-system-packages requests
   script:
