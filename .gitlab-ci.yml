@@ -11,6 +11,7 @@
 #   MS_GRAPH_CLIENT_ID    — Azure AD app registration
 #   MS_GRAPH_CLIENT_SECRET
 #   MS_GRAPH_TENANT_ID
+#   GITHUB_TOKEN          — GitHub PAT with repo push access (for mirror:github job)
 #
 # Runner setup:
 #   If no shared runners are available on TACC GitLab, register your own:
@@ -24,6 +25,7 @@ stages:
   - build
   - publish
   - ai
+  - mirror
 
 # =============================================================================
 # Variables
@@ -316,3 +318,29 @@ claude:review:
     - if: '$CI_PIPELINE_SOURCE == "web"'
   timeout: 20 minutes
   allow_failure: true  # Don't block MRs on AI review
+
+# =============================================================================
+# Mirror Stage — Push stripped copy to public GitHub mirror
+# =============================================================================
+# Triggered automatically on every push to main.
+# Uses an allowlist (scripts/push-public.sh) — only approved paths go public.
+#
+# Required CI/CD Variable:
+#   GITHUB_TOKEN   — GitHub PAT with `repo` scope for benjaminbooth/neutron-os-core
+#                    (Settings → CI/CD → Variables, masked + protected)
+
+mirror:github:
+  stage: mirror
+  image: python:3.12-slim
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git
+    - pip install --quiet git-filter-repo
+    - git config --global user.email "ci@neutron-os"
+    - git config --global user.name "Neutron OS CI"
+  script:
+    - GITHUB_REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/benjaminbooth/neutron-os-core.git"
+    - git remote add github "$GITHUB_REMOTE_URL" || git remote set-url github "$GITHUB_REMOTE_URL"
+    - bash scripts/push-public.sh --push --yes
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  allow_failure: true  # Mirror failure should not block main pipeline

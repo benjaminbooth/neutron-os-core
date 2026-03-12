@@ -9,6 +9,7 @@
 # Usage:
 #   ./scripts/push-public.sh              # dry run (shows what would be published)
 #   ./scripts/push-public.sh --push       # actually push to GitHub
+#   ./scripts/push-public.sh --push --yes # non-interactive (CI use)
 #
 # Requires: git-filter-repo (pip install git-filter-repo)
 
@@ -18,10 +19,14 @@ REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 GITHUB_REMOTE="github"
 BRANCH="main"
 DRY_RUN=true
+YES=false
 
-if [[ "${1:-}" == "--push" ]]; then
-    DRY_RUN=false
-fi
+for arg in "$@"; do
+    case "$arg" in
+        --push) DRY_RUN=false ;;
+        --yes)  YES=true ;;
+    esac
+done
 
 # ALLOWLIST — only these paths go to GitHub. Everything else stays internal.
 # To publish something new, add it here and get it reviewed.
@@ -122,10 +127,14 @@ GIT_COMMITTER_DATE="$COMMIT_DATE" git commit \
     -m "Initial release"
 
 echo "==> Adding GitHub remote..."
-git remote add github "$(git -C "$REPO_ROOT" remote get-url $GITHUB_REMOTE)"
+# In CI, the github remote is pre-configured by the job before calling this script.
+# Locally, we look it up from the developer's repo config.
+if ! git remote get-url github >/dev/null 2>&1; then
+    git remote add github "$(git -C "$REPO_ROOT" remote get-url $GITHUB_REMOTE)"
+fi
 
 echo "==> Pushing to GitHub (force — single orphan commit)..."
 git push github "public-release:$BRANCH" --force
 
 echo ""
-echo "Done. Public mirror updated: $(git -C "$REPO_ROOT" remote get-url $GITHUB_REMOTE)"
+echo "Done. Public mirror updated: $(git remote get-url github)"
