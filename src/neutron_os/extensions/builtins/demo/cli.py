@@ -20,7 +20,15 @@ def get_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="action")
 
     run_p = sub.add_parser("run", help="Run a demo scenario")
-    run_p.add_argument("scenario", help="Scenario name (e.g., 'collaborator')")
+    scenario_group = run_p.add_mutually_exclusive_group()
+    scenario_group.add_argument(
+        "--collaborator", dest="scenario", action="store_const", const="collaborator",
+        help="The Silent Contributor — Jay's onboarding walkthrough",
+    )
+    scenario_group.add_argument(
+        "--scenario", dest="scenario", metavar="NAME",
+        help="Run a scenario by name (for external/custom scenarios)",
+    )
     run_p.add_argument(
         "--from", dest="from_act", type=int, default=None, help="Start from act N"
     )
@@ -50,16 +58,23 @@ def _cmd_list() -> None:
         print(f"  {'':<16} {s['tagline']}")
         print()
     print("Run a demo:")
-    print("  neut demo run <name>")
+    print("  neut demo run --collaborator")
+    print("  neut demo run --scenario <name>   (for custom/external scenarios)")
 
 
 def _cmd_run(args: argparse.Namespace) -> None:
     """Run a demo scenario."""
     from .scenarios import SCENARIOS
 
+    if not args.scenario:
+        print("Choose a scenario:")
+        print()
+        _cmd_list()
+        sys.exit(1)
+
     builder = SCENARIOS.get(args.scenario)
     if builder is None:
-        print(f"Unknown scenario: {args.scenario}")
+        print(f"Unknown scenario: {args.scenario!r}")
         print()
         _cmd_list()
         sys.exit(1)
