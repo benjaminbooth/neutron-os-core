@@ -56,6 +56,75 @@ def _load_dotenv():
 _load_dotenv()
 
 
+def _check_and_prompt_update() -> None:
+    """Check for a newer version and prompt the user to update.
+
+    Only runs in interactive TTY sessions. Uses a 1-hour cache so it
+    doesn't hit the network on every invocation. Never crashes the CLI.
+    """
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return
+    try:
+        from neutron_os.extensions.builtins.update.version_check import VersionChecker
+        checker = VersionChecker()
+        info = checker.check_remote_version(timeout=3.0)
+        if not info.is_newer:
+            return
+
+        current = info.current
+        available = info.available or "latest"
+        print(f"\n  A new version of neut is available ({current} → {available}).")
+        try:
+            answer = input("  Update now? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+
+        if answer != "y":
+            return
+
+        print()
+        _do_self_update(checker.get_current_version())
+    except Exception:
+        pass  # Never block the CLI for an update check
+
+
+def _do_self_update(old_version: str) -> None:
+    """Perform the actual self-update and stash a changelog for next launch."""
+    import subprocess
+
+    GITHUB_REPO = "https://github.com/benjaminbooth/neutron-os-core.git"
+    VENV_PIP = Path.home() / ".neut" / "venv" / "bin" / "pip"
+
+    # Prefer the venv pip (end-user install); fall back to current interpreter's pip
+    pip_cmd = str(VENV_PIP) if VENV_PIP.exists() else f"{sys.executable} -m pip"
+
+    print("  Updating neut...")
+    result = subprocess.run(
+        [*pip_cmd.split(), "install", "--upgrade", f"git+{GITHUB_REPO}"],
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        print(f"  Update failed:\n{result.stderr.strip()}")
+        return
+
+    # Stash changelog so it shows on next launch
+    try:
+        from neutron_os.extensions.builtins.update.cli import Updater
+        from importlib.metadata import version as pkg_version
+        new_version = pkg_version("neutron-os")
+        updater = Updater()
+        # Get commits between old HEAD and new HEAD (best-effort)
+        old_ref = result.stdout  # not a ref — we'll just note version change
+        updater._stash_changelog(old_version, new_version, [])
+    except Exception:
+        pass
+
+    print("  Done. Restart neut to use the new version.\n")
+
+
 def _show_pending_changelog() -> None:
     """Display pending changelog from a recent update, then clear it."""
     try:
@@ -659,8 +728,9 @@ def main():
         print(f"neut {v}")
         sys.exit(0)
 
-    # Show pending changelog from a recent update
+    # Show pending changelog from a recent update, then check for newer version
     _show_pending_changelog()
+    _check_and_prompt_update()
 
     if len(sys.argv) < 2:
         if sys.stdin.isatty() and sys.stdout.isatty():

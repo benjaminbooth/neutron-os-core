@@ -79,12 +79,16 @@ class VersionChecker:
             except (ValueError, TypeError):
                 pass
 
-        # Try PyPI registry first, fall back to git
+        # Try PyPI registry first, fall back to local git, then GitHub mirror
         available = self._check_pypi_registry(timeout)
         source = "pypi"
 
         if available is None:
             available = self._check_git_remote(timeout)
+            source = "git"
+
+        if available is None:
+            available = self._check_github_mirror(timeout)
             source = "git"
 
         # For git source, any non-None available means the remote is ahead
@@ -204,6 +208,48 @@ class VersionChecker:
             current = self.get_current_version()
             return f"{current}.dev+{commits_behind}@{upstream_ref}"
 
+        except Exception:
+            return None
+
+    def _check_github_mirror(self, timeout: float) -> Optional[str]:
+        """For end-user installs: compare installed commit vs GitHub HEAD.
+
+        Uses git ls-remote (no clone, no auth) to get the latest SHA from the
+        public mirror. Compares against the SHA baked into the installed package
+        metadata (if available). Returns a pseudo-version string if behind, else None.
+        """
+        GITHUB_REPO = "https://github.com/benjaminbooth/neutron-os-core.git"
+        try:
+            result = subprocess.run(
+                ["git", "ls-remote", GITHUB_REPO, "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            if result.returncode != 0 or not result.stdout.strip():
+                return None
+
+            remote_sha = result.stdout.split()[0]
+
+            # Get the SHA the package was installed from (stored in dist-info RECORD
+            # or a custom marker file written by install.sh)
+            installed_sha = self._get_installed_sha()
+            if installed_sha and installed_sha == remote_sha[:len(installed_sha)]:
+                return None  # Already up to date
+
+            current = self.get_current_version()
+            return f"{current}+git.{remote_sha[:7]}"
+
+        except Exception:
+            return None
+
+    def _get_installed_sha(self) -> Optional[str]:
+        """Return the git SHA the package was installed from, if recorded."""
+        try:
+            from importlib.metadata import metadata
+            meta = metadata("neutron-os")
+            # pip records the VCS commit when installing from git+https://
+            return meta.get("X-VCS-Commit") or meta.get("Vcs-Commit")
         except Exception:
             return None
 
