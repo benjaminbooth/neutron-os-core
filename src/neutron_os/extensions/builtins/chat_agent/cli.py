@@ -147,6 +147,12 @@ def run_repl(
                 print(f"\n  {_c(_Colors.DIM, '[interrupted]')}")
                 continue
 
+            # Heartbeat for background subscribers (mirror, mo, etc.)
+            try:
+                agent.bus.publish("mo.heartbeat", {}, source="chat.repl")
+            except Exception:
+                pass
+
             # Auto-save after each turn
             store.save(agent.session)
     finally:
@@ -369,6 +375,13 @@ def main():
     store = SessionStore()
     gateway = Gateway()
     bus = EventBus()
+
+    # Wire background subscribers (soft — no-ops if extensions unavailable)
+    try:
+        from neutron_os.extensions.builtins.mirror_agent.subscriber import register as _mirror_reg
+        _mirror_reg(bus)
+    except ImportError:
+        pass
 
     # Resume or create session
     session: Optional[Session] = None
