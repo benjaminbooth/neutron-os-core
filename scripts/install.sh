@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Neutron OS — One-Line Installer
 #
-# Usage:
+# Install:
+#   curl -fsSL https://raw.githubusercontent.com/benjaminbooth/neutron-os-core/main/scripts/install.sh | bash
+#
+# Uninstall:
+#   curl -fsSL https://raw.githubusercontent.com/benjaminbooth/neutron-os-core/main/scripts/install.sh | bash -s -- --uninstall
+#
+# Update:
 #   curl -fsSL https://raw.githubusercontent.com/benjaminbooth/neutron-os-core/main/scripts/install.sh | bash
 #
 # What this does:
@@ -13,9 +19,6 @@
 # Requirements:
 #   - Python 3.10+
 #   - git
-#
-# To update later:
-#   ~/.neut/venv/bin/pip install --upgrade "git+https://github.com/benjaminbooth/neutron-os-core.git"
 
 set -euo pipefail
 
@@ -24,6 +27,8 @@ set -euo pipefail
 GITHUB_REPO="https://github.com/benjaminbooth/neutron-os-core.git"
 VENV_DIR="${HOME}/.neut/venv"
 BIN_DIR="${HOME}/.local/bin"
+UNINSTALL=false
+for arg in "$@"; do [ "$arg" = "--uninstall" ] && UNINSTALL=true; done
 
 # --- Colors ------------------------------------------------------------------
 
@@ -38,6 +43,22 @@ info() { echo -e "  ${CYAN}>${RESET} $*"; }
 ok()   { echo -e "  ${GREEN}✓${RESET} $*"; }
 err()  { echo -e "  ${RED}✗${RESET} $*" >&2; }
 dim()  { echo -e "  ${DIM}$*${RESET}"; }
+
+# --- Uninstall ---------------------------------------------------------------
+
+if $UNINSTALL; then
+    echo
+    echo -e "  ${BOLD}Neutron OS Uninstaller${RESET}"
+    echo -e "  ${DIM}──────────────────────${RESET}"
+    echo
+    rm -rf "$VENV_DIR"  && ok "Removed ${VENV_DIR}"
+    rm -f "${BIN_DIR}/neut" && ok "Removed ${BIN_DIR}/neut"
+    echo
+    dim "PATH entries in your shell rc file were left in place (harmless)."
+    dim "To remove: delete the '# Neutron OS CLI' block from ~/.zshrc (or ~/.bashrc)"
+    echo
+    exit 0
+fi
 
 # --- Preflight ---------------------------------------------------------------
 
