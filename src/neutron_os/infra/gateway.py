@@ -53,6 +53,8 @@ class LLMProvider:
     api_key_env: str = ""
     priority: int = 99
     use_for: list[str] = field(default_factory=lambda: ["fallback"])
+    routing_tier: str = "any"   # "public" | "export_controlled" | "any"
+    requires_vpn: bool = False  # if True, TCP-check endpoint before calling
 
     @property
     def api_key(self) -> Optional[str]:
@@ -125,7 +127,79 @@ class Gateway:
             config_dir = CONFIG_DIR if CONFIG_DIR.exists() else CONFIG_EXAMPLE_DIR
         self.config_dir = config_dir
         self.providers: list[LLMProvider] = []
+        self._provider_override: Optional[str] = None
+        self._model_override: Optional[str] = None
         self._load_config()
+
+    # ------------------------------------------------------------------
+    # Provider / model overrides (wired from --provider / --model flags)
+    # ------------------------------------------------------------------
+
+    def set_provider_override(self, provider_name: str) -> None:
+        """Pin all requests to a specific named provider."""
+        self._provider_override = provider_name
+
+    def set_model_override(self, model_name: str) -> None:
+        """Override the model name on whichever provider is selected."""
+        self._model_override = model_name
+
+    # ------------------------------------------------------------------
+    # Routing-aware provider selection
+    # ------------------------------------------------------------------
+
+    def _select_provider(
+        self, task: str, routing_tier: str = "any"
+    ) -> Optional[LLMProvider]:
+        """Select the best available provider for a task + routing tier.
+
+        Priority order:
+          1. --provider CLI override (if set, use that provider regardless of tier)
+          2. Providers matching routing_tier (or "any"), filtered by task + api_key
+          3. Sort by priority
+        """
+        # CLI override: respect it unconditionally
+        if self._provider_override:
+            for p in self.providers:
+                if p.name == self._provider_override and p.api_key:
+                    return self._apply_model_override(p)
+            # Named provider not found or missing key — fall through to normal selection
+            print(
+                f"Warning: provider '{self._provider_override}' not found or has no API key.",
+                file=sys.stderr,
+            )
+
+        candidates = [
+            p for p in self.providers
+            if (task in p.use_for or "fallback" in p.use_for)
+            and (routing_tier == "any" or p.routing_tier in (routing_tier, "any"))
+            and p.api_key
+        ]
+        if not candidates:
+            # Relax routing_tier constraint as last resort
+            candidates = [p for p in self.providers if p.api_key]
+
+        candidates.sort(key=lambda p: p.priority)
+        return self._apply_model_override(candidates[0]) if candidates else None
+
+    def _apply_model_override(self, provider: LLMProvider) -> LLMProvider:
+        """Return a copy of the provider with model_override applied, if set."""
+        if self._model_override and provider.model != self._model_override:
+            from dataclasses import replace
+            return replace(provider, model=self._model_override)
+        return provider
+
+    def _check_vpn(self, provider: LLMProvider) -> bool:
+        """Quick TCP reachability check for VPN-gated providers (1s timeout)."""
+        import socket
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(provider.endpoint)
+            host = parsed.hostname or ""
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            with socket.create_connection((host, port), timeout=1.0):
+                return True
+        except OSError:
+            return False
 
     def _load_config(self):
         """Load provider config from models.toml."""
@@ -158,6 +232,8 @@ class Gateway:
                     api_key_env=p.get("api_key_env", ""),
                     priority=p.get("priority", 99),
                     use_for=p.get("use_for", ["fallback"]),
+                    routing_tier=p.get("routing_tier", "any"),
+                    requires_vpn=p.get("requires_vpn", False),
                 ))
 
             # Sort by priority
@@ -194,35 +270,24 @@ class Gateway:
 
         Falls back to stub if no providers are available or all fail.
         """
-        # Filter providers that support this task
-        candidates = [
-            p for p in self.providers
-            if task in p.use_for or "fallback" in p.use_for
-        ]
-
-        if not candidates:
-            candidates = self.providers
-
-        for provider in candidates:
-            if not provider.api_key:
-                continue
-
-            try:
-                return self._call_provider(provider, prompt, system, max_tokens)
-            except Exception as e:
-                print(
-                    f"Warning: Provider {provider.name} failed: {e}",
-                    file=sys.stderr,
-                )
-                continue
-
-        # All providers failed or none available — return stub
-        return GatewayResponse(
-            text="LLM extraction unavailable — raw text preserved in signal.",
-            provider="stub",
-            success=False,
-            error="No LLM providers available or all failed.",
-        )
+        provider = self._select_provider(task)
+        if provider is None:
+            return GatewayResponse(
+                text="LLM extraction unavailable — raw text preserved in signal.",
+                provider="stub",
+                success=False,
+                error="No LLM providers available or all failed.",
+            )
+        try:
+            return self._call_provider(provider, prompt, system, max_tokens)
+        except Exception as e:
+            print(f"Warning: Provider {provider.name} failed: {e}", file=sys.stderr)
+            return GatewayResponse(
+                text="LLM extraction unavailable — raw text preserved in signal.",
+                provider="stub",
+                success=False,
+                error=str(e),
+            )
 
     def _call_provider(
         self,
@@ -299,6 +364,7 @@ class Gateway:
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
         task: str = "chat",
+        routing_tier: str = "any",
     ) -> CompletionResponse:
         """Send a completion request with native tool-use support.
 
@@ -308,36 +374,75 @@ class Gateway:
             tools: Tool definitions in OpenAI function-calling format.
             max_tokens: Maximum tokens to generate.
             task: Task type for provider selection.
+            routing_tier: "public" | "export_controlled" | "any"
 
         Returns:
             CompletionResponse with text and tool_use blocks separated.
         """
-        candidates = [
-            p for p in self.providers
-            if task in p.use_for or "fallback" in p.use_for
-        ]
-        if not candidates:
-            candidates = self.providers
+        provider = self._select_provider(task, routing_tier)
+        if provider is None:
+            return CompletionResponse(
+                text="LLM unavailable — no providers configured.",
+                provider="stub",
+                success=False,
+                error="No LLM providers available or all failed.",
+            )
 
-        for provider in candidates:
-            if not provider.api_key:
-                continue
-            try:
-                return self._call_provider_with_tools(
-                    provider, messages, system, tools, max_tokens
-                )
-            except Exception as e:
-                print(
-                    f"Warning: Provider {provider.name} failed: {e}",
-                    file=sys.stderr,
-                )
-                continue
+        if provider.requires_vpn and not self._check_vpn(provider):
+            return self._handle_vpn_unavailable(provider, task, routing_tier)
 
+        try:
+            return self._call_provider_with_tools(
+                provider, messages, system, tools, max_tokens
+            )
+        except Exception as e:
+            print(f"Warning: Provider {provider.name} failed: {e}", file=sys.stderr)
+            return CompletionResponse(
+                text="LLM unavailable — provider call failed.",
+                provider="stub",
+                success=False,
+                error=str(e),
+            )
+
+    def _handle_vpn_unavailable(
+        self, vpn_provider: LLMProvider, task: str, routing_tier: str
+    ) -> CompletionResponse:
+        """Handle VPN model unreachable according to configured policy."""
+        from neutron_os.extensions.builtins.settings.store import SettingsStore
+        try:
+            policy = SettingsStore().get("routing.on_vpn_unavailable", "warn")
+        except Exception:
+            policy = "warn"
+
+        msg = (
+            f"[ROUTING NOTE] VPN model ({vpn_provider.name}) is unreachable. "
+            "Connect to UT VPN to route export-controlled queries securely."
+        )
+
+        if policy == "fail":
+            return CompletionResponse(
+                text=msg,
+                provider="stub",
+                success=False,
+                error="VPN model unreachable and policy=fail.",
+            )
+
+        # "warn" or "queue" — fall back to a public-tier provider
+        fallback = self._select_provider(task, "public")
+        if fallback is None:
+            return CompletionResponse(
+                text=msg + " No public provider available either.",
+                provider="stub",
+                success=False,
+                error="VPN model unreachable, no fallback available.",
+            )
+
+        print(f"Warning: {msg}", file=sys.stderr)
         return CompletionResponse(
-            text="LLM unavailable — no providers configured.",
+            text=msg,
             provider="stub",
             success=False,
-            error="No LLM providers available or all failed.",
+            error="VPN model unreachable — see routing note above.",
         )
 
     def _call_provider_with_tools(
@@ -527,37 +632,31 @@ class Gateway:
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
         task: str = "chat",
+        routing_tier: str = "any",
     ) -> Iterator[StreamChunk]:
         """Stream a completion with native tool-use support.
 
         Yields StreamChunk objects as tokens arrive via SSE.
         Falls back to non-streaming complete_with_tools() if streaming fails.
         """
-        candidates = [
-            p for p in self.providers
-            if task in p.use_for or "fallback" in p.use_for
-        ]
-        if not candidates:
-            candidates = self.providers
+        provider = self._select_provider(task, routing_tier)
+        if provider is None:
+            yield StreamChunk(type="text", text="LLM unavailable — no providers configured.")
+            yield StreamChunk(type="done")
+            return
 
-        for provider in candidates:
-            if not provider.api_key:
-                continue
-            try:
-                yield from self._stream_provider(
-                    provider, messages, system, tools, max_tokens
-                )
-                return
-            except Exception as e:
-                print(
-                    f"Warning: Streaming from {provider.name} failed: {e}",
-                    file=sys.stderr,
-                )
-                continue
+        if provider.requires_vpn and not self._check_vpn(provider):
+            result = self._handle_vpn_unavailable(provider, task, routing_tier)
+            yield StreamChunk(type="text", text=result.text)
+            yield StreamChunk(type="done")
+            return
 
-        # Fallback: yield a stub
-        yield StreamChunk(type="text", text="LLM unavailable — no providers configured.")
-        yield StreamChunk(type="done")
+        try:
+            yield from self._stream_provider(provider, messages, system, tools, max_tokens)
+        except Exception as e:
+            print(f"Warning: Streaming from {provider.name} failed: {e}", file=sys.stderr)
+            yield StreamChunk(type="text", text="LLM unavailable — provider stream failed.")
+            yield StreamChunk(type="done")
 
     def _stream_provider(
         self,

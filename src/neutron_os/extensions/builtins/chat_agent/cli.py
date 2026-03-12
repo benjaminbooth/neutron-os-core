@@ -359,6 +359,38 @@ def _clear_restart_state() -> None:
         pass
 
 
+def _print_model_status(gateway) -> None:
+    """Show active model and routing tier at startup."""
+    provider = gateway.active_provider
+    if provider is None:
+        print(
+            "  No LLM providers configured. Run `neut config` to set up a provider.",
+            file=sys.stderr,
+        )
+        return
+
+    tier = getattr(provider, "routing_tier", "any")
+    tier_label = {
+        "public": "cloud / public",
+        "export_controlled": "VPN / export-controlled",
+        "any": "unrestricted",
+    }.get(tier, tier)
+
+    model_name = getattr(gateway, "_model_override", None) or provider.model
+    print(f"  Using {model_name} via {provider.name}  [{tier_label}]")
+
+    # Check if VPN model is configured but unreachable
+    for p in gateway.providers:
+        if getattr(p, "requires_vpn", False) and p != provider:
+            if not gateway._check_vpn(p):
+                print(
+                    f"  VPN model ({p.name}) unreachable — "
+                    "export-controlled queries will use fallback policy.",
+                    file=sys.stderr,
+                )
+            break
+
+
 def main():
     parser = get_parser()
     args = parser.parse_args()
@@ -374,6 +406,15 @@ def main():
 
     store = SessionStore()
     gateway = Gateway()
+
+    # Wire --provider and --model overrides (flags are parsed; now implemented)
+    if getattr(args, "provider", None):
+        gateway.set_provider_override(args.provider)
+    if getattr(args, "model", None):
+        gateway.set_model_override(args.model)
+
+    _print_model_status(gateway)
+
     bus = EventBus()
 
     # Wire background subscribers (soft — no-ops if extensions unavailable)

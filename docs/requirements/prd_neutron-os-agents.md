@@ -1609,6 +1609,130 @@ curl -fsSL https://neutronos.io/install | sh
 
 ---
 
+## Tier 0: Model Routing & Export Control
+
+*Added: 2026-03-12 | Status: Phase 1 in development*
+
+### Why This Exists
+
+Neutron OS serves nuclear engineering programs that handle **export-controlled technical
+data** — reactor codes (MCNP, SCALE, RELAP), enrichment calculations, and facility-specific
+design parameters regulated under 10 CFR 810 and the Export Administration Regulations (EAR).
+Sending such content to cloud-hosted LLMs (even reputable ones) may constitute an unauthorized
+export or disclosure.
+
+At the same time, the majority of daily interactions — literature questions, status checks,
+document drafting, code review — are entirely safe for cloud models and benefit from the
+latest, highest-capability frontier models.
+
+**The goal:** give users the best model for every query, automatically and conservatively.
+
+---
+
+### Capability: Export Control Router (GOAL_PLT_006)
+
+**ID:** GOAL_PLT_006
+**Priority:** P0
+**Tier:** Interaction Layer / Infrastructure
+
+#### Requirements
+
+| ID | Requirement |
+|----|-------------|
+| PLT-006-1 | Every LLM call MUST be classified before dispatch: `public` or `export_controlled` |
+| PLT-006-2 | Classification must run **locally** — no cloud call may be made to decide if content is sensitive |
+| PLT-006-3 | Export-controlled queries MUST route to a VPN-gated model (e.g., `qwen-tacc` on rascal) |
+| PLT-006-4 | Public queries route to the configured cloud provider (Anthropic, OpenAI, etc.) |
+| PLT-006-5 | When the VPN model is unreachable, the system MUST warn the user and refuse to route sensitive content to cloud |
+| PLT-006-6 | The keyword list driving classification MUST be user-configurable (`export_control_terms.txt`) |
+| PLT-006-7 | Users MUST be able to declare a session as export-controlled (`neut chat --mode export-controlled`) |
+| PLT-006-8 | Classification results MUST be visible to the user (routing notice on flagged queries) |
+
+#### Phase 1: Rule-Based Classifier
+A zero-dependency, offline keyword classifier in `src/neutron_os/infra/router.py`.
+Matches against a configurable term list including EAR-controlled code names, reactor
+design terminology, and facility-specific scrub terms.
+
+**Built-in trigger terms (non-exhaustive):**
+Nuclear codes: MCNP, SCALE, RELAP, ORIGEN, PARCS, TRACE, TRITON, SIMULATE, CASMO
+Reactor design: `critical assembly`, `weapons-usable`, `weapon-grade`, `enrichment level`
+Regulatory: `10 CFR 810`, `EAR controlled`, `ITAR`, `export controlled`
+
+#### Phase 2: SLM-Assisted Classification (future)
+A small local model (via Ollama) provides semantic classification for ambiguous prompts
+that don't trigger keyword matching. Falls back gracefully to rule-based if Ollama unavailable.
+
+---
+
+### Capability: Model Routing Tiers (GOAL_PLT_007)
+
+**ID:** GOAL_PLT_007
+**Priority:** P0
+**Tier:** Infrastructure
+
+#### Provider Tiers
+
+| Tier | Use Case | Example Provider | Network Requirement |
+|------|----------|------------------|---------------------|
+| `public` | General queries, safe for cloud | Anthropic Claude, OpenAI GPT | Internet only |
+| `export_controlled` | Sensitive nuclear content | qwen-tacc (TACC rascal) | UT VPN required |
+
+Providers declare their tier in `models.toml` via `routing_tier` and `requires_vpn` fields.
+The gateway respects these fields when selecting a provider for each request.
+
+---
+
+### Capability: Settings System (GOAL_PLT_008)
+
+**ID:** GOAL_PLT_008
+**Priority:** P0
+**Tier:** Interaction Layer
+
+NeutronOS provides a Claude Code-style settings system so users — especially those
+familiar with Claude Code — immediately know how to configure the tool.
+
+#### Settings Levels
+
+| Level | Location | Scope |
+|-------|----------|-------|
+| Global | `~/.neut/settings.toml` | User-wide defaults |
+| Project | `runtime/config/settings.toml` | Facility/instance overrides (gitignored) |
+
+#### Key Settings
+
+```toml
+[routing]
+default_mode = "auto"          # auto | public | export_controlled
+cloud_provider = "anthropic"   # provider name from models.toml
+vpn_provider = "qwen-tacc"     # provider name for export_controlled tier
+on_vpn_unavailable = "warn"    # warn | queue | fail
+
+[interface]
+stream = true
+theme = "dark"                 # dark | light | none
+```
+
+#### CLI
+
+```
+neut settings                              # show all active settings
+neut settings get routing.default_mode    # read a value
+neut settings set routing.default_mode export_controlled
+neut settings --global set cloud_provider openai
+```
+
+---
+
+### Capability Summary Additions
+
+| ID | Capability | Tier | Priority |
+|----|------------|------|----------|
+| GOAL_PLT_006 | Export Control Router | Infrastructure | P0 |
+| GOAL_PLT_007 | Model Routing Tiers | Infrastructure | P0 |
+| GOAL_PLT_008 | Settings System | Interaction | P0 |
+
+---
+
 ## Appendix A: State Location Reference
 
 Complete inventory of all agent state locations:
@@ -1850,3 +1974,6 @@ NeutronOS agent configuration aligns with emerging agentic standards:
 | GOAL_PLT_003 | Multi-Channel Presence | Interaction | P0 |
 | GOAL_PLT_004 | Identity & Location Provider Framework | Interaction | P0 |
 | GOAL_PLT_005 | One-Liner Installer | Interaction | P0 |
+| GOAL_PLT_006 | Export Control Router | Infrastructure | P0 |
+| GOAL_PLT_007 | Model Routing Tiers | Infrastructure | P0 |
+| GOAL_PLT_008 | Settings System | Interaction | P0 |

@@ -9,20 +9,31 @@ format = "openai"
 
 # Uncomment and configure providers you have access to:
 
+# routing_tier = "public"            → safe for cloud LLMs (no VPN needed)
+# routing_tier = "export_controlled" → VPN-gated, for nuclear export-controlled queries
+# routing_tier = "any"               → no restriction (default)
+# requires_vpn = true                → TCP reachability check before each call
+
+# Uncomment and configure providers you have access to:
+
 # [[gateway.providers]]
 # name = "anthropic"
 # endpoint = "https://api.anthropic.com/v1"
 # model = "claude-sonnet-4-20250514"
 # api_key_env = "ANTHROPIC_API_KEY"    # reads from environment variable
 # priority = 1
-# use_for = ["extraction", "synthesis", "correlation"]
+# routing_tier = "public"              # safe for cloud
+# use_for = ["extraction", "synthesis", "correlation", "fallback"]
 
 # [[gateway.providers]]
-# name = "qwen-local"
-# endpoint = "http://localhost:8000/v1"
-# model = "qwen2.5-32b-instruct"
+# name = "qwen-tacc"
+# endpoint = "https://10.159.142.118:41883/v1"   # UT TACC rascal (VPN required)
+# model = "qwen"
+# api_key_env = "QWEN_API_KEY"
 # priority = 2
-# use_for = ["extraction", "synthesis"]
+# routing_tier = "export_controlled"   # nuclear export-controlled content only
+# requires_vpn = true                  # check reachability before calling
+# use_for = ["extraction", "synthesis", "fallback"]
 
 # [[gateway.providers]]
 # name = "openai"
@@ -30,4 +41,5 @@ format = "openai"
 # model = "gpt-4o"
 # api_key_env = "OPENAI_API_KEY"
 # priority = 3
+# routing_tier = "public"
 # use_for = ["multimodal", "fallback"]

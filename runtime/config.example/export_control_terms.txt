@@ -1,0 +1,12 @@
+# Facility-specific export control terms
+# Copy to runtime/config/export_control_terms.txt (already gitignored).
+#
+# Terms here are ADDED to the built-in list — they do not replace it.
+# One term per line. Case-insensitive substring match.
+# Lines starting with # are ignored.
+#
+# Examples (uncomment and customize):
+
+# Facility-specific code names or project identifiers
+# TRIGA-specific design parameters
+# Internal project codenames known to be EAR-sensitive
