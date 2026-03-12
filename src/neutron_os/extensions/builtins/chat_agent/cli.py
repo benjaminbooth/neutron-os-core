@@ -310,6 +310,12 @@ def get_parser() -> argparse.ArgumentParser:
         help="Override LLM provider for this session",
     )
     parser.add_argument(
+        "--mode", choices=["auto", "public", "export-controlled"],
+        default="auto",
+        help="Routing mode: auto (classify each query), public (cloud only), "
+             "export-controlled (VPN model for all queries)",
+    )
+    parser.add_argument(
         "--render", choices=["rich", "ansi"],
         help="Force render provider (default: auto-detect)",
     )
@@ -451,6 +457,9 @@ def main():
         gateway=gateway, bus=bus, session=session,
         render=None,
     )
+    # Wire routing mode (--mode flag normalised: "export-controlled" → "export_controlled")
+    if getattr(args, "mode", "auto") != "auto":
+        agent._session_mode = args.mode.replace("-", "_")
 
     # Auto-open session picker on launch when there's no explicit intent
     auto_pick = (

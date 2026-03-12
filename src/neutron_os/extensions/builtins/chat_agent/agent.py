@@ -34,6 +34,7 @@ from neutron_os.infra.gateway import (
     CompletionResponse,
     StreamChunk,
 )
+from neutron_os.infra.router import QueryRouter
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 
@@ -74,6 +75,8 @@ class ChatAgent:
         self.session = session or Session()
         self.usage = UsageTracker()
         self._render = render
+        self._router = QueryRouter()
+        self._session_mode: str = "auto"  # overridden by --mode flag
         # Backward-compat: bare callback for tests
         self._renderer_callback: Optional[Callable[[Iterator[StreamChunk]], str]] = None
 
@@ -95,6 +98,14 @@ class ChatAgent:
         4. If tool_use in response: execute, store results, loop
         5. Return final text response
         """
+        # Classify before adding to session so context window = prior turns only
+        routing = self._router.classify(
+            user_input,
+            session_mode=self._session_mode,
+            context=self.session.messages[-10:],
+        )
+        routing_tier = routing.tier.value
+
         self.session.add_message("user", user_input)
 
         system = self._build_system_prompt()
@@ -108,9 +119,9 @@ class ChatAgent:
             use_stream = stream and _round == 0
 
             if use_stream and self.gateway.available and (self._render or self._renderer_callback):
-                response = self._streaming_turn(messages, system, tools)
+                response = self._streaming_turn(messages, system, tools, routing_tier)
             elif self.gateway.available:
-                response = self._non_streaming_turn(messages, system, tools)
+                response = self._non_streaming_turn(messages, system, tools, routing_tier)
             else:
                 response = self._legacy_turn(user_input, system)
 
@@ -196,12 +207,14 @@ class ChatAgent:
         messages: list[dict[str, Any]],
         system: str,
         tools: list[dict[str, Any]],
+        routing_tier: str = "any",
     ) -> CompletionResponse:
         """Execute a streaming turn and collect the full response."""
         chunks = self.gateway.stream_with_tools(
             messages=messages,
             system=system,
             tools=tools,
+            routing_tier=routing_tier,
         )
 
         # Collect chunks into a CompletionResponse
@@ -300,12 +313,14 @@ class ChatAgent:
         messages: list[dict[str, Any]],
         system: str,
         tools: list[dict[str, Any]],
+        routing_tier: str = "any",
     ) -> CompletionResponse:
         """Execute a non-streaming turn with tool-use."""
         return self.gateway.complete_with_tools(
             messages=messages,
             system=system,
             tools=tools,
+            routing_tier=routing_tier,
         )
 
     def _legacy_turn(self, user_input: str, system: str) -> CompletionResponse:
