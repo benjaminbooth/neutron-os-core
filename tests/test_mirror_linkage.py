@@ -102,9 +102,18 @@ class TestAllowlistIntegrity:
         # Personal names and internal codenames live in the private scrub list.
         forbidden = ["TRIGA", "TACC", "NETL"]
 
-        # Augment from gitignored private scrub list if present.
-        scrub_file = REPO_ROOT / "runtime/config/mirror_scrub_terms.txt"
-        if scrub_file.exists():
+        # Augment from scrub list. Resolution order:
+        #   1. MIRROR_SCRUB_TERMS_FILE env var (GitLab File variable, set in CI)
+        #   2. runtime/config/mirror_scrub_terms.txt (gitignored, local dev)
+        scrub_file = None
+        if ci_path := os.environ.get("MIRROR_SCRUB_TERMS_FILE"):
+            scrub_file = Path(ci_path)
+        else:
+            local = REPO_ROOT / "runtime/config/mirror_scrub_terms.txt"
+            if local.exists():
+                scrub_file = local
+
+        if scrub_file and scrub_file.exists():
             for line in scrub_file.read_text().splitlines():
                 line = line.strip()
                 if line and not line.startswith("#"):

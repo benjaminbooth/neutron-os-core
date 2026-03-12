@@ -11,7 +11,9 @@
 #   MS_GRAPH_CLIENT_ID    — Azure AD app registration
 #   MS_GRAPH_CLIENT_SECRET
 #   MS_GRAPH_TENANT_ID
-#   GITHUB_TOKEN          — GitHub PAT with repo push access (for mirror:github job)
+#   GITHUB_TOKEN              — GitHub PAT with repo push access (for mirror:github job)
+#   MIRROR_SCRUB_TERMS_FILE   — File variable: contents of runtime/config/mirror_scrub_terms.txt
+#                               (Type: File, not Variable — GitLab writes it to a tmp path)
 #
 # Runner setup:
 #   If no shared runners are available on TACC GitLab, register your own:
@@ -352,6 +354,7 @@ mirror:smoke-test:
     - pytest tests/test_mirror_linkage.py -v --tb=short
   variables:
     GITHUB_TOKEN: $GITHUB_TOKEN
+    MIRROR_SCRUB_TERMS_FILE: $MIRROR_SCRUB_TERMS_FILE
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
