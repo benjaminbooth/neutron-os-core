@@ -9,8 +9,8 @@ see [CLAUDE.md](CLAUDE.md).
 ### Quick Start
 
 ```bash
-git clone https://rsicc-gitlab.tacc.utexas.edu/neutron-os/neutron-os-core.git
-cd Neutron_OS
+git clone https://github.com/benjaminbooth/neutron-os-core.git
+cd neutron-os-core
 ./scripts/bootstrap.sh
 ```
 
@@ -20,7 +20,7 @@ After bootstrap, `neut --help` should work.
 ### Manual Setup
 
 ```bash
-cd /path/to/UT_Computational_NE
+cd /path/to/neutron-os-core
 python3 -m venv .venv
 source .venv/bin/activate
 cd Neutron_OS
@@ -171,9 +171,12 @@ CI builds and publishes to the GitLab Package Registry.
 
 ```bash
 pip install neutron-os --upgrade \
-  --index-url https://rsicc-gitlab.tacc.utexas.edu/api/v4/projects/<PROJECT_ID>/packages/pypi/simple \
-  --trusted-host rsicc-gitlab.tacc.utexas.edu
+  --index-url https://pypi.org/simple \
+  neutron-os
 ```
+
+> Internal contributors: dev builds are available from the internal package registry.
+> See your facility's onboarding docs for the index URL.
 
 Dev versions follow PEP 440: `0.3.1.dev42` where `42` is the CI pipeline number.
 
@@ -201,12 +204,12 @@ Cross-cutting docs go in `docs/`. See [docs/README.md](docs/README.md).
 
 ## Runner Setup
 
-If TACC GitLab has no shared runners:
+If your GitLab instance has no shared runners:
 
 ```bash
 brew install gitlab-runner   # macOS
 gitlab-runner register \
-  --url https://rsicc-gitlab.tacc.utexas.edu \
+  --url https://<your-gitlab-host> \
   --token <RUNNER_TOKEN> \
   --executor shell \
   --description "neutron-os-dev"

@@ -2,10 +2,10 @@
 # Neutron OS — One-Line Installer
 #
 # Usage:
-#   curl -fsSL https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core/-/raw/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/benjaminbooth/neutron-os-core/main/scripts/install.sh | bash
 #
 # What this does:
-#   1. Installs the `neut` CLI from the GitLab Package Registry
+#   1. Installs the `neut` CLI from PyPI
 #   2. Adds ~/.local/bin to your PATH (if not already there)
 #   3. Verifies the installation
 #
@@ -20,9 +20,9 @@ set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
 
-GITLAB_HOST="rsicc-gitlab.tacc.utexas.edu"
-PROJECT_ID="77"
-PACKAGE_INDEX="https://${GITLAB_HOST}/api/v4/projects/${PROJECT_ID}/packages/pypi/simple"
+
+# Install from PyPI — no project ID needed
+PACKAGE_INDEX="https://pypi.org/simple"
 PACKAGE_NAME="neutron-os"
 INSTALL_DIR="${HOME}/.local/bin"
 
@@ -76,12 +76,12 @@ ok "pip available"
 
 # --- Install -----------------------------------------------------------------
 
-info "Installing ${PACKAGE_NAME} from GitLab Package Registry..."
+info "Installing ${PACKAGE_NAME} from PyPI..."
 echo
 
 python3 -m pip install --user --upgrade \
     --index-url "${PACKAGE_INDEX}" \
-    --trusted-host "${GITLAB_HOST}" \
+
     "${PACKAGE_NAME}" \
     2>&1 | while IFS= read -r line; do dim "  $line"; done
 
