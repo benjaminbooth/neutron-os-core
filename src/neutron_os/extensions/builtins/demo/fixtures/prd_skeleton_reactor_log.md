@@ -1,24 +1,24 @@
-# PRD: TRIGA Reactor Log Digitization
+# PRD: Reactor Log Digitization
 
 | Field | Value |
 |-------|-------|
 | **Status** | Draft |
-| **Author** | Jeongwon Seo |
+| **Author** | J. Kim |
 | **Date** | 2026-03-04 |
 | **Priority** | High |
 
 ## Problem Statement
 
-TRIGA reactor operations are logged in paper binders and legacy spreadsheets.
+Reactor operations are logged in paper binders and legacy spreadsheets.
 This data is critical for digital twin calibration, regulatory compliance,
 and operator training — but it's trapped in formats that resist analysis.
 
-[TODO: Jay fills in — what specific pain points has he encountered?]
+[TODO: Jay fills in — what specific pain points have you encountered?]
 
 ## Proposed Solution
 
 Digitize reactor operation logs into a structured format that integrates with
-the TRIGA Digital Twin pipeline and NeutronOS sensing system.
+the digital twin pipeline and NeutronOS sensing system.
 
 ### Core Capabilities
 
@@ -29,7 +29,7 @@ the TRIGA Digital Twin pipeline and NeutronOS sensing system.
    [TODO: Jay fills in — what validation rules matter most?]
 
 3. **Integration** — Feed validated data into the Digital Twin model and NeutronOS signals
-   [TODO: Jay fills in — which DT models consume this data?]
+   [TODO: Jay fills in — which models consume this data?]
 
 ## Success Criteria
 
@@ -39,12 +39,12 @@ the TRIGA Digital Twin pipeline and NeutronOS sensing system.
 
 ## Technical Approach
 
-[TODO: Jay fills in — what tools/libraries is he using? Python scripts? OCR?
-What's the current pipeline look like?]
+[TODO: Jay fills in — what tools/libraries are you using?
+What does the current pipeline look like?]
 
 ### Architecture
 
-[TODO: Mermaid diagram showing data flow from paper logs to DT model]
+[TODO: Mermaid diagram showing data flow from paper logs to digital twin model]
 
 ## Timeline
 
@@ -56,11 +56,11 @@ What's the current pipeline look like?]
 
 ## Dependencies
 
-- TRIGA Digital Twin codebase (TRIGA_DT, TRIGA_ModSim_Tools)
+- Digital twin codebase
 - NeutronOS sensing pipeline (for signal ingestion)
 - [TODO: Other dependencies?]
 
 ## Open Questions
 
-1. [TODO: Jay's biggest uncertainty right now?]
-2. [TODO: What decisions need Ben's or advisor's input?]
+1. [TODO: Your biggest uncertainty right now?]
+2. [TODO: What decisions need advisor input?]

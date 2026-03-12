@@ -14,6 +14,7 @@ from pathlib import Path
 from ..runner import Act, Scenario
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
+WEEKLY_SUMMARY = str(FIXTURES_DIR / "weekly_summary_demo.md")
 
 
 def _fixture_exists(name: str) -> bool:
@@ -93,7 +94,7 @@ def build_scenario() -> Scenario:
                     "neut sense draft",
                 ],
                 hints=[
-                    "The demo fixture in tools/demo/fixtures/ shows what a real draft looks like.",
+                    f"The demo fixture at {WEEKLY_SUMMARY} shows what a real draft looks like.",
                     "In production, 'neut sense serve' runs an HTTP server for continuous ingestion.",
                     "Voice memos, Teams transcripts, and freetext notes all flow through the same pipeline.",
                 ],
@@ -126,13 +127,13 @@ def build_scenario() -> Scenario:
                 title="Review (CLI)",
                 description=(
                     "Review the weekly draft section-by-section in the terminal. "
-                    "Notice the TRIGA DT section is thin — just '55 commits. Repos discovered.' "
-                    "This is where Jay's voice needs to be heard.\n\n"
+                    "Notice the Reactor Log Digitization section is thin — just '55 commits. "
+                    "Repos discovered.' This is where Jay's voice needs to be heard.\n\n"
                     "Press Q mid-review to test resume — re-running picks up where you left off."
                 ),
                 mode="cli",
                 commands=[
-                    "neut doc review tools/demo/fixtures/weekly_summary_demo.md",
+                    f"neut doc review {WEEKLY_SUMMARY}",
                 ],
                 hints=[
                     "The review framework supports quick (one-shot) and detailed (item-by-item) modes.",
@@ -151,7 +152,7 @@ def build_scenario() -> Scenario:
                 ),
                 mode="chat",
                 commands=[
-                    "neut doc review --chat tools/demo/fixtures/weekly_summary_demo.md",
+                    f"neut doc review --chat {WEEKLY_SUMMARY}",
                 ],
                 hints=[
                     "Falls back gracefully if no LLM is configured.",
@@ -170,7 +171,7 @@ def build_scenario() -> Scenario:
                 ),
                 mode="cli",
                 commands=[
-                    "neut doc generate tools/demo/fixtures/weekly_summary_demo.md",
+                    f"neut doc generate {WEEKLY_SUMMARY}",
                     "neut doc status",
                 ],
                 hints=[
@@ -190,9 +191,9 @@ def build_scenario() -> Scenario:
                 ),
                 mode="cli",
                 commands=[
-                    "neut ext init triga-tools",
+                    "neut ext init reactor-tools",
                     "neut ext",
-                    "neut ext check triga-tools",
+                    "neut ext check reactor-tools",
                 ],
                 hints=[
                     "The scaffold includes a SKILL.md compatible with Claude Code, Codex, and Copilot.",

@@ -1,35 +1,35 @@
 # Weekly Summary — 2026-03-04
 
-Week of 2026-03-04: 69 signals across 15 initiatives, involving 11 people.
+Week of 2026-03-04: 47 signals across 8 initiatives, involving 6 contributors.
 
 ## Active Blockers
-- AWS/TACC infrastructure budget request pending — blocks all DT compute workloads.
-- GitLab export missing child repositories, limiting velocity visibility.
-- Four repositories stale (30+ days): NETL_BackPacks, MSR progression, OffGas inverse, ERCOT.
+- Compute resource allocation pending approval — blocks simulation workloads.
+- Version control export scope incomplete — child repositories not visible in activity report.
+- Three repositories with no commits in 30+ days: sensor-calibration, log-parser-v1, data-bridge.
 
-## TRIGA Digital Twin
+## Reactor Log Digitization
 ### Progress
-- Jeongwon Seo: 55 commits in the export period (highest in program).
-- Newly discovered projects: NETL_PXI, TRIGA_DT_website, TRIGA_ModSim_Tools.
-- Reactor log digitization work ongoing.
+- J. Kim: 55 commits in the export period (highest activity in program).
+- Newly discovered repositories: log-digitizer, reactor-log-schema, modtools.
+- Structured log extraction pipeline operational for paper-to-CSV conversions.
 ### Blockers
-- GitLab export scope incomplete — child repos not visible.
+- Export tool does not enumerate child repositories — velocity data incomplete.
 
-## NeutronOS
+## NeutronOS Platform
 ### Progress
 - Sensing pipeline producing structured weekly summaries automatically.
 - Review framework operational with CLI and chat modes.
-- Eight documentation pieces published to docflow.
+- Extension scaffolding tested end-to-end.
 ### Action Items
-- Compile cost model inputs and draft budget request.
+- Validate extension contract docs generation against live extensions.
 
-## Cost Estimation
+## Sensor Integration
 ### Progress
-- All stakeholder responses received except Clarno.
-- Data sizing calculator nearing completion.
+- Protocol adapter layer in review.
+- Calibration test suite 80% complete.
 
 ## Uncategorized
 ### Progress
-- Jeongwon Seo: 55 commits (highest in program).
-- Ben Booth: 18 commits.
-- Max Cohen Hoffing: 14 commits.
+- J. Kim: 55 commits (highest activity in program).
+- A. Patel: 21 commits.
+- M. Torres: 16 commits.
