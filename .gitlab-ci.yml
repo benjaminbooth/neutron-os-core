@@ -1,17 +1,18 @@
 # Neutron OS — GitLab CI/CD Pipeline
 #
 # Pipeline tiers by trigger:
-#   Push to any branch  → unit tests + lint
-#   MR opened/updated   → unit tests + lint + integration + build wheel (artifact)
-#   Merge to main       → all tests + build + publish dev build to Package Registry
-#   Tag v* pushed       → all tests + build + publish stable release to Package Registry
+#   Push to any branch  → preflight + unit tests + lint (if code changed)
+#   MR opened/updated   → preflight + unit + lint + integration + build wheel
+#   Merge to main       → all tests + build + publish + mirror
+#   Tag v* pushed       → all tests + build + publish stable release
+#   Docs-only push      → preflight + mirror only (skip tests/build)
 #
 # Required CI/CD Variables (Settings → CI/CD → Variables):
 #   GITLAB_TOKEN          — Personal access token for rsicc-gitlab.tacc.utexas.edu
-#   MS_GRAPH_CLIENT_ID    — Azure AD app registration
+#   GITHUB_TOKEN          — GitHub PAT with repo push access (for mirror:github job)
+#   MS_GRAPH_CLIENT_ID    — Azure AD app registration (optional)
 #   MS_GRAPH_CLIENT_SECRET
 #   MS_GRAPH_TENANT_ID
-#   GITHUB_TOKEN          — GitHub PAT with repo push access (for mirror:github job)
 #   ANTHROPIC_API_KEY     — Powers LLM sensitivity review gate (mirror:review job)
 #
 # Runner setup:
@@ -37,6 +38,35 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
   PYTHON_VERSION: "3.12"
   VENV_DIR: "$CI_PROJECT_DIR/.venv"
+
+# =============================================================================
+# Change-set anchors — reused across job rules
+# =============================================================================
+# Use these to avoid duplicating long path lists. Each anchor captures the
+# files that, when changed, should trigger a particular class of job.
+
+.changes-code: &changes-code
+  - src/**/*
+  - tests/**/*
+  - pyproject.toml
+  - conftest.py
+  - .gitlab-ci.yml
+
+.changes-migrations: &changes-migrations
+  - src/neutron_os/extensions/builtins/sense_agent/migrations/**/*
+  - src/neutron_os/extensions/builtins/sense_agent/db_models.py
+  - src/neutron_os/extensions/builtins/sense_agent/pgvector_store.py
+
+.changes-mirror: &changes-mirror
+  - src/**/*
+  - scripts/**/*
+  - docs/**/*
+  - tests/**/*
+  - "*.md"
+  - "*.toml"
+  - .gitignore
+  - .envrc
+  - .gitlab-ci.yml
 
 # =============================================================================
 # Templates
@@ -198,8 +228,12 @@ test:unit:
       --ignore=tests/setup/test_wizard.py
       --ignore=tests/sense/test_correction_guided.py
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
+    # Always run on MRs and tags
     - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_TAG
+    # On branch pushes: only if code or tests changed
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes: *changes-code
 
 test:integration:
   extends: .python-setup
@@ -209,14 +243,14 @@ test:integration:
     - pip install --quiet python-gitlab requests PyGithub
     - pytest tests/integration/ -v --tb=short -m "integration"
   variables:
-    # These come from GitLab CI/CD Variables (masked, protected)
     GITLAB_TOKEN: $GITLAB_TOKEN
     MS_GRAPH_CLIENT_ID: $MS_GRAPH_CLIENT_ID
     MS_GRAPH_CLIENT_SECRET: $MS_GRAPH_CLIENT_SECRET
     MS_GRAPH_TENANT_ID: $MS_GRAPH_TENANT_ID
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes: *changes-code
   allow_failure: true  # Don't block on external service flakiness
 
 lint:
@@ -227,14 +261,18 @@ lint:
     - ruff check src/ --select E,F,W --ignore E501
   allow_failure: true
   rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - src/**/*
+        - .gitlab-ci.yml
 
 # -----------------------------------------------------------------------------
 # Database Migration Tests
 # -----------------------------------------------------------------------------
 # Tests that migrations can be applied cleanly to a fresh database.
-# This is a gate — migrations must succeed before merge.
+# Only runs when migration-related files change, or on MR/main.
 
 test:migrations:
   extends: .python-setup
@@ -269,7 +307,6 @@ test:migrations:
       else:
           print('WARNING: PostgreSQL may not be ready')
       "
-
   script:
     # Skip gracefully if postgres service is unavailable (shell executor, no Docker)
     - |
@@ -285,7 +322,6 @@ test:migrations:
     # Test 1: Fresh migration applies cleanly
     - echo "Testing fresh migration..."
     - python -c "from neutron_os.extensions.builtins.sense_agent.migrations import run_migrations, ensure_pgvector_extension; ensure_pgvector_extension(); run_migrations('upgrade', 'head')"
-    
     # Test 2: Migration status is up-to-date
     - echo "Checking migration status..."
     - |
@@ -295,7 +331,6 @@ test:migrations:
       assert status['up_to_date'], f'Migrations not up to date: {status}'
       print('✓ All migrations applied')
       "
-    
     # Test 3: Schema verification
     - echo "Verifying schema..."
     - |
@@ -307,13 +342,11 @@ test:migrations:
       print('✓ Schema verified')
       print(f'  Tables: {result[\"tables_found\"]}')
       "
-    
     # Test 4: Downgrade and upgrade cycle
     - echo "Testing downgrade/upgrade cycle..."
     - python -c "from neutron_os.extensions.builtins.sense_agent.migrations import run_migrations; run_migrations('downgrade', 'base')"
     - python -c "from neutron_os.extensions.builtins.sense_agent.migrations import run_migrations; run_migrations('upgrade', 'head')"
     - echo "✓ Downgrade/upgrade cycle successful"
-    
     # Test 5: SQLAlchemy models match schema
     - echo "Verifying SQLAlchemy models..."
     - |
@@ -321,24 +354,22 @@ test:migrations:
       from sqlalchemy import create_engine, inspect
       from neutron_os.extensions.builtins.sense_agent.db_models import Base, Signal, Media, Participant, Person
       import os
-      
+
       engine = create_engine(os.environ['NEUT_DB_URL'])
       inspector = inspect(engine)
-      
-      # Check all model tables exist
+
       model_tables = {'signals', 'media', 'participants', 'people'}
       db_tables = set(inspector.get_table_names())
-      
+
       missing = model_tables - db_tables
       assert not missing, f'Missing tables: {missing}'
       print('✓ All model tables present')
       "
   rules:
+    # Only run when migration files change on a branch push
     - if: $CI_PIPELINE_SOURCE == "push"
-      changes:
-        - src/neutron_os/extensions/builtins/sense_agent/migrations/**/*
-        - src/neutron_os/extensions/builtins/sense_agent/db_models.py
-        - src/neutron_os/extensions/builtins/sense_agent/pgvector_store.py
+      changes: *changes-migrations
+    # Always run on MRs and main
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH == "main"
   allow_failure: true  # Requires Docker executor for postgres service
@@ -361,6 +392,7 @@ build:wheel:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_MERGE_REQUEST_ID
+      changes: *changes-code
 
 # =============================================================================
 # Publish Stage — GitLab Package Registry
@@ -418,11 +450,6 @@ publish:release:
 # AI Review Stage — Claude Code
 # =============================================================================
 # Requires CI/CD Variable: ANTHROPIC_API_KEY (masked, protected)
-#
-# Triggers:
-#   - Automatically on merge requests
-#   - Manually from CI/CD → Pipelines → Run Pipeline
-#   - Via @claude mentions (requires webhook — see docs)
 
 claude:review:
   stage: ai
@@ -448,16 +475,14 @@ claude:review:
 # =============================================================================
 # Mirror Stage — Push stripped copy to public GitHub mirror
 # =============================================================================
-# Triggered automatically on every push to main.
+# Triggered on every push to main where mirror-relevant files changed.
 # Uses an allowlist (scripts/push-public.sh) — only approved paths go public.
 #
 # Required CI/CD Variable:
-#   GITHUB_TOKEN   — GitHub PAT with `repo` scope for benjaminbooth/neutron-os-core
-#                    (Settings → CI/CD → Variables, masked + protected)
+#   GITHUB_TOKEN   — GitHub PAT with repo push access for benjaminbooth/neutron-os-core
 
 mirror:canary:
   # Red-team gate — verifies the LLM reviewer catches known-bad content.
-  # If any canary fails, the reviewer is broken and we must not push.
   stage: mirror
   extends: .python-setup
   needs: [preflight:connections]
@@ -466,13 +491,11 @@ mirror:canary:
         -v --tb=short -m "integration"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+      changes: *changes-mirror
   allow_failure: false  # Broken canary = broken gate = no push
 
 mirror:review:
-  # LLM sensitivity gate — runs BEFORE push.
-  # Scans all allowlisted public files using the mirror_agent reviewer.
-  # Fails (and blocks the push) if anything is flagged.
-  # Falls back to pattern-only scan if ANTHROPIC_API_KEY is not set.
+  # LLM sensitivity gate — scans all allowlisted public files before push.
   stage: mirror
   extends: .python-setup
   script:
@@ -480,6 +503,7 @@ mirror:review:
     - neut mirror review --all --ci
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+      changes: *changes-mirror
   needs:
     - mirror:canary
   allow_failure: false  # Hard gate — no push if review flags anything
@@ -497,6 +521,7 @@ mirror:github:
     - bash scripts/push-public.sh --push --yes
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+      changes: *changes-mirror
   needs:
     - preflight:connections
     - mirror:review
@@ -506,11 +531,14 @@ mirror:smoke-test:
   stage: mirror
   extends: .python-setup
   script:
+    - echo "Waiting 15s for GitHub to propagate the mirror push..."
+    - sleep 15
     - pytest tests/test_mirror_linkage.py -v --tb=short
   variables:
     GITHUB_TOKEN: $GITHUB_TOKEN
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+      changes: *changes-mirror
   needs:
     - mirror:github
-  allow_failure: true
+  allow_failure: false

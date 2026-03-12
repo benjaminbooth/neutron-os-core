@@ -331,38 +331,45 @@ class TestIdempotency:
 
     def test_multiple_runs_safe(self, bootstrap):
         """Multiple bootstrap runs don't cause errors."""
-        with patch.object(bootstrap, "check_k3d_cluster") as mock_k3d:
-            mock_k3d.return_value = {"exists": True, "running": True}
+        with patch.object(bootstrap, "check_prerequisites") as mock_prereq:
+            mock_prereq.return_value = StepResult(
+                step=BootstrapStep.PREREQUISITES,
+                success=True,
+                message="OK",
+            )
 
-            with patch.object(bootstrap, "check_postgres") as mock_pg:
-                mock_pg.return_value = {"deployed": True, "running": True}
+            with patch.object(bootstrap, "check_k3d_cluster") as mock_k3d:
+                mock_k3d.return_value = {"exists": True, "running": True}
 
-                with patch.object(bootstrap, "setup_pgvector") as mock_pgv:
-                    mock_pgv.return_value = StepResult(
-                        step=BootstrapStep.PGVECTOR,
-                        success=True,
-                        message="pgvector already enabled",
-                        skipped=True,
-                    )
+                with patch.object(bootstrap, "check_postgres") as mock_pg:
+                    mock_pg.return_value = {"deployed": True, "running": True}
 
-                    with patch.dict(os.environ, {"NEUT_DB_URL": bootstrap.config.db_url}):
-                        with patch("neutron_os.extensions.builtins.sense_agent.migrations.check_migrations") as mock_mig:
-                            mock_mig.return_value = {"up_to_date": True, "current": "001"}
+                    with patch.object(bootstrap, "setup_pgvector") as mock_pgv:
+                        mock_pgv.return_value = StepResult(
+                            step=BootstrapStep.PGVECTOR,
+                            success=True,
+                            message="pgvector already enabled",
+                            skipped=True,
+                        )
 
-                            with patch.object(bootstrap, "verify_installation") as mock_verify:
-                                mock_verify.return_value = StepResult(
-                                    step=BootstrapStep.VERIFY,
-                                    success=True,
-                                    message="OK",
-                                )
+                        with patch.dict(os.environ, {"NEUT_DB_URL": bootstrap.config.db_url}):
+                            with patch("neutron_os.extensions.builtins.sense_agent.migrations.check_migrations") as mock_mig:
+                                mock_mig.return_value = {"up_to_date": True, "current": "001"}
 
-                                # Run twice
-                                results1 = bootstrap.run()
-                                results2 = bootstrap.run()
+                                with patch.object(bootstrap, "verify_installation") as mock_verify:
+                                    mock_verify.return_value = StepResult(
+                                        step=BootstrapStep.VERIFY,
+                                        success=True,
+                                        message="OK",
+                                    )
 
-                                # Both should succeed
-                                assert all(r.success for r in results1)
-                                assert all(r.success for r in results2)
+                                    # Run twice
+                                    results1 = bootstrap.run()
+                                    results2 = bootstrap.run()
+
+                                    # Both should succeed
+                                    assert all(r.success for r in results1)
+                                    assert all(r.success for r in results2)
 
 
 # =============================================================================
