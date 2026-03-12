@@ -22,6 +22,7 @@ def register(bus: Any) -> None:
     """Register mirror handlers on the event bus."""
     bus.subscribe("mo.heartbeat", handle_heartbeat)
     bus.subscribe("mirror.commit", handle_commit)
+    bus.subscribe("config.changed", handle_config_changed)
 
 
 def handle_heartbeat(topic: str, data: dict[str, Any]) -> None:
@@ -67,6 +68,73 @@ def handle_commit(topic: str, data: dict[str, Any]) -> None:
             _run_review(repo_root, sha, touched)
     except Exception:
         pass
+
+
+def handle_config_changed(topic: str, data: dict[str, Any]) -> None:
+    """When institutional config changes, regenerate the scrub list from it."""
+    changed_file = data.get("file", "")
+    if "institutional" not in changed_file:
+        return
+    try:
+        _regenerate_scrub_list()
+    except Exception:
+        pass
+
+
+def _regenerate_scrub_list() -> None:
+    """Extract names and identifiers from institutional.md → mirror_scrub_terms.txt.
+
+    Uses the LLM to extract proper nouns from the roster — no hardcoded list needed.
+    Falls back to a simple regex heuristic if no LLM is available.
+    """
+    repo_root = _repo_root()
+    if repo_root is None:
+        return
+
+    institutional = repo_root / "runtime/config/institutional.md"
+    scrub_file = repo_root / "runtime/config/mirror_scrub_terms.txt"
+
+    if not institutional.exists():
+        return
+
+    content = institutional.read_text()
+
+    try:
+        from neutron_os.infra.gateway import Gateway
+        gateway = Gateway()
+        if gateway.active_provider:
+            prompt = (
+                "Extract all proper nouns from this institutional roster that should be "
+                "kept private in a public open-source repo: staff names (first, last, full), "
+                "internal project codenames, system hostnames, IP addresses, and "
+                "facility-specific identifiers. Output one term per line, no bullets, no headers.\n\n"
+                + content
+            )
+            response = gateway.complete(system="You extract private identifiers from text.", user=prompt, max_tokens=800)
+            terms = [l.strip() for l in response.splitlines() if l.strip() and not l.startswith("#")]
+        else:
+            terms = _extract_terms_heuristic(content)
+    except Exception:
+        terms = _extract_terms_heuristic(content)
+
+    if not terms:
+        return
+
+    existing_header = "# mirror_scrub_terms.txt — gitignored, never mirrored to GitHub\n# Auto-maintained by M-O. Edit institutional.md to change the source.\n\n"
+    scrub_file.write_text(existing_header + "\n".join(sorted(set(terms))) + "\n")
+
+
+def _extract_terms_heuristic(content: str) -> list[str]:
+    """Fallback: extract capitalised words likely to be proper nouns."""
+    import re
+    # Match runs of Title Case words (names, project names)
+    matches = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', content)
+    # Also grab ALL_CAPS identifiers (acronyms, codenames)
+    acronyms = re.findall(r'\b[A-Z]{2,}\b', content)
+    # Filter common English words
+    stopwords = {"The", "This", "For", "Run", "See", "All", "Each", "Note", "And", "Or"}
+    terms = [m for m in matches if m not in stopwords] + acronyms
+    return list(set(terms))
 
 
 def _run_review(repo_root: Path, sha: str, touched_files: list[str]) -> None:

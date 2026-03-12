@@ -48,6 +48,8 @@ def register(subparsers):
                    help="Review all public files, not just changed ones")
     r.add_argument("--since", metavar="REF",
                    help="Review files changed since this git ref")
+    r.add_argument("--ci", action="store_true",
+                   help="CI mode: exit 1 if anything flagged, no prompts")
 
     sub.add_parser("push", help=COMMANDS["push"])
     sub.add_parser("status", help=COMMANDS["status"])
@@ -104,6 +106,9 @@ def _cmd_review(args):
     )
 
     _print_review_result(result)
+
+    if getattr(args, "ci", False) and not result.is_clear:
+        sys.exit(1)
 
 
 def _cmd_push(args):

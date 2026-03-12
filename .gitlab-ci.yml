@@ -11,9 +11,8 @@
 #   MS_GRAPH_CLIENT_ID    — Azure AD app registration
 #   MS_GRAPH_CLIENT_SECRET
 #   MS_GRAPH_TENANT_ID
-#   GITHUB_TOKEN              — GitHub PAT with repo push access (for mirror:github job)
-#   MIRROR_SCRUB_TERMS_FILE   — File variable: contents of runtime/config/mirror_scrub_terms.txt
-#                               (Type: File, not Variable — GitLab writes it to a tmp path)
+#   GITHUB_TOKEN          — GitHub PAT with repo push access (for mirror:github job)
+#   ANTHROPIC_API_KEY     — Powers LLM sensitivity review gate (mirror:review job)
 #
 # Runner setup:
 #   If no shared runners are available on TACC GitLab, register your own:
@@ -331,6 +330,20 @@ claude:review:
 #   GITHUB_TOKEN   — GitHub PAT with `repo` scope for benjaminbooth/neutron-os-core
 #                    (Settings → CI/CD → Variables, masked + protected)
 
+mirror:review:
+  # LLM sensitivity gate — runs BEFORE push.
+  # Scans all allowlisted public files using the mirror_agent reviewer.
+  # Fails (and blocks the push) if anything is flagged.
+  # Falls back to pattern-only scan if ANTHROPIC_API_KEY is not set.
+  stage: mirror
+  extends: .python-setup
+  script:
+    - pip install --quiet -e ".[chat]"
+    - neut mirror review --all --ci
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  allow_failure: false  # Hard gate — no push if review flags anything
+
 mirror:github:
   stage: mirror
   image: python:3.12-slim
@@ -345,7 +358,9 @@ mirror:github:
     - bash scripts/push-public.sh --push --yes
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-  allow_failure: true  # Mirror failure should not block main pipeline
+  needs:
+    - mirror:review
+  allow_failure: true
 
 mirror:smoke-test:
   stage: mirror
@@ -354,7 +369,6 @@ mirror:smoke-test:
     - pytest tests/test_mirror_linkage.py -v --tb=short
   variables:
     GITHUB_TOKEN: $GITHUB_TOKEN
-    MIRROR_SCRUB_TERMS_FILE: $MIRROR_SCRUB_TERMS_FILE
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
