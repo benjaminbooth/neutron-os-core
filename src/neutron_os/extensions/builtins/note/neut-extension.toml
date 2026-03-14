@@ -1,0 +1,11 @@
+[extension]
+name = "note"
+version = "0.1.0"
+description = "Quick personal notes — captured immediately to RAG-indexed daily log"
+builtin = true
+kind = "utility"
+module = "platform"
+
+[[cli.commands]]
+noun = "note"
+module = "neutron_os.extensions.builtins.note.cli"

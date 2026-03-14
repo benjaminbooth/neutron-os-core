@@ -110,13 +110,23 @@ def ingest_repo(
     repo_root: Path,
     store: RAGStore,
     corpus: str = CORPUS_INTERNAL,
+    personal: bool = True,
 ) -> IngestStats:
     """Scan and ingest all supported documents under *repo_root*.
 
-    Looks in ``docs/``, ``runtime/config/``, and ``CLAUDE.md``.
+    Indexes:
+      - docs/, runtime/config/, runtime/knowledge/  (project docs)
+      - CLAUDE.md                                   (project context)
+      - runtime/sessions/*.json                     (chat transcripts) [personal]
+      - runtime/inbox/processed/*.json              (sense signals)   [personal]
+      - git repos under runtime/knowledge/          (commit logs)     [personal]
+
+    Set *personal=False* to skip the personal corpus sources (sessions,
+    signals, git logs) — useful when indexing a shared or community corpus.
     """
     stats = IngestStats()
 
+    # -- Static document sources ---------------------------------------------
     search_dirs = [
         repo_root / "docs",
         repo_root / "runtime" / "config",
@@ -136,13 +146,35 @@ def ingest_repo(
     # Filter out __MACOSX and hidden files
     files = [f for f in files if "__MACOSX" not in str(f) and not f.name.startswith(".")]
 
-    log.info("Found %d files to consider for ingestion", len(files))
+    log.info("Found %d document files to consider", len(files))
 
     for fpath in sorted(files):
         file_stats = ingest_file(fpath, store, repo_root=repo_root, corpus=corpus)
         stats.files_indexed += file_stats.files_indexed
         stats.chunks_created += file_stats.chunks_created
         stats.files_skipped += file_stats.files_skipped
+
+    # -- Personal corpus sources (sessions, signals, git logs) ---------------
+    if personal:
+        from .personal import ingest_sessions, ingest_signals, ingest_git_logs
+
+        sessions_dir = repo_root / "runtime" / "sessions"
+        if sessions_dir.is_dir():
+            indexed, skipped = ingest_sessions(sessions_dir, store, corpus=corpus)
+            stats.files_indexed += indexed
+            stats.files_skipped += skipped
+
+        inbox_dir = repo_root / "runtime" / "inbox" / "processed"
+        if inbox_dir.is_dir():
+            indexed, skipped = ingest_signals(inbox_dir, store, corpus=corpus)
+            stats.files_indexed += indexed
+            stats.files_skipped += skipped
+
+        knowledge_dir = repo_root / "runtime" / "knowledge"
+        if knowledge_dir.is_dir():
+            indexed, skipped = ingest_git_logs(knowledge_dir, store, corpus=corpus)
+            stats.files_indexed += indexed
+            stats.files_skipped += skipped
 
     log.info(
         "Ingestion complete: %d indexed, %d chunks, %d skipped",

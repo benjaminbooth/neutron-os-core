@@ -10,7 +10,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-docflow = ["python-docx>=1.1"]
+publisher = ["python-docx>=1.1"]
+rag = [
+    "psycopg2-binary>=2.9",
+    "requests>=2.28",
+    "watchdog>=3.0",
+]
 sense = [
     "psycopg2-binary>=2.9",
     "sqlalchemy>=2.0",
@@ -34,7 +39,7 @@ dev = [
     "ruff>=0.4",
 ]
 all = [
-    "neutron-os[docflow,sense,repos,serve,chat,mcp,dev]",
+    "neutron-os[publisher,rag,sense,repos,serve,chat,mcp,dev]",
 ]
 
 [project.scripts]

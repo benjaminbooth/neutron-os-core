@@ -223,6 +223,20 @@ def cmd_sync(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_watch(args: argparse.Namespace) -> None:
+    """Watch workspace directories and re-index changed files automatically."""
+    from neutron_os import REPO_ROOT
+    from .store import CORPUS_INTERNAL
+    from .watcher import watch
+
+    corpus = getattr(args, "corpus", CORPUS_INTERNAL)
+    store = _get_store()
+    try:
+        watch(REPO_ROOT, store, corpus=corpus, quiet=args.quiet)
+    finally:
+        store.close()
+
+
 def cmd_reindex(args: argparse.Namespace) -> None:
     """Force re-index by clearing checksums and re-running index."""
     from neutron_os import REPO_ROOT
@@ -284,6 +298,11 @@ def main(argv: list[str] | None = None) -> None:
     p_sync = sub.add_parser("sync", help="Sync a corpus from remote source")
     p_sync.add_argument("target", choices=["org"], help="Corpus to sync")
 
+    # watch
+    p_watch = sub.add_parser("watch", help="Watch workspace dirs and re-index on change")
+    p_watch.add_argument("--corpus", default="rag-internal", help="Target corpus")
+    p_watch.add_argument("--quiet", action="store_true", help="Suppress startup output")
+
     # reindex
     p_reindex = sub.add_parser("reindex", help="Force full re-index of a corpus")
     p_reindex.add_argument("--corpus", default="rag-internal", help="Corpus to reindex")
@@ -312,6 +331,7 @@ def main(argv: list[str] | None = None) -> None:
         "load-community": cmd_load_community,
         "sync": cmd_sync,
         "reindex": cmd_reindex,
+        "watch": cmd_watch,
     }
 
     if args.command in dispatch:

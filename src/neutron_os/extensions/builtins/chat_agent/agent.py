@@ -11,6 +11,7 @@ The agent is LLM-agnostic — it uses the same Gateway as neut sense.
 from __future__ import annotations
 
 import json
+import threading
 import time
 from typing import Any, Callable, Iterator, Optional
 
@@ -137,6 +138,7 @@ class ChatAgent:
                 if not use_stream and response.text and self._render:
                     self._render.render_message("assistant", response.text)
                 self.session.add_message("assistant", response.text)
+                self._schedule_session_index()
                 return response.text
 
             # Process tool calls
@@ -191,6 +193,7 @@ class ChatAgent:
         # Exceeded max rounds
         fallback = response.text or "I've reached the maximum number of tool-use rounds."
         self.session.add_message("assistant", fallback)
+        self._schedule_session_index()
         return fallback
 
     def _record_usage(self, response: CompletionResponse) -> None:
@@ -495,9 +498,48 @@ class ChatAgent:
                 parts.append(
                     f"[{r.corpus}/{r.source_title or r.source_path}]\n{r.chunk_text[:600]}"
                 )
+            # Low-confidence hint — surface when the best match is weak
+            best_score = max(r.combined_score for r in results)
+            if best_score < 0.15:
+                parts.append(
+                    "[Low RAG confidence — run `neut rag index` or "
+                    "`neut note \"...\"` to add more context]"
+                )
             return "\n\n".join(parts)
         except Exception:
             return ""
+
+    def _schedule_session_index(self) -> None:
+        """Fire-and-forget: index the current session file after every turn.
+
+        Runs in a daemon thread so it never blocks the response path.
+        The session file is written by the session manager before this
+        method is called, so the latest turn is always included.
+        """
+        session_id = getattr(self.session, "session_id", None)
+        if not session_id:
+            return
+
+        def _run():
+            try:
+                from neutron_os.extensions.builtins.settings.store import SettingsStore
+                url = SettingsStore().get("rag.database_url", "")
+                if not url:
+                    return
+                session_path = _REPO_ROOT / "runtime" / "sessions" / f"{session_id}.json"
+                if not session_path.exists():
+                    return
+                from neutron_os.rag.store import RAGStore, CORPUS_INTERNAL
+                from neutron_os.rag.personal import ingest_session_file
+                store = RAGStore(url)
+                store.connect()
+                ingest_session_file(session_path, store, corpus=CORPUS_INTERNAL)
+                store.close()
+            except Exception:
+                pass  # best-effort
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
 
     def _build_system_prompt(self) -> str:
         """Build dynamic system prompt with project context."""
