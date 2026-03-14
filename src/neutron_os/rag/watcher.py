@@ -23,7 +23,6 @@ import logging
 import time
 from pathlib import Path
 from threading import Timer
-from typing import TYPE_CHECKING
 
 log = logging.getLogger(__name__)
 

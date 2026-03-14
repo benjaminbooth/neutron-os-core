@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -129,7 +129,7 @@ class TestRAGWatchHandlerHandle:
     def test_does_not_route_session_non_json(self):
         path = self._sessions_dir() / "readme.txt"
         with patch("neutron_os.rag.personal.ingest_session_file") as mock_ingest:
-            with patch("neutron_os.rag.ingest.ingest_file") as mock_file:
+            with patch("neutron_os.rag.ingest.ingest_file"):
                 self.handler._handle(path)
         mock_ingest.assert_not_called()
 

@@ -17,9 +17,8 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional
 
-from .chunker import chunk_markdown, Chunk
+from .chunker import chunk_markdown
 from .embeddings import embed_texts
 from .store import CORPUS_INTERNAL, RAGStore
 

@@ -149,7 +149,7 @@ def cmd_status(args: argparse.Namespace) -> None:
     store = _get_store()
     try:
         s = store.stats()
-        print(f"RAG Index Status")
+        print("RAG Index Status")
         print(f"  Total documents: {s['total_documents']}")
         print(f"  Total chunks:    {s['total_chunks']}")
         print()
@@ -175,7 +175,6 @@ def cmd_load_community(args: argparse.Namespace) -> None:
             dump = Path(args.dump_path)
         else:
             # Look for bundled community dump
-            import importlib.resources as pkg_resources
             try:
                 pkg_dir = Path(__file__).resolve().parents[1] / "data" / "rag"
                 candidates = sorted(pkg_dir.glob("community-v*.sql")) + sorted(pkg_dir.glob("community-v*.pgdump"))

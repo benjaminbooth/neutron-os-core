@@ -11,13 +11,11 @@ All store interactions are mocked. Tests cover:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from neutron_os.rag.personal import (
     _md5_text,
