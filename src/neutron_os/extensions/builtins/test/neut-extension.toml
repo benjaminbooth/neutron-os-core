@@ -1,0 +1,13 @@
+[extension]
+name = "test"
+version = "0.3.0"
+description = "Test orchestration"
+author = "NeutronOS"
+builtin = true
+kind = "utility"
+module = "platform"
+
+[[cli.commands]]
+noun = "test"
+module = "neutron_os.extensions.builtins.test.cli"
+description = "Test orchestration"

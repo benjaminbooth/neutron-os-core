@@ -1,0 +1,70 @@
+[project]
+name = "neutron-os"
+version = "0.3.2"
+description = "Modular digital platform for nuclear facilities"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "pyyaml>=6.0",
+    "argcomplete>=3.0",
+]
+
+[project.optional-dependencies]
+publisher = ["python-docx>=1.1"]
+rag = [
+    "psycopg2-binary>=2.9",
+    "requests>=2.28",
+    "watchdog>=3.0",
+]
+sense = [
+    "psycopg2-binary>=2.9",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "pgvector>=0.2",
+]
+repos = [
+    "PyGithub>=2.0",
+    "python-gitlab>=4.0",
+]
+serve = []
+chat = [
+    "rich>=13.0",
+    "prompt-toolkit>=3.0",
+    "pygments>=2.17",
+]
+mcp = ["mcp>=1.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+]
+all = [
+    "neutron-os[publisher,rag,sense,repos,serve,chat,mcp,dev]",
+]
+
+[project.scripts]
+neut = "neutron_os.neut_cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/neutron_os"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/neutron_os/extensions/builtins", "src/neutron_os/rag/tests"]
+pythonpath = ["src"]
+markers = [
+    "integration: marks tests that hit external services (deselect with '-m \"not integration\"')",
+    "gitlab: GitLab API integration",
+    "onedrive: OneDrive / MS Graph integration",
+    "teams: Teams transcript integration",
+    "voice: Voice memo / sense serve integration",
+    "inbox: Inbox note integration",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

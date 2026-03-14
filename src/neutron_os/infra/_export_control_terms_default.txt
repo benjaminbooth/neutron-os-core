@@ -1,0 +1,54 @@
+# NeutronOS built-in export-control keyword list
+# These terms trigger routing to the VPN-hosted model (export_controlled tier).
+# Add facility-specific terms in runtime/config/export_control_terms.txt
+#
+# Format: one term per line. Matching is case-insensitive substring search.
+# Lines starting with # are comments.
+
+# ── Nuclear simulation codes (EAR-controlled) ──────────────────────────────
+MCNP
+MCNP6
+SCALE
+ORIGEN
+RELAP
+RELAP5
+TRACE
+PARCS
+TRITON
+SIMULATE
+CASMO
+WIMS
+MONK
+FISPIN
+CINDER
+
+# ── Fissile / special nuclear material ────────────────────────────────────
+weapons-usable
+weapon-grade
+highly enriched uranium
+HEU
+special nuclear material
+SNM
+plutonium-239
+Pu-239
+fissile material inventory
+
+# ── Reactor design (sensitive context) ────────────────────────────────────
+critical assembly
+critical experiment
+prompt criticality
+neutron multiplication factor
+k-effective greater than
+supercritical configuration
+bare sphere critical mass
+reflected critical mass
+
+# ── Regulatory / legal triggers ───────────────────────────────────────────
+10 CFR 810
+EAR controlled
+ITAR controlled
+export controlled
+deemed export
+technology transfer restriction
+nuclear proliferation
+Atomic Energy Act

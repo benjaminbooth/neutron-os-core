@@ -1,0 +1,11 @@
+[extension]
+name = "doctor"
+version = "0.1.0"
+description = "AI-powered diagnostics and self-healing for Neutron OS"
+author = "Neutron OS Team"
+builtin = true
+kind = "agent"
+module = "platform"
+
+[cli]
+noun = "doctor"

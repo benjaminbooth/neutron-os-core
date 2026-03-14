@@ -1,0 +1,13 @@
+[extension]
+name = "status"
+version = "0.3.0"
+description = "System health dashboard"
+author = "NeutronOS"
+builtin = true
+kind = "utility"
+module = "platform"
+
+[[cli.commands]]
+noun = "status"
+module = "neutron_os.extensions.builtins.status.cli"
+description = "System health dashboard"

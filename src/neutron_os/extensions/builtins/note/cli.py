@@ -1,0 +1,162 @@
+"""neut note — capture a quick thought to the personal RAG knowledge base.
+
+Usage::
+
+    neut note "meeting with Dr. Farzad: agreed MCNP mesh must stay on rascal"
+    neut note                   # open $EDITOR for a longer note
+    neut note --list            # show recent daily note files
+
+Notes are appended (with a timestamp) to::
+
+    runtime/knowledge/notes/YYYY-MM-DD.md
+
+and immediately indexed into the personal RAG corpus (rag-internal) in a
+background thread — zero impact on the command return time.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+import tempfile
+import threading
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _notes_dir() -> Path:
+    from neutron_os import REPO_ROOT
+    d = REPO_ROOT / "runtime" / "knowledge" / "notes"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _today_file() -> Path:
+    return _notes_dir() / f"{datetime.now().strftime('%Y-%m-%d')}.md"
+
+
+def _timestamp() -> str:
+    return datetime.now(timezone.utc).strftime("%H:%M UTC")
+
+
+def _append_note(note_file: Path, text: str) -> None:
+    """Append *text* to *note_file* with a timestamp header."""
+    header = f"\n## {_timestamp()}\n\n"
+    with note_file.open("a", encoding="utf-8") as f:
+        f.write(header + text.strip() + "\n")
+
+
+def _index_file_background(note_file: Path) -> None:
+    """Re-index *note_file* in a daemon thread — does not block the caller."""
+    def _run():
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            url = SettingsStore().get("rag.database_url", "")
+            if not url:
+                return
+            from neutron_os import REPO_ROOT
+            from neutron_os.rag.store import RAGStore
+            from neutron_os.rag.ingest import ingest_file
+            store = RAGStore(url)
+            store.connect()
+            ingest_file(note_file, store, repo_root=REPO_ROOT / "runtime" / "knowledge")
+            store.close()
+        except Exception:
+            pass  # RAG indexing is best-effort
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+
+
+# ---------------------------------------------------------------------------
+# Command handlers
+# ---------------------------------------------------------------------------
+
+def cmd_note(args: argparse.Namespace) -> None:
+    note_file = _today_file()
+
+    if args.list:
+        # Show recent note files
+        notes_dir = _notes_dir()
+        files = sorted(notes_dir.glob("*.md"), reverse=True)[:10]
+        if not files:
+            print("No notes yet. Try: neut note \"your thought here\"")
+            return
+        for f in files:
+            size = f.stat().st_size
+            print(f"  {f.name}  ({size} bytes)")
+        return
+
+    if args.text:
+        # Inline note from CLI args
+        text = " ".join(args.text)
+        _append_note(note_file, text)
+        print(f"Noted → {note_file.relative_to(Path.cwd()) if note_file.is_relative_to(Path.cwd()) else note_file}")
+        _index_file_background(note_file)
+        return
+
+    # No text given — open $EDITOR
+    editor = os.environ.get("EDITOR") or os.environ.get("VISUAL") or "nano"
+
+    # Write a temp file with a prompt header
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".md", delete=False, encoding="utf-8"
+    ) as tmp:
+        tmp.write(f"<!-- Note for {datetime.now().strftime('%Y-%m-%d')} — save and close to capture -->\n\n")
+        tmp_path = Path(tmp.name)
+
+    try:
+        result = subprocess.run([editor, str(tmp_path)])
+        if result.returncode != 0:
+            print("Editor exited with error — note not saved.", file=sys.stderr)
+            return
+        content = tmp_path.read_text(encoding="utf-8").strip()
+        # Strip the comment header we injected
+        lines = [l for l in content.splitlines() if not l.startswith("<!--")]
+        text = "\n".join(lines).strip()
+        if not text:
+            print("Empty note — nothing saved.")
+            return
+        _append_note(note_file, text)
+        print(f"Noted → {note_file}")
+        _index_file_background(note_file)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Parser
+# ---------------------------------------------------------------------------
+
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="neut note",
+        description="Capture a quick note to the personal RAG knowledge base.",
+    )
+    parser.add_argument(
+        "text",
+        nargs="*",
+        help="Note text (omit to open $EDITOR)",
+    )
+    parser.add_argument(
+        "--list", "-l",
+        action="store_true",
+        help="List recent daily note files",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = get_parser()
+    args = parser.parse_args(argv)
+    cmd_note(args)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,18 @@
+[extension]
+name = "chat"
+version = "0.3.0"
+description = "Interactive agent with tool calling"
+author = "NeutronOS"
+builtin = true
+kind = "agent"
+module = "platform"
+
+[[cli.commands]]
+noun = "chat"
+module = "neutron_os.extensions.builtins.chat_agent.cli"
+description = "Interactive agent with tool calling"
+
+[[cli.commands]]
+noun = "code"
+module = "neutron_os.extensions.builtins.chat_agent.cli"
+description = "Interactive agent with tool calling (alias for chat)"
