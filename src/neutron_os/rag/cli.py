@@ -121,7 +121,11 @@ def cmd_search(args: argparse.Namespace) -> None:
 
     store = _get_store()
     try:
-        embs = embed_texts([args.query])
+        try:
+            embs = embed_texts([args.query])
+        except Exception as exc:
+            log.warning("Embedding skipped (using text-only search): %s", exc)
+            embs = None
         results = store.search(
             query_embedding=embs[0] if embs else None,
             query_text=args.query,
