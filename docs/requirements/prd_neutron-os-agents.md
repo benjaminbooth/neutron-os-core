@@ -298,11 +298,22 @@ The store will carry two independent classification dimensions:
 - [x] `neut rag` extension CLI (index, search, status, sync)
 - [x] Chat agent injects RAG context per turn
 - [x] `rag.database_url` configured via `neut settings`
+- [x] Three-tier corpus model (`rag-community`, `rag-org`, `rag-internal`)
+- [x] `neut rag load-community` — load community dump from SQL file
+- [x] `neut rag reindex` — drop and fully rebuild the index
+- [x] `neut rag watch` — filesystem watcher for continuous background indexing
+- [x] Session auto-indexing — daemon thread indexes each chat session after every turn
+- [x] Signal ingestion from `runtime/inbox/processed/` (sense pipeline output)
+- [x] Git log indexing from `runtime/knowledge/` cloned repos
+- [x] `neut note` extension — quick daily notes auto-indexed into personal RAG
+- [x] Per-corpus stats, `delete_corpus`, low-confidence RAG hint
+- [x] Integration test suite (15 tests) covering hybrid search, multi-corpus, vector path, reindex, load-dump
 - [ ] Add `access_tier`, `scope`, `embedding_model`, `embedding_dims` to schema
 - [ ] Migrate `tier='institutional'` → `access_tier='public', scope='community'`
 - [ ] Embedding provider abstraction in `rag/embeddings.py` (route by `access_tier`)
 - [ ] Ingest auto-classification using `infra/router.py`
 - [ ] `neut rag index --remote` for server-side EC indexing
+- [ ] M-O corpus lifecycle: `store.delete_corpus_older_than()`, `rag.session_ttl_days` setting, launchd/systemd daemon installer
 
 ---
 
