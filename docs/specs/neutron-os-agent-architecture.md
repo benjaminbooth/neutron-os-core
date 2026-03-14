@@ -667,6 +667,85 @@ neut sense publish --target onedrive
 
 ---
 
+## M-O Corpus Stewardship
+
+M-O (the resource steward agent) owns the health and lifecycle of the personal RAG
+corpus — analogous to how it manages `archive/` and `spikes/`. This is ongoing
+housekeeping that runs on a schedule without user involvement.
+
+*Cross-reference: `neutron-os-rag-architecture-spec.md` §7.4 (Corpus Lifecycle)*
+
+### M-O RAG Responsibilities
+
+| Task | Trigger | Implementation |
+|------|---------|---------------|
+| Nightly incremental index | Scheduled (off-hours) | `neut rag index` — checksum-skipping, fast after first run |
+| Session pruning | Weekly | `store.delete_corpus_older_than(CORPUS_INTERNAL, days=ttl)` |
+| Corpus health check | On `neut status` | Detect source/index drift; report stale document count |
+| Watch daemon supervision | On login / after crash | launchd plist or systemd user unit wrapping `neut rag watch --quiet` |
+| Index size reporting | On `neut status` | Surface chunk counts without requiring explicit `neut rag status` |
+
+### Watch Daemon Installation
+
+During `neut config` (setup wizard), M-O generates and installs the appropriate
+OS-level service to supervise `neut rag watch --quiet`:
+
+**macOS** — `~/Library/LaunchAgents/io.neutronos.rag-watch.plist`:
+```xml
+<plist version="1.0"><dict>
+  <key>Label</key><string>io.neutronos.rag-watch</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/path/to/.venv/bin/neut</string>
+    <string>rag</string><string>watch</string><string>--quiet</string>
+  </array>
+  <key>KeepAlive</key><true/>
+  <key>RunAtLoad</key><true/>
+  <key>WorkingDirectory</key><string>/path/to/Neutron_OS</string>
+  <key>StandardErrorPath</key>
+  <string>~/Library/Logs/neutronos-rag-watch.log</string>
+</dict></plist>
+```
+
+**Linux** — `~/.config/systemd/user/neutron-os-rag-watch.service`:
+```ini
+[Unit]
+Description=Neutron OS RAG filesystem watcher
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/Neutron_OS
+ExecStart=/path/to/.venv/bin/neut rag watch --quiet
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+```
+
+### Session TTL Pruning
+
+The session corpus grows indefinitely without pruning. M-O's weekly sweep respects
+the user-configurable TTL:
+
+```bash
+neut settings set rag.session_ttl_days 90    # default: 90
+```
+
+The scheduled task calls `store.delete_corpus_older_than(corpus, days)` which removes
+chunks and document records older than the TTL window from `rag-internal`. Old sessions
+remain as JSON files on disk — only the index entries are pruned.
+
+### What M-O Does NOT Own
+
+- The `neut rag watch` process itself — that's just a subprocess it supervises
+- Deciding what content is valuable — policy is expressed through `rag.session_ttl_days`
+  and other settings; M-O enforces but does not decide
+- The actual ingest logic — stays in `rag/personal.py` and `rag/ingest.py`
+
+---
+
 ## Dependencies
 
 | Component | Choice | Why |

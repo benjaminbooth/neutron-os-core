@@ -1,0 +1,11 @@
+[extension]
+name = "rag"
+version = "0.1.0"
+description = "RAG (Retrieval-Augmented Generation) index management — index, search, and sync the three-tier corpus"
+builtin = true
+kind = "tool"
+module = "platform"
+
+[[cli.commands]]
+noun = "rag"
+module = "neutron_os.extensions.builtins.rag.cli"

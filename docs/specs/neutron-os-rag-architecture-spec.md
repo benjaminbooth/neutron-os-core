@@ -383,11 +383,73 @@ embeddings = embed_texts(chunks, access_tier=tier)
 
 User is shown what was classified and may override before committing.
 
-### 7.3 What Makes Neut Irreplaceable
+### 7.3 Personal Corpus Sources (Implemented)
+
+The personal corpus (`rag-internal`) is built automatically from four source types.
+All ingest is **fully asynchronous** — no blocking in the prompt/response chain.
+
+| Source | Path | Trigger | `source_type` |
+|--------|------|---------|--------------|
+| Chat session transcripts | `runtime/sessions/*.json` | After every chat turn (daemon thread) | `session` |
+| Processed sense signals | `runtime/inbox/processed/*.json` | `neut rag index` / watch | `signal` |
+| Git commit logs | `.git` repos under `runtime/knowledge/` | `neut rag index` / watch | `git-log` |
+| Daily notes | `runtime/knowledge/notes/YYYY-MM-DD.md` | `neut note "..."` (immediate, background) | `markdown` |
+
+**Session indexing** — `ChatAgent._schedule_session_index()` spawns a `daemon=True`
+thread after each completed turn. Checksum deduplication means unchanged turns cost
+nothing on re-runs. Sessions with fewer than 3 turns are skipped as noise.
+
+**Watch mode** — `neut rag watch` runs a `watchdog` filesystem observer across
+`docs/`, `runtime/knowledge/`, `runtime/sessions/`, and `runtime/inbox/processed/`.
+Events are debounced (2 s window) to handle editor temp-file swaps.
+
+**Notes** — `neut note "thought"` appends a timestamped entry to the daily markdown
+file and triggers background re-indexing. `neut note` (bare) opens `$EDITOR`.
+
+**Low-confidence hint** — when the best `combined_score < 0.15`, the system prompt
+appends: `[Low RAG confidence — run neut rag index or neut note to add more context]`
+
+**Implementation** — `src/neutron_os/rag/personal.py` contains `ingest_sessions()`,
+`ingest_signals()`, `ingest_git_logs()`. `ingest_repo()` calls all three when
+`personal=True` (default for `rag-internal`; set `False` for community/org corpora).
+
+### 7.4 Corpus Lifecycle — M-O Stewardship
+
+The personal corpus grows without bound unless actively managed. M-O owns corpus
+health as a scheduled stewardship task, analogous to how it manages `archive/` and
+`spikes/`.
+
+**M-O responsibilities:**
+
+| Task | Schedule | Command |
+|------|----------|---------|
+| Nightly incremental index | Daily, off-hours | `neut rag index` (checksum-skipping, fast) |
+| Session pruning | Weekly | Delete `sessions/` corpus entries older than N days (configurable `rag.session_ttl_days`) |
+| Corpus health check | On `neut status` | Detect source/index drift; report stale document count |
+| Watch daemon supervision | On login | Start `neut rag watch`; restart on crash (launchd/systemd) |
+| Index size reporting | On `neut status` | Surface chunk counts without requiring `neut rag status` |
+
+**Watch daemon installation** — during `neut config`, M-O generates and installs:
+- **macOS**: `~/Library/LaunchAgents/io.neutronos.rag-watch.plist` (launchd)
+- **Linux**: `~/.config/systemd/user/neutron-os-rag-watch.service` (systemd user unit)
+
+Both supervise `neut rag watch --quiet` and restart on exit.
+
+**Session TTL** — configurable via:
+```bash
+neut settings set rag.session_ttl_days 90   # default: 90
+```
+M-O's weekly sweep calls `store.delete_corpus_older_than(CORPUS_INTERNAL, days=ttl)`
+(to be implemented in `rag/store.py`).
+
+*Cross-reference: `neutron-os-agent-architecture.md` §M-O Corpus Stewardship*
+
+### 7.5 What Makes Neut Irreplaceable
 
 The personal RAG compounds over time. After 6 months of use:
 - Every meeting the user attended is indexed and retrievable
 - Every document they ingested is searchable
+- Every chat session is retrospectively searchable
 - Community content is always fresh (auto-updated)
 - Facility context (procedures, configs) is mixed in automatically
 
@@ -410,9 +472,17 @@ neut rag sync org                # pull org corpus snapshot (source from config)
 neut rag sync org --source <url> # explicit source: rascal:/path or s3://bucket/path
 
 # ─── Personal corpus ──────────────────────────────────────────────
-neut rag index [path]            # index path into rag-internal (default: current workspace)
-                                 # crawls docs/, runtime/knowledge/, Python docstrings via AST
+neut rag index [path]            # index path into rag-internal; includes sessions,
+                                 # signals, git logs, and notes automatically
 neut rag index --remote <path>   # server-side index for EC content on rascal
+neut rag watch                   # foreground watcher: re-indexes changed files live
+                                 # (M-O installs this as a launchd/systemd daemon)
+
+# ─── Notes (personal knowledge capture) ────────────────────────────
+neut note "quick thought"        # append timestamped note to today's daily file,
+                                 # index in background (zero prompt-chain impact)
+neut note                        # open $EDITOR for longer note, then index
+neut note --list                 # show recent daily note files
 
 # ─── Search and inspection ────────────────────────────────────────
 neut rag search <query>          # hybrid search across all three corpora
@@ -420,9 +490,9 @@ neut rag status                  # chunk counts per corpus (rag-community / rag-
 neut rag list                    # list indexed documents with corpus, scope, tier
 neut rag remove <path>           # remove path from rag-internal index
 
-# ─── Maintenance ──────────────────────────────────────────────────
-neut rag reindex --tier public --model <model>   # re-embed with new embedding model
-neut rag reindex --tier export_controlled
+# ─── Maintenance (M-O scheduled) ──────────────────────────────────
+neut rag reindex                 # clear corpus and rebuild from all sources
+neut rag reindex --corpus rag-internal --model <model>  # re-embed with new model
 ```
 
 `neut rag status` output example:
@@ -661,11 +731,17 @@ The entire EC retrieval + generation loop stays server-side.
 
 ### Phase 3 — Personal RAG Compounding
 
-| Item | Notes |
-|------|-------|
-| Session history auto-indexing | Index chat sessions → retrievable later |
-| Sense pipeline integration | Meeting transcripts → personal scope chunks |
-| Cross-scope relevance tuning | Weight community vs facility vs personal results |
+| Item | Notes | Status |
+|------|-------|--------|
+| Session history auto-indexing | `_schedule_session_index()` daemon thread after each turn | ✅ |
+| Sense pipeline integration | `runtime/inbox/processed/` → `rag-internal` via `ingest_signals()` | ✅ |
+| Git commit log indexing | Repos under `runtime/knowledge/` via `ingest_git_logs()` | ✅ |
+| Daily notes (`neut note`) | Timestamped daily markdown, immediate background index | ✅ |
+| Filesystem watch (`neut rag watch`) | `watchdog` observer, 2 s debounce, M-O daemon supervised | ✅ |
+| M-O corpus lifecycle stewardship | Nightly index, session pruning, watch daemon install | 🔲 |
+| Session TTL pruning | `store.delete_corpus_older_than()` + `rag.session_ttl_days` setting | 🔲 |
+| Community RAG promotion pipeline | Personal → community with PII scrubbing + EC gating | 🔲 |
+| Cross-scope relevance tuning | Weight community vs facility vs personal results | 🔲 |
 
 ---
 

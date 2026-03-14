@@ -31,6 +31,7 @@ _DEFAULTS: dict[str, Any] = {
     "routing.on_vpn_unavailable": "warn",
     "interface.stream": True,
     "interface.theme": "dark",
+    "rag.database_url": "",  # empty = RAG disabled; set to postgresql:// to enable
 }
 
 
