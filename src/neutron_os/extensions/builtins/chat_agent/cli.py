@@ -230,7 +230,7 @@ def _handle_slash_command(
         return "\n  /update is fully supported in the fullscreen TUI.\n  Use 'neut update --pull' from the command line.\n"
 
     # --- CLI commands (forwarded to actual CLI) ---
-    if cmd in ("/sense", "/doc", "/docflow"):
+    if cmd in ("/sense", "/doc", "/pub", "/publisher"):
         return _execute_cli_command(command)
 
     # --- Unknown command with suggestion ---
@@ -256,7 +256,7 @@ def _execute_cli_command(command: str) -> str:
     args = parts[2:] if len(parts) > 2 else []
 
     # Map aliases
-    if namespace == "docflow":
+    if namespace == "publisher":
         namespace = "doc"
 
     if not subcommand:
@@ -370,7 +370,14 @@ def _print_model_status(gateway) -> None:
     provider = gateway.active_provider
     if provider is None:
         print(
-            "  No LLM providers configured. Run `neut config` to set up a provider.",
+            "\n  No LLM providers available.\n"
+            "\n"
+            "  Quick start:\n"
+            "    1. export ANTHROPIC_API_KEY=sk-...   (or OPENAI_API_KEY)\n"
+            "    2. neut config                       (guided setup)\n"
+            "    3. neut chat                         (start chatting)\n"
+            "\n"
+            "  Run `neut status` to see what's configured.\n",
             file=sys.stderr,
         )
         return
@@ -385,16 +392,19 @@ def _print_model_status(gateway) -> None:
     model_name = getattr(gateway, "_model_override", None) or provider.model
     print(f"  Using {model_name} via {provider.name}  [{tier_label}]")
 
-    # Check if VPN model is configured but unreachable
+    # Check all VPN-gated providers on startup
     for p in gateway.providers:
-        if getattr(p, "requires_vpn", False) and p != provider:
-            if not gateway._check_vpn(p):
-                print(
-                    f"  VPN model ({p.name}) unreachable — "
-                    "export-controlled queries will use fallback policy.",
-                    file=sys.stderr,
-                )
-            break
+        if not getattr(p, "requires_vpn", False):
+            continue
+        if gateway._check_vpn(p):
+            if p != provider:
+                print(f"  Private endpoint ({p.name}) reachable")
+        else:
+            print(
+                f"  Private endpoint ({p.name}) unreachable — "
+                "export-controlled queries will use fallback policy.",
+                file=sys.stderr,
+            )
 
 
 def main():

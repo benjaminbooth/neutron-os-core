@@ -125,6 +125,12 @@ class HealthChecker:
         """Check all services."""
         health = SystemHealth()
 
+        # LLM and routing — most important for new users
+        health.services.append(self.check_llm_providers())
+        health.services.append(self.check_ollama())
+        health.services.append(self.check_routing())
+
+        # Infrastructure
         health.services.append(self.check_database())
         health.services.append(self.check_api_server())
         health.services.append(self.check_sense_server())
@@ -133,6 +139,151 @@ class HealthChecker:
 
         health.compute_overall()
         return health
+
+    def check_llm_providers(self) -> ServiceHealth:
+        """Check if any LLM providers are configured and reachable."""
+        try:
+            from neutron_os.infra.gateway import Gateway
+            gw = Gateway()
+
+            if not gw.providers:
+                return ServiceHealth(
+                    name="LLM Providers",
+                    status=HealthStatus.UNHEALTHY,
+                    message="No providers configured",
+                    details={
+                        "fix": "Set ANTHROPIC_API_KEY or OPENAI_API_KEY, then run `neut config`",
+                    },
+                )
+
+            available = [p for p in gw.providers if p.api_key]
+            unavailable = [p for p in gw.providers if not p.api_key]
+
+            if not available:
+                return ServiceHealth(
+                    name="LLM Providers",
+                    status=HealthStatus.UNHEALTHY,
+                    message=f"{len(unavailable)} configured but no API keys set",
+                    details={
+                        "providers": [p.name for p in unavailable],
+                        "fix": "Set the API key env var for at least one provider",
+                    },
+                )
+
+            names = [p.name for p in available]
+            vpn_providers = [p for p in available if getattr(p, "requires_vpn", False)]
+            vpn_reachable = []
+            vpn_unreachable = []
+            for p in vpn_providers:
+                if gw._check_vpn(p):
+                    vpn_reachable.append(p.name)
+                else:
+                    vpn_unreachable.append(p.name)
+
+            details: dict = {"providers": names}
+            if vpn_reachable:
+                details["vpn_reachable"] = vpn_reachable
+            if vpn_unreachable:
+                details["vpn_unreachable"] = vpn_unreachable
+
+            status = HealthStatus.HEALTHY
+            msg = f"{len(available)} provider{'s' if len(available) != 1 else ''} ready"
+            if vpn_unreachable:
+                status = HealthStatus.DEGRADED
+                msg += f" ({', '.join(vpn_unreachable)} unreachable)"
+
+            return ServiceHealth(
+                name="LLM Providers",
+                status=status,
+                message=msg,
+                details=details,
+            )
+
+        except Exception as e:
+            return ServiceHealth(
+                name="LLM Providers",
+                status=HealthStatus.UNKNOWN,
+                message=str(e)[:50],
+            )
+
+    def check_ollama(self) -> ServiceHealth:
+        """Check if Ollama is running for local routing classification."""
+        import urllib.request
+
+        start = time.time()
+        try:
+            req = urllib.request.Request("http://localhost:11434/api/tags")
+            with urllib.request.urlopen(req, timeout=1) as resp:
+                data = json.loads(resp.read())
+            latency = (time.time() - start) * 1000
+
+            models = [m.get("name", "") for m in data.get("models", [])]
+            # Check if the configured routing model is available
+            try:
+                from neutron_os.extensions.builtins.settings.store import SettingsStore
+                wanted = SettingsStore().get("routing.ollama_model", "llama3.2:1b")
+            except Exception:
+                wanted = "llama3.2:1b"
+
+            has_model = any(wanted.split(":")[0] in m for m in models)
+
+            if has_model:
+                return ServiceHealth(
+                    name="Ollama (local classifier)",
+                    status=HealthStatus.HEALTHY,
+                    message=f"Running, {wanted} available ({latency:.0f}ms)",
+                    latency_ms=latency,
+                    details={"models": models[:5], "routing_model": wanted},
+                )
+            else:
+                return ServiceHealth(
+                    name="Ollama (local classifier)",
+                    status=HealthStatus.DEGRADED,
+                    message=f"Running but {wanted} not pulled",
+                    latency_ms=latency,
+                    details={
+                        "models": models[:5],
+                        "routing_model": wanted,
+                        "fix": f"ollama pull {wanted}",
+                    },
+                )
+
+        except Exception:
+            return ServiceHealth(
+                name="Ollama (local classifier)",
+                status=HealthStatus.DEGRADED,
+                message="Not running (routing uses keyword-only fallback)",
+                details={
+                    "note": "Optional — improves export-control classification accuracy",
+                    "fix": "brew install ollama && ollama serve",
+                },
+            )
+
+    def check_routing(self) -> ServiceHealth:
+        """Check routing configuration and sensitivity."""
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            store = SettingsStore()
+            mode = store.get("routing.default_mode", "auto")
+            sensitivity = store.get("routing.sensitivity", "balanced")
+            vpn_policy = store.get("routing.on_vpn_unavailable", "warn")
+
+            return ServiceHealth(
+                name="Routing",
+                status=HealthStatus.HEALTHY,
+                message=f"mode={mode}, sensitivity={sensitivity}",
+                details={
+                    "default_mode": mode,
+                    "sensitivity": sensitivity,
+                    "on_vpn_unavailable": vpn_policy,
+                },
+            )
+        except Exception:
+            return ServiceHealth(
+                name="Routing",
+                status=HealthStatus.HEALTHY,
+                message="Using defaults (auto, balanced)",
+            )
 
     def check_database(self) -> ServiceHealth:
         """Check PostgreSQL database connectivity."""

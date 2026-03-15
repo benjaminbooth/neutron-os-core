@@ -20,6 +20,7 @@
 > | [Digital Twin Architecture](digital-twin-architecture-spec.md) | Surrogate models, provider interfaces, WASM runtime |
 > | [Data Architecture](data-architecture-spec.md) | Medallion pattern, Iceberg, schemas, streaming |
 > | [neut CLI](neut-cli-spec.md) | Command-line interface, auth, WASM validation |
+> | [Publisher](neutron-os-publisher-spec.md) | Document lifecycle, format-endpoint compatibility, audience targeting |
 >
 > For strategic context, see the [Executive Summary](neutron-os-executive-summary.md).
 
@@ -45,6 +46,15 @@
 | [dbt Silver Models](design-prompts/prompt-dbt-silver-models.md) | 1-2 | Data transformation |
 | [Dagster Orchestration](design-prompts/prompt-dagster-orchestration.md) | 2 | Pipeline scheduling |
 | [Superset Dashboards](design-prompts/prompt-superset-dashboards.md) | 2 | Visualization |
+
+### Component Specs
+
+| Spec | Description |
+|------|-------------|
+| [Agent Architecture](neutron-os-agent-architecture.md) | Sense pipeline, extractors, correlator, synthesizer |
+| [Model Routing & Export Control](neutron-os-model-routing-spec.md) | LLM tier routing, export control classifier, `neut settings` |
+| [RAG Architecture](neutron-os-rag-architecture-spec.md) | Community/personal/facility scopes, export-controlled embeddings, local embedding pipeline |
+| [Agent State Management](agent-state-management-spec.md) | Concurrent state access (LockedJsonFile), M-O retention enforcement, audit logging |
 
 ---
 
@@ -113,6 +123,8 @@ Neutron OS is designed as a **modular platform**. Facilities enable only the mod
 | **Training** | Personnel onboarding, certification currency, skills development, **operator requalification tracking (4hr/quarter minimum)** | *(future PRD)* | Off |
 | **Personnel** | Staff directory with roles, certifications, contact info, availability | *(future PRD)* | Off |
 | **Search / AI** | RAG, workflow-enabled agents, tuned LLMs, semantic search | *(future PRD)* | Off |
+| **neut CLI + Agents** | `neut chat`, `neut sense`, export-control routing, `neut settings` | [Agent PRD](../requirements/prd_neutron-os-agents.md) | On |
+| **Publisher** | `neut pub` — document lifecycle, markdown → publish, multi-endpoint | [Publisher PRD](../requirements/prd_publisher.md) | On |
 | **Connections** | Integrations hub for external systems (within Settings) | *(future PRD)* | Off |
 
 **Module Architecture:**
@@ -314,6 +326,12 @@ Digital twins serve **multiple purposes** in reactor operations. The platform en
 | Analytics | Apache Superset | Open-source BI, test-driven dashboard development |
 | Audit Layer | Hyperledger Fabric | Multi-facility blockchain, regulatory compliance |
 | Vector Store | pgvector + RLS | Meeting context, semantic search, access control |
+| LLM Routing | `QueryRouter` (keyword + Ollama SLM) | Export control safety — no cloud call decides routing |
+| LLM Tiers | `public` (cloud) / `export_controlled` (UT VPN, qwen-rascal) | Sensitive nuclear content never reaches cloud APIs |
+| Settings | `neut settings` (global `~/.neut/` + project `.neut/`) | Claude Code-style UX; separate from facility config |
+| RAG Store | pgvector, `access_tier` × `scope` two-dimensional model | Single store; isolation enforced at query time, not topology |
+| Embeddings | Provider-abstracted via `models.toml` (`use_for = ["embedding"]`) | EC content embedded locally (Ollama); public content via cloud |
+| Prompt Evals | promptfoo (MIT open-source) | YAML-based LLM eval + adversarial redteam; Ollama judge for zero API cost |
 
 ### 2.4 Multi-Tenancy Architecture
 

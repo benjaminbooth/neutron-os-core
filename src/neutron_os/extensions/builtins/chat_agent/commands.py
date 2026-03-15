@@ -318,7 +318,7 @@ def _get_cli_commands() -> dict[str, str]:
         pass
 
     try:
-        from neutron_os.extensions.builtins.docflow.cli import COMMANDS as doc_commands
+        from neutron_os.extensions.builtins.publisher.cli import COMMANDS as doc_commands
         for name, help_text in doc_commands.items():
             cli_commands[f"/doc {name}"] = help_text
     except ImportError:

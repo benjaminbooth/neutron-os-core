@@ -80,7 +80,7 @@ TOOLS = [
         name="email_send",
         description=(
             "Send a previously drafted email via SMTP. "
-            "Requires SMTP to be configured in .doc-workflow.yaml."
+            "Requires SMTP to be configured in .publisher.yaml."
         ),
         category=ActionCategory.WRITE,
         parameters={
@@ -310,12 +310,12 @@ def _handle_send(params: dict) -> dict:
 
     # Try to load SMTP provider
     try:
-        from neutron_os.extensions.builtins.docflow.providers.notification.smtp import SMTPNotificationProvider
+        from neutron_os.extensions.builtins.publisher.providers.notification.smtp import SMTPNotificationProvider
         # Try loading config
         config = _load_smtp_config()
         if not config.get("from_address"):
             return {
-                "error": "SMTP not configured. Add smtp settings to .doc-workflow.yaml.",
+                "error": "SMTP not configured. Add smtp settings to .publisher.yaml.",
                 "hint": "Required: from_address, smtp_host, smtp_port. Optional: smtp_user, smtp_password.",
             }
         provider = SMTPNotificationProvider(config)
@@ -359,20 +359,20 @@ def _handle_list(params: dict) -> dict:
 
 
 def _load_smtp_config() -> dict:
-    """Load SMTP config from .doc-workflow.yaml."""
+    """Load SMTP config from .publisher.yaml."""
     try:
         import yaml  # type: ignore
     except ImportError:
         # Fallback: try JSON config
-        config_path = _REPO_ROOT / ".doc-workflow.json"
+        config_path = _REPO_ROOT / ".publisher.json"
         if config_path.exists():
             data = json.loads(config_path.read_text(encoding="utf-8"))
             return data.get("notification", {}).get("smtp", {})
         return {}
 
-    config_path = _REPO_ROOT / ".doc-workflow.yaml"
+    config_path = _REPO_ROOT / ".publisher.yaml"
     if not config_path.exists():
-        config_path = _REPO_ROOT / ".doc-workflow.yml"
+        config_path = _REPO_ROOT / ".publisher.yml"
     if not config_path.exists():
         return {}
 

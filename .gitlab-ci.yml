@@ -85,7 +85,7 @@ variables:
     - export PATH="$VENV_DIR/bin:$PATH"
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
-    - pip install --quiet -e ".[dev,docflow,chat]" requests git-filter-repo
+    - pip install --quiet -e ".[dev,publisher,chat]" requests git-filter-repo
 
 # =============================================================================
 # Preflight Stage — Verify external credentials before doing any work
@@ -217,8 +217,8 @@ test:unit:
       --ignore=tests/sense/test_correlator.py
       --ignore=tests/sense/test_extractors.py
       --ignore=tests/sense/test_multipart.py
-      --ignore=tests/docflow/test_cli.py
-      --ignore=tests/docflow/test_engine.py
+      --ignore=tests/publisher/test_cli.py
+      --ignore=tests/publisher/test_engine.py
       --ignore=tests/e2e/test_cli_smoke.py
       --ignore=tests/e2e/test_docflow_e2e.py
       --ignore=tests/e2e/test_voice_to_changelog.py

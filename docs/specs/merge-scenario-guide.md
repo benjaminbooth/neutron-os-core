@@ -1,4 +1,4 @@
-# DocFlow Merge Scenario: Sense + External Review Integration
+# Publisher Merge Scenario: Sense + External Review Integration
 
 **Document**: Complete guide for testing and implementing complex PRD merge workflows
 **Date**: February 25, 2026
@@ -166,7 +166,7 @@ changelog = synthesizer.synthesize(
 - ✓ Signal types reflected in changelog
 - ✓ Mappable to draft revisions
 
-**Key Insight**: This is where Sense workflow integrates with DocFlow. The Synthesizer produces a structured changelog that becomes the input to merge decisions.
+**Key Insight**: This is where Sense workflow integrates with Publisher. The Synthesizer produces a structured changelog that becomes the input to merge decisions.
 
 ---
 
@@ -488,7 +488,7 @@ Every merge decision is recorded:
 ## References
 
 - **Neut Sense Pipeline**: `tools/pipelines/sense/` (extractors, synthesizer, models)
-- **DocFlow Review Extractor**: `tools/pipelines/sense/extractors/docflow_review.py`
+- **Publisher Review Extractor**: `tools/pipelines/sense/extractors/docflow_review.py`
 - **Semantic Versioning**: `tools/docflow/scripts/publish.py` (version logic)
 - **State Management**: `tools/docflow/state.py` (DocumentState, PublicationRecord)
 

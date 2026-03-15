@@ -1,46 +1,71 @@
 # NeutronOS Agent State Management PRD
 
-**Status:** Draft  
-**Owner:** Ben Lindley  
-**Created:** 2026-02-24  
-**Last Updated:** 2026-02-24
+**Status:** Draft
+**Owner:** Ben Booth
+**Created:** 2026-02-24
+**Last Updated:** 2026-03-14
 
 ---
 
 ## Executive Summary
 
-NeutronOS agents accumulate valuable state across 15+ filesystem locations—transcripts, corrections, session history, configuration, document registries, and learned preferences. This state currently exists only on individual developer machines, creating risks around data loss, device theft, team collaboration, forensic analysis, and IP retention. This PRD defines requirements for a comprehensive state management system that enables backup, encryption, migration, and eventually enterprise-grade collaboration while maintaining the offline-first, human-in-the-loop principles core to NeutronOS.
+NeutronOS agents accumulate state across 15+ filesystem locations—transcripts, corrections, session history, configuration, document registries, and learned preferences. As the platform evolves toward parallel agent execution and community-shared knowledge, three critical problems emerge:
+
+1. **Concurrent access safety** — Multiple agents writing to the same JSON state files (`.publisher-registry.json`, `briefing_state.json`, `user_glossary.json`) will corrupt data without proper coordination.
+2. **Verifiable data retention** — A nuclear facility platform must ship with auditable, enforceable retention policies. Ad-hoc `CLIP_RETENTION_DAYS` constants and `expires_at` fields are insufficient.
+3. **Shared state for multi-user environments** — Community RAG corpora, facility configuration, and team glossaries require scope-aware state management that respects access tiers.
+
+These are not new CLI features. They are **infrastructure concerns** that M-O (the resource steward agent) should manage behind the scenes, with retention policies enforced automatically and concurrency handled transparently by a shared state access layer.
 
 ---
 
 ## Problem Statement
 
-### Current State Distribution
+### The Concurrency Problem (Critical)
 
-Agent state is spread across the filesystem with no unified management:
+Today, NeutronOS agents operate sequentially. But the architecture is moving toward:
+- Parallel extractors in the sense pipeline (voice + GitLab + Teams running concurrently)
+- M-O sweeping scratch files while other agents are writing
+- Publisher syncing document state while sense is updating signal references
+- Chat agent reading session state while sense is appending signals
 
-| Category | Locations | Git Status | Risk |
-|----------|-----------|------------|------|
-| **Runtime** | `inbox/raw/`, `inbox/processed/`, `inbox/state/`, `sessions/` | Gitignored | Lost on device failure |
-| **Configuration** | `config/people.md`, `config/initiatives.md`, `.doc-workflow.yaml` | Gitignored | Facility-specific, must migrate |
-| **Document Lifecycle** | `.doc-registry.json`, `.doc-state.json`, `drafts/`, `approved/` | Gitignored | Published doc mappings lost |
-| **Corrections** | `inbox/corrections/review_state.json`, `user_glossary.json` | Gitignored | Learned preferences lost |
-| **Secrets** | `.env`, API keys in workflow configs | Gitignored | Security-sensitive |
+Every shared JSON file is a race condition:
 
-### Business Risks Addressed
+| File | Writers | Failure Mode |
+|------|---------|-------------|
+| `.publisher-registry.json` | Publisher, Sense | Lost document mappings |
+| `.publisher-state.json` | Publisher, Sense | Corrupt lifecycle state |
+| `runtime/inbox/state/briefing_state.json` | Sense, Chat | Lost briefing progress |
+| `runtime/inbox/corrections/user_glossary.json` | Sense, Review | Lost corrections |
+| `runtime/inbox/corrections/propagation_queue.json` | Sense, Review | Duplicate or lost propagations |
+| `runtime/sessions/*.json` | Chat, Sense | Corrupt session history |
 
-1. **Filesystem Corruption**: No backup mechanism; state loss requires manual reconstruction
-2. **Device Theft**: Sensitive meeting transcripts, strategic documents exposed in plaintext
-3. **Device Migration**: New laptop requires manual state reconstruction; no "clone my setup"
-4. **Security Forensics**: Cannot replay historical system state to diagnose attacks
-5. **IP Retention**: When team members leave, valuable institutional knowledge (corrections, preferences, document history) may be lost with their device
+M-O's manifest already solves this for scratch files with `fcntl.flock`. That pattern must be generalized.
 
-### User Pain Points
+### The Retention Problem (Must-Ship)
 
-- "I got a new laptop and lost all my correction preferences"
-- "My disk crashed and I lost 6 months of meeting transcripts"
-- "Someone left the team and we lost access to their document mappings"
-- "I can't tell what changed in the system over the last month"
+A platform for nuclear facilities cannot accumulate unbounded data with no lifecycle management. Current state:
+
+| What Exists | Where | Behavior |
+|-------------|-------|----------|
+| Audio clip retention | `correction_review_guided.py` | `CLIP_RETENTION_DAYS = 7` (hardcoded) |
+| Echo suppression expiry | `echo_suppression.py` | `expires_at` field, `cleanup_expired()` |
+| Publisher sync cache | `docflow_providers/` | `expires_at` in cache records |
+
+These are isolated, inconsistent, and unauditable. We need:
+- A single retention policy configuration
+- M-O-enforced cleanup with audit logging
+- Legal hold capability
+- `neut mo retention` visibility (not a new noun—M-O already owns this)
+
+### The Shared State Problem (Phase 2)
+
+The RAG architecture already defines three scopes: `community`, `facility`, `personal`. As NeutronOS moves toward multi-user deployment:
+- Community RAG corpus updates need coordination across users
+- Facility config (`people.md`, `initiatives.md`) must sync without conflicts
+- Personal corrections may need to merge into facility glossaries
+
+This is a data architecture concern, not a standalone state management system.
 
 ---
 
@@ -48,662 +73,433 @@ Agent state is spread across the filesystem with no unified management:
 
 ### Goals
 
-1. **Inventory**: Provide complete visibility into all agent state locations
-2. **Backup/Restore**: Enable point-in-time backup and restoration of agent state
-3. **Encryption**: Protect sensitive state at rest (device theft scenario)
-4. **Migration**: Enable state transfer between devices
-5. **Audit Trail**: Track state changes over time for forensics/compliance
-6. **Team Sync** (Phase 2+): Enable collaborative state sharing with access control
-7. **Document Sync Integration**: Include published document state in management scope
+1. **Safe concurrent state access** — No data corruption when multiple agents or processes access shared JSON files
+2. **Verifiable data retention** — Auditable, configurable retention policies enforced by M-O
+3. **State inventory visibility** — M-O can report what state exists, where, and how old it is
+4. **Unified retention configuration** — Single `retention.yaml` replaces scattered constants
+5. **Audit trail for deletions** — Every retention action logged for compliance
 
 ### Non-Goals
 
-- Replacing Git for code version control
-- Real-time collaborative editing (use external tools)
-- Managing secrets rotation (defer to Vault/SOPS)
-- Backing up raw audio/video files (large media excluded by default)
+- New `neut state` CLI noun (M-O handles this)
+- Backup/restore tooling (use standard tools: `tar`, Time Machine, `rsync`)
+- Git-crypt integration (premature; revisit when multi-user is real)
+- Enterprise RBAC, SAML, PostgreSQL state sync (way too early)
+- Encryption at rest (macOS FileVault / Linux LUKS already handle this)
+- Secrets management (defer to Vault/SOPS/1Password)
 
 ---
 
 ## User Stories
 
-### Phase 0: Single Developer (MVP)
+### Concurrent Access
 
-**US-001**: As a developer, I want to see a complete inventory of my agent state so I understand what exists on my machine.
+**US-001**: As a developer running parallel sense extractors, I expect state files to remain consistent even when multiple processes write concurrently.
 
-**US-002**: As a developer, I want to backup my agent state to an encrypted archive so I can restore after device failure.
+**US-002**: As an agent developer, I want a simple API to read/write shared state files safely without implementing my own locking.
 
-**US-003**: As a developer, I want to restore agent state from a backup so I can recover from data loss or migrate to a new device.
+### Retention
 
-**US-004**: As a developer, I want my backups encrypted so device theft doesn't expose sensitive transcripts.
+**US-010**: As a facility operator, I need verifiable data retention policies so I can demonstrate compliance during audits.
 
-**US-005**: As a developer, I want to export my state in a portable format so I can migrate between machines.
+**US-011**: As a developer, I want old transcripts and voice memos cleaned up automatically so my disk doesn't fill up.
 
-### Phase 1: Git-Backed State
+**US-012**: As a compliance officer, I need an audit log of what was deleted and when.
 
-**US-010**: As a developer, I want selective state tracked in Git (encrypted) so I have version history and cloud backup.
+**US-013**: As legal counsel, I need a "legal hold" flag that suspends all automated deletion.
 
-**US-011**: As a developer, I want to decrypt state only on authorized machines so git-tracked state remains secure.
+### Visibility
 
-### Phase 2: Team Sync
+**US-020**: As a developer, I want to see what agent state exists on my machine and how much space it uses.
 
-**US-020**: As a team lead, I want shared configuration (people, initiatives) synced across team members so everyone has current context.
-
-**US-021**: As an admin, I want access control on shared state so sensitive data is restricted appropriately.
-
-**US-022**: As a compliance officer, I want audit logs of state access so we can demonstrate data governance.
-
-### Phase 3: Enterprise
-
-**US-030**: As an enterprise admin, I want RBAC for state management so I can enforce organizational policies.
-
-**US-031**: As a security team member, I want to replay historical state snapshots so I can investigate incidents.
-
-**US-032**: As legal counsel, I want to export a departing employee's state so the organization retains IP rights.
-
-### Phase 4: Retention & Compliance
-
-**US-040**: As a developer, I want raw inbox data automatically cleaned up after processing so my disk doesn't fill up.
-
-**US-041**: As an admin, I want configurable retention policies per data category so I can balance storage costs with compliance needs.
-
-**US-042**: As a compliance officer, I want retention policies enforced automatically so we don't retain data longer than permitted.
-
-**US-043**: As an auditor, I want a log of what was deleted and when so I can verify policy compliance.
+**US-021**: As M-O, I want to report state health as part of my vitals monitoring.
 
 ---
 
-## Data Retention & Lifecycle Management
+## Architecture
 
-Agent state has varying retention requirements based on sensitivity, storage cost, and compliance needs. This section defines the retention lifecycle and automation requirements.
+### Principle: M-O Is the State Steward
 
-### Retention Policy Framework
-
-| Data Category | Default Retention | Rationale | Configurable |
-|---------------|-------------------|-----------|--------------|
-| **Raw voice memos** (`inbox/raw/voice/`) | 7 days after processing | Large files, transcript is derived artifact | Yes |
-| **Raw signal sources** (`inbox/raw/{gitlab,teams,teams_chat}/`) | 30 days | Source of truth for processed signals | Yes |
-| **Processed transcripts** (`inbox/processed/`) | 90 days | Reference for corrections, briefings | Yes |
-| **Sessions** (`sessions/`) | 30 days | Chat history, can regenerate context | Yes |
-| **Corrections/glossary** (`corrections/`) | Indefinite | Valuable learned preferences, small | No |
-| **Configuration** (`config/`) | Indefinite | Critical operational data | No |
-| **State backups** (`~/.neut-backups/`) | 30 days (keep last 5) | Balance recovery vs. disk usage | Yes |
-| **Draft outputs** (`drafts/`) | 14 days | Regeneratable, ephemeral | Yes |
-| **Echo suppression cache** | 7 days (auto-expires) | Already has expiration built-in | No |
-
-### State Lifecycle Stages
+M-O already manages scratch files, disk usage, and resource lifecycle. State management is a natural extension of M-O's mandate—not a separate system.
 
 ```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   Ingested   │───▶│  Processed   │───▶│   Archived   │───▶│   Purged     │
-│              │    │              │    │  (optional)  │    │              │
-└──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
-     │                    │                   │                   │
-     ▼                    ▼                   ▼                   ▼
- inbox/raw/         inbox/processed/    encrypted backup      deleted
- voice/, teams/     transcripts,        (retained per         (logged)
-                    signals             policy)
+┌─────────────────────────────────────────────────────┐
+│                    M-O Agent                         │
+│                                                     │
+│  Existing:              New:                        │
+│  • Scratch management   • Retention enforcement     │
+│  • Disk monitoring      • State inventory           │
+│  • Orphan cleanup       • Retention audit logging   │
+│  • Periodic sweep       • State health vitals       │
+│                                                     │
+└──────────────────────┬──────────────────────────────┘
+                       │ uses
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│           Hybrid State Store                         │
+│         (neutron_os.infra.state)              │
+│                                                     │
+│  StateBackend protocol → get_state_store()          │
+│                                                     │
+│  ┌──────────────────┐  ┌────────────────────────┐   │
+│  │ FileStateBackend │  │ PgStateBackend         │   │
+│  │ (offline/boot)   │  │ (online/shared)        │   │
+│  │ • LockedJsonFile │  │ • ACID transactions    │   │
+│  │ • atomic_write   │  │ • row-level locking    │   │
+│  │ • zero deps      │  │ • audit trail          │   │
+│  └──────────────────┘  └────────────────────────┘   │
+│                                                     │
+│  StateRegistry — catalog of all state locations     │
+│                                                     │
+└─────────────────────────────────────────────────────┘
 ```
 
-### Existing Retention Mechanisms
+### Principle: No New CLI Nouns
 
-Current implementations that need unification:
-
-| Component | Location | Current Behavior |
-|-----------|----------|------------------|
-| **Audio clips** | `correction_review_guided.py` | `CLIP_RETENTION_DAYS = 7` |
-| **Echo suppression** | `echo_suppression.py` | `expires_at` field, `cleanup_expired()` |
-| **DocFlow sync cache** | `docflow_providers/` | `expires_at` in cache records |
-
-### Retention Policy Configuration
-
-Retention policies should be configurable via `config/retention.yaml`:
-
-```yaml
-# tools/agents/config/retention.yaml
-retention:
-  # Raw input data
-  raw_voice:
-    days: 7
-    after: processed  # Retain N days after processed flag set
-    
-  raw_signals:
-    days: 30
-    after: ingested
-    
-  # Processed data
-  transcripts:
-    days: 90
-    after: created
-    archive_before_delete: true  # Backup to archive before purge
-    
-  sessions:
-    days: 30
-    after: last_accessed
-    
-  # Outputs
-  drafts:
-    days: 14
-    after: created
-    
-  # Backups
-  state_backups:
-    keep_count: 5
-    max_age_days: 30
-
-# Compliance overrides (e.g., legal hold)
-legal_hold:
-  enabled: false
-  # When enabled, no deletion occurs
-  
-# Audit logging
-audit:
-  log_deletions: true
-  log_path: logs/retention_audit.jsonl
-```
-
-### Retention Functional Requirements
-
-**FR-010: Retention Status Command**
+State management surfaces through existing commands:
 
 ```bash
-neut state retention [--status] [--dry-run]
+# Retention visibility (M-O already has a CLI noun)
+neut mo retention [--status] [--dry-run]
+neut mo cleanup [--category <cat>] [--dry-run]
+
+# State inventory is a M-O vitals concern
+neut mo vitals --include-state
 ```
-
-Shows retention status across all data categories:
-- Files approaching retention cutoff
-- Space recoverable by cleanup
-- Policy compliance status
-
-**FR-011: Retention Cleanup Command**
-
-```bash
-neut state cleanup [--dry-run] [--category <cat>] [--force]
-```
-
-Executes retention policy:
-- Dry-run shows what would be deleted
-- Category filter for selective cleanup
-- Logs all deletions to audit trail
-
-**FR-012: Automated Retention Daemon**
-
-Background process or cron job that:
-- Runs daily (configurable)
-- Applies retention policies
-- Logs all actions
-- Respects legal hold flags
-
-**FR-013: Retention Audit Log**
-
-All retention actions logged in JSONL format:
-```json
-{"timestamp": "2026-02-24T14:30:00Z", "action": "delete", "path": "inbox/raw/voice/memo_123.m4a", "reason": "retention_policy", "policy": "raw_voice", "age_days": 8}
-```
-
-### Compliance Considerations (Phase 4)
-
-| Requirement | Implementation |
-|-------------|----------------|
-| **GDPR Right to Erasure** | `neut state purge --user <email>` command |
-| **Legal Hold** | `legal_hold.enabled` flag suspends all deletion |
-| **Audit Trail** | JSONL retention log with immutable append |
-| **Data Minimization** | Default policies favor shorter retention |
-| **Cross-border** | Archive encryption before any cloud backup |
-
-### Example Cleanup Workflow
-
-```bash
-# Check what would be cleaned up
-$ neut state cleanup --dry-run
-
-Retention Cleanup Preview
-═════════════════════════
-Category: raw_voice (7 days after processed)
-  • inbox/raw/voice/memo_2026-02-15.m4a (9 days old) → DELETE
-  • inbox/raw/voice/memo_2026-02-16.m4a (8 days old) → DELETE
-  Space recoverable: 45 MB
-
-Category: sessions (30 days after last_accessed)
-  • sessions/abc123.json (45 days) → DELETE
-  Space recoverable: 2 MB
-
-Total: 47 MB recoverable
-
-# Execute cleanup
-$ neut state cleanup
-  ✓ Deleted 2 voice memos (45 MB)
-  ✓ Deleted 1 session (2 MB)
-  ✓ Audit log updated: logs/retention_audit.jsonl
-```
-
----
-
-## State Taxonomy
-
-### Category 1: Runtime State
-
-Ephemeral data from agent operations:
-
-| Location | Contents | Sensitivity | Backup Priority |
-|----------|----------|-------------|-----------------|
-| `inbox/raw/voice/` | Voice memo `.m4a` files | Medium | Optional (large) |
-| `inbox/raw/gitlab/` | GitLab export JSON | Low | High |
-| `inbox/raw/teams/` | Teams transcript JSON | High | High |
-| `inbox/processed/` | Transcripts, signals, corrections | High | **Critical** |
-| `inbox/state/` | Briefing state, sync timestamps | Medium | High |
-| `sessions/` | Chat session JSON (UUID.json) | High | High |
-
-### Category 2: Configuration State
-
-Facility-specific settings:
-
-| Location | Contents | Sensitivity | Backup Priority |
-|----------|----------|-------------|-----------------|
-| `config/people.md` | Team roster with aliases | Medium | **Critical** |
-| `config/initiatives.md` | Active projects | Low | **Critical** |
-| `config/models.yaml` | LLM endpoints | Low | High |
-| `.doc-workflow.yaml` | DocFlow provider config | Medium | High |
-
-### Category 3: Document Lifecycle State
-
-Published document mappings and drafts:
-
-| Location | Contents | Sensitivity | Backup Priority |
-|----------|----------|-------------|-----------------|
-| `.doc-registry.json` | Doc ID → URL mappings | Medium | **Critical** |
-| `.doc-state.json` | Document lifecycle state | Medium | **Critical** |
-| `drafts/` | Generated changelogs | Low | Medium |
-| `approved/` | Human-approved outputs | Medium | High |
-
-### Category 4: Learning State
-
-User preferences and corrections:
-
-| Location | Contents | Sensitivity | Backup Priority |
-|----------|----------|-------------|-----------------|
-| `corrections/review_state.json` | Correction review progress | Low | High |
-| `corrections/user_glossary.json` | Learned transcription fixes | Low | **Critical** |
-| `corrections/propagation_queue.json` | Pending corrections | Low | High |
-
-### Category 5: Secrets (Special Handling)
-
-| Location | Contents | Sensitivity | Backup Priority |
-|----------|----------|-------------|-----------------|
-| `.env` | API keys, tokens | **Critical** | Exclude (re-provision) |
-| Provider credentials in configs | OAuth tokens | **Critical** | Exclude (re-provision) |
 
 ---
 
 ## Functional Requirements
 
-### FR-001: State Inventory Command
+### FR-001: Safe State Access Layer
 
-```bash
-neut state inventory [--verbose] [--json]
+**Location:** `src/neutron_os/infra/state.py`
+
+A shared module that any agent or extension imports for safe JSON file I/O:
+
+```python
+from neutron_os.infra.state import LockedJsonFile
+
+# Read with shared lock
+with LockedJsonFile("runtime/inbox/state/briefing_state.json") as state:
+    data = state.read()
+
+# Read-modify-write with exclusive lock
+with LockedJsonFile(".publisher-registry.json", exclusive=True) as state:
+    data = state.read()
+    data["documents"].append(new_doc)
+    state.write(data)
 ```
 
-Lists all state locations with:
-- Path and existence status
-- File count and total size
-- Last modified timestamp
-- Git tracking status
-- Sensitivity classification
+Requirements:
+- **Advisory file locking** via `fcntl.flock` (Unix) with Windows no-op fallback
+- **Atomic writes** via write-to-tempfile + `os.rename` (prevents partial writes on crash)
+- **Shared locks for reads**, exclusive locks for writes
+- **Timeout** parameter to prevent deadlocks (default 5 seconds)
+- **Extracted from M-O's existing `manifest.py`** `_LockedFile` pattern — generalized, not duplicated
 
-### FR-002: State Backup Command
+### FR-002: State Location Registry
 
-```bash
-neut state backup [--output <path>] [--encrypt] [--include-media]
+**Location:** `src/neutron_os/infra/state.py`
+
+A declarative catalog of all known state locations with metadata:
+
+```python
+@dataclass
+class StateLocation:
+    path: str                    # Relative to project root
+    category: str                # "runtime" | "config" | "documents" | "corrections" | "sessions"
+    description: str
+    sensitivity: str             # "low" | "medium" | "high" | "critical"
+    retention_key: str | None    # Key in retention.yaml, or None for indefinite
+    glob_pattern: str = "*"      # For directories
 ```
 
-Creates point-in-time backup:
-- Default output: `~/.neut-backups/neut-state-{timestamp}.tar.gz`
-- Encryption via age (modern, audited crypto)
-- Excludes `.env` and large media by default
-- Includes manifest with checksums
+This is a **data declaration**, not a service. Used by:
+- M-O for inventory and retention enforcement
+- Any future backup tooling
+- Doctor agent for diagnostics
 
-### FR-003: State Restore Command
+### FR-003: Unified Retention Configuration
 
-```bash
-neut state restore <backup-path> [--decrypt] [--dry-run]
+**Location:** `runtime/config/retention.yaml`
+
+```yaml
+retention:
+  raw_voice:
+    days: 7
+    after: processed       # Countdown starts when file is marked processed
+
+  raw_signals:
+    days: 30
+    after: ingested
+
+  transcripts:
+    days: 90
+    after: created
+
+  sessions:
+    days: 30
+    after: last_accessed
+
+  drafts:
+    days: 14
+    after: created
+
+# Legal hold suspends ALL automated deletion
+legal_hold:
+  enabled: false
+
+# Audit logging
+audit:
+  log_deletions: true
+  log_path: runtime/logs/retention_audit.jsonl
 ```
 
-Restores from backup:
-- Validates manifest checksums
-- Dry-run mode shows what would change
-- Prompts before overwriting existing state
-- Logs restoration actions
+Ships with sensible defaults. Facility operators can override.
 
-### FR-004: State Export Command
+### FR-004: Retention Enforcement (M-O Integration)
 
-```bash
-neut state export <category> --output <path>
+M-O's periodic sweep (already runs every 300s) gains retention awareness:
+
+1. Load `retention.yaml` policies
+2. Scan state locations matching retention keys
+3. Identify files past retention cutoff
+4. If `legal_hold.enabled`, skip all deletion
+5. Delete expired files
+6. Log each deletion to `retention_audit.jsonl`
+
+### FR-005: Retention Audit Log
+
+All retention actions logged in JSONL format:
+
+```json
+{"timestamp": "2026-03-14T14:30:00Z", "action": "delete", "path": "runtime/inbox/raw/voice/memo_123.m4a", "reason": "retention_policy", "policy": "raw_voice", "age_days": 8}
+{"timestamp": "2026-03-14T14:30:00Z", "action": "skip", "path": "runtime/inbox/processed/meeting.json", "reason": "legal_hold"}
 ```
 
-Exports specific state category for sharing:
-- Categories: `config`, `corrections`, `documents`, `sessions`
-- Portable JSON format with schema version
-- Redacts secrets automatically
+### FR-006: Retention Status Command
 
-### FR-005: State Encryption
+```bash
+neut mo retention --status
 
-- At-rest encryption using age with passphrase or key file
-- Optional git-crypt integration for selective Git tracking
-- Key stored in macOS Keychain / Linux secret-service / Windows Credential Manager
+Retention Policy Status
+═══════════════════════
+Category: raw_voice (7 days after processed)
+  • 2 files past retention (45 MB recoverable)
 
-### FR-006: Document Sync State Integration
+Category: sessions (30 days after last_accessed)
+  • 5 sessions past retention (12 MB recoverable)
 
-Published document state (`.doc-registry.json`, `.doc-state.json`) included in:
-- State inventory
-- Backup scope
-- Export capabilities
+Total: 57 MB recoverable
+Legal hold: OFF
 
-Cross-reference: See [docflow-spec.md](../specs/docflow-spec.md) for bidirectional sync patterns.
+neut mo retention --dry-run
+
+Would delete:
+  • runtime/inbox/raw/voice/memo_2026-03-05.m4a (9 days old)
+  • runtime/inbox/raw/voice/memo_2026-03-06.m4a (8 days old)
+  ...
+```
+
+### FR-007: State Inventory (M-O Vitals)
+
+M-O's vitals reporting includes state health:
+
+```bash
+neut mo vitals --include-state
+
+State Inventory
+═══════════════
+Category: config (3 files, 2 KB)
+  ✓ runtime/config/people.md         1.2 KB
+  ✓ runtime/config/initiatives.md    0.5 KB
+  ✓ runtime/config/models.toml      0.3 KB
+
+Category: runtime (28 files, 1.2 MB)
+  ✓ runtime/inbox/processed/        1.1 MB (23 files)
+  ✓ runtime/inbox/state/            45 KB (3 files)
+
+Total: 15 locations, 1.4 MB
+Retention compliance: 3 categories overdue
+```
 
 ---
 
-## Git Integration Model
+## Shared State Considerations (Phase 2)
 
-Agent state management is designed to be **Git-aware but Git-optional**. Git provides powerful primitives (version history, distributed sync, branch-based workflows) that complement state management without being a hard dependency.
+When NeutronOS moves to multi-user deployment, the concurrency problem extends beyond a single machine. These concerns are documented here for future reference but are **not in scope for Phase 0/1**.
 
-### Why Git Matters for State
+### Community RAG Corpus
 
-| Git Capability | State Management Benefit |
-|----------------|-------------------------|
-| **Version history** | Roll back to previous state, audit changes over time |
-| **Distributed sync** | Clone state to new machines via `git clone` |
-| **Branch isolation** | Experiment with state changes without affecting main |
-| **Remote backup** | Push encrypted state to GitHub/GitLab for cloud backup |
-| **Access control** | Leverage existing Git permissions for state access |
-| **Diff/merge** | See what changed between state versions |
+The RAG architecture defines `rag-community` as a shared corpus. Updates to community knowledge require:
+- Write coordination (only admins publish to community corpus)
+- Version tracking (what changed, when, by whom)
+- This is a **data platform concern** handled by PostgreSQL + pgvector, not filesystem locking
 
-### The Three-Tier Model
+### Facility Configuration Sync
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     State Storage Tiers                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Tier 1: Git-Tracked (Encrypted)          Tier 2: Git-Ignored      │
-│  ─────────────────────────────            ──────────────────       │
-│  • config/people.md                       • inbox/raw/voice/       │
-│  • config/initiatives.md                  • inbox/processed/       │
-│  • .doc-registry.json                     • sessions/              │
-│  • corrections/user_glossary.json         • .env (secrets)         │
-│                                                                     │
-│  → Encrypted via git-crypt                → Backed up separately   │
-│  → Version history available              → May be large/sensitive │
-│  → Syncs with git push/pull               → Local-only by default  │
-│                                                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Tier 3: External Sync (Phase 2+)                                   │
-│  ────────────────────────────────                                   │
-│  • PostgreSQL for team state                                        │
-│  • S3/GCS for large media backup                                    │
-│  • Enterprise state service                                         │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+`people.md` and `initiatives.md` are facility-wide. Multi-user sync options:
+- Git-based (commit/push/pull) — simple, proven, familiar
+- Database-backed — heavier but avoids merge conflicts
+- Decision deferred until multi-user deployment is real
 
-### Git-Crypt for Transparent Encryption
+### Team Glossary Merging
 
-[git-crypt](https://github.com/AGWA/git-crypt) enables transparent encryption of files in Git:
+Personal corrections (`user_glossary.json`) that prove universally useful could merge into a facility glossary. This is a **workflow decision**, not a state management feature.
 
-- Files appear encrypted in the repository (on GitHub, in `git log`, etc.)
-- Files are automatically decrypted on authorized machines
-- Non-authorized users see encrypted blobs
-- Works with existing Git workflows (`commit`, `push`, `pull`)
+---
 
-**Configuration via `.gitattributes`:**
-```gitattributes
-# Encrypted state files (decrypted only on authorized machines)
-tools/agents/config/people.md filter=git-crypt diff=git-crypt
-tools/agents/config/initiatives.md filter=git-crypt diff=git-crypt
-.doc-registry.json filter=git-crypt diff=git-crypt
-.doc-state.json filter=git-crypt diff=git-crypt
-tools/agents/inbox/corrections/user_glossary.json filter=git-crypt diff=git-crypt
-```
+## Existing Retention Mechanisms to Unify
 
-**Authorization model:**
-- GPG key-based: Each team member's GPG key is added to `.git-crypt/keys/`
-- Symmetric key: Export key file for sharing (less secure, simpler)
+These isolated implementations should be refactored to use the unified retention config:
 
-### Git Policy by State Location
+| Component | Current Location | Current Behavior | Migration |
+|-----------|-----------------|-----------------|-----------|
+| Audio clips | `correction_review_guided.py` | `CLIP_RETENTION_DAYS = 7` | Read from `retention.yaml` |
+| Echo suppression | `echo_suppression.py` | `expires_at`, `cleanup_expired()` | Keep (self-managing cache, already correct) |
+| Publisher sync cache | `docflow_providers/` | `expires_at` in records | Keep (provider-managed, already correct) |
 
-| Location | Git Policy | Rationale |
-|----------|------------|-----------|
-| `config/people.md` | **Encrypted** | Team roster benefits from version history |
-| `config/initiatives.md` | **Encrypted** | Project list shared across team |
-| `.doc-registry.json` | **Encrypted** | Document URLs valuable for continuity |
-| `.doc-state.json` | **Encrypted** | Document lifecycle state |
-| `user_glossary.json` | **Encrypted** | Learned corrections are valuable |
-| `inbox/processed/` | Ignored | Too large, use backup instead |
-| `inbox/raw/voice/` | Ignored | Binary media, too large |
-| `sessions/` | Ignored | Sensitive chat history |
-| `drafts/` | Ignored | Regenerated, not critical |
-| `.env` | Ignored | Secrets, never commit |
-
-### Git-Aware Commands
-
-State management commands are Git-aware when running in a Git repository:
-
-```bash
-# Inventory shows Git tracking status
-neut state inventory
-  config/people.md           1.2 KB  [CRITICAL] git:encrypted
-  inbox/processed/           1.1 MB  [CRITICAL] git:ignored
-  sessions/                  296 KB  [HIGH]     git:untracked ⚠️
-
-# Backup can commit and push
-neut state backup --git-commit --git-push
-  Creating backup...
-  ✓ Committed: "state backup 2026-02-24T14:30"
-  ✓ Pushed to origin/main
-
-# Sync pulls latest state from Git
-neut state sync
-  Pulling latest from origin/main...
-  ✓ config/people.md updated (3 new team members)
-  ✓ user_glossary.json merged (12 new corrections)
-```
-
-### When to Use Git vs. External Backup
-
-| Scenario | Recommendation |
-|----------|----------------|
-| Single developer, small team | Git-crypt for config, `neut state backup` for runtime |
-| Team sharing config | Git-crypt with shared GPG keys |
-| Large transcripts/media | External backup (S3, local NAS) |
-| Compliance/audit requirements | Git for audit trail + PostgreSQL for access logs |
-| Departing employee | `neut state export` + Git history preservation |
-
-### Relationship to Code vs. State
-
-NeutronOS treats code and state differently:
-
-| Aspect | Code | Agent State |
-|--------|------|-------------|
-| **Source of truth** | Git repository | Filesystem (optionally Git-backed) |
-| **Versioning** | Always tracked | Optionally tracked |
-| **Sharing** | Public/team repo | Encrypted, access-controlled |
-| **Merge conflicts** | Manual resolution | Schema-aware auto-merge |
-| **Backup frequency** | On commit | On change or scheduled |
-
-The key insight: **State is runtime data that evolves differently than code.** Some state (config, corrections) benefits from Git's versioning. Other state (transcripts, sessions) is better suited to backup/restore workflows.
+Note: Components that already self-manage expiration (echo suppression, provider caches) don't need to change. Only hardcoded retention constants should migrate to `retention.yaml`.
 
 ---
 
 ## Phased Implementation
 
-### Phase 0: Local Backup (MVP) — Target: 1 week
+### Phase 0: Concurrent Access Safety ✅ COMPLETE (2026-03-14)
 
 **Deliverables:**
-- `neut state inventory` command
-- `neut state backup` with age encryption
-- `neut state restore` with validation
-- State location constants in `tools/agents/state/locations.py`
+- [x] Extract `_LockedFile` from M-O's `manifest.py` → `src/neutron_os/infra/state.py`
+- [x] `LockedJsonFile` with read/write/read-modify-write patterns
+- [x] `atomic_write` and `locked_read` convenience functions
+- [x] Lock sidecar files (`.json.lock`) to avoid interference with atomic replace
+- [x] `StateLocation` registry dataclass with 17 known locations
+- [x] Migrate `.publisher-registry.json` and `.publisher-state.json` to `LockedJsonFile`
+- [x] Migrate M-O `manifest.py` to import from shared module
 
-**Success Criteria:**
-- Developer can backup and restore all critical state
-- Backup is encrypted by default
-- Restore works on fresh machine
+**Test Results (48 tests, 0 failures):**
+- 11 basic read/write tests
+- 4 atomic write safety tests (crash recovery, no temp file leaks)
+- 3 concurrent access tests (4-process increment, shared reads, validity)
+- 5 StateLocation registry validation tests
+- 22 retention tests (see Phase 1)
+- All 237 existing M-O + publisher tests pass with refactored code
 
-### Phase 1: Git-Backed State — Target: 2 weeks
+**Key test: `test_concurrent_increments_no_lost_updates`** — 4 processes each increment a shared counter 50 times. Final count must equal 200 exactly. With `LockedJsonFile`: passes. Without locking: would lose ~30-40% of updates.
 
-**Deliverables:**
-- git-crypt integration for selective encryption
-- `.gitattributes` patterns for encrypted state
-- `neut state sync` for push/pull
-- Documentation for team onboarding
-
-**Success Criteria:**
-- Selected state tracked in Git (encrypted)
-- Only authorized machines can decrypt
-- Version history available
-
-### Phase 2: Team Sync — Target: 4 weeks
+### Phase 1: Retention Policies ✅ COMPLETE (2026-03-14)
 
 **Deliverables:**
-- PostgreSQL schema for state storage
-- `neut state share` command
-- Access control (owner, editor, viewer)
-- Conflict resolution for concurrent edits
+- [x] `runtime/config.example/retention.yaml` with sensible defaults
+- [x] `mo_agent/retention.py` — policy engine (load, scan, execute, status)
+- [x] Retention enforcement integrated into M-O's `sweep()` method
+- [x] `neut mo retention` CLI subcommand (status, --dry-run, --cleanup)
+- [x] JSONL audit logging for all retention actions
+- [x] Legal hold flag support (suspends all automated deletion)
+- [ ] Migrate `CLIP_RETENTION_DAYS` to read from config (deferred — low risk)
 
-**Success Criteria:**
-- Team can share configuration state
-- Access control enforced
-- Audit log captures access
+**Test Results (22 retention tests, 0 failures):**
+- 5 config loading tests (file, fallback, missing, legal hold, field parsing)
+- 7 scan tests (expired, recent, legal hold, multi-category, glob filtering)
+- 6 execution tests (delete, dry-run, skip, audit log, append, error handling)
+- 2 status report tests
+- 2 M-O sweep integration tests
 
-### Phase 3: Enterprise — Target: 8 weeks
-
-**Deliverables:**
-- RBAC integration (LDAP/SAML)
-- State snapshot API for forensics
-- Compliance export (departing employee)
-- Multi-tenant isolation
-
-**Success Criteria:**
-- Organization can enforce state policies
-- Historical state replay possible
-- IP retention on employee departure
-
-### Phase 4: Retention & Compliance — Target: 2 weeks (can parallelize with Phase 1)
+### Phase 1.5: Hybrid State Backend ✅ COMPLETE (2026-03-14)
 
 **Deliverables:**
-- `neut state retention` status command
-- `neut state cleanup` with dry-run and audit logging
-- `config/retention.yaml` configuration file
-- Retention audit log in JSONL format
-- Unify existing retention mechanisms (audio clips, echo cache)
+- [x] `StateBackend` and `StateHandle` protocols (`neutron_os.infra.state`)
+- [x] `FileStateBackend` — wraps `LockedJsonFile` through unified interface
+- [x] `PgStateBackend` — wraps `PgStateStore` through unified interface
+- [x] `HybridStateStore` — automatic backend selection with fallback
+- [x] `get_state_store()` singleton for project-wide access
+- [x] Backend selection via `NEUTRON_STATE_BACKEND` env var (`file` | `postgresql`)
+- [x] Auto-detection: if `NEUTRON_STATE_DSN` or `DATABASE_URL` set, tries PostgreSQL, falls back to file
 
-**Success Criteria:**
-- Automated cleanup respects configured policies
-- All deletions logged for audit
-- Disk usage stays bounded over time
-- Legal hold flag prevents all deletion
+**Test Results (16 hybrid tests, 0 failures):**
+- 7 FileStateBackend tests (protocol compliance, CRUD, concurrent safety)
+- 5 backend selection tests (default, forced, env var, fallback)
+- 4 operations + singleton tests
+
+**Architectural decision:** `LockedJsonFile` with `fcntl.flock` is a transitional layer suitable for single-developer, single-machine use. It is strictly better than naked `path.write_text()` but has known limitations:
+
+| Property | fcntl.flock (flat file) | PostgreSQL |
+|----------|----------------------|------------|
+| Advisory vs mandatory | Advisory only — non-participating code can corrupt | Mandatory — ACID enforced |
+| Multi-machine | No | Yes |
+| Transaction isolation | None (last-write-wins) | SERIALIZABLE available |
+| Conflict detection | None | Row-level locking, deadlock detection |
+| Audit trail | Manual JSONL append | Built into query layer |
+| Crash recovery | Atomic write prevents partial, but no rollback | Full WAL recovery |
+| Performance under contention | Degrades linearly | Connection pooling, concurrent readers |
+
+**Decision:** Build a PostgreSQL-backed `StateStore` that implements the same read/write interface as `LockedJsonFile`. This enables transparent backend swapping. See [whitepaper](../research/whitepaper-state-backend-comparison.md) for measurable comparison.
+
+**NeutronOS already requires PostgreSQL** in the tech stack — this is not a new dependency.
+
+### Phase 2: Shared State — Future (when multi-user is real)
+
+**Deliverables (tentative):**
+- PostgreSQL state backend as default for multi-user deployments
+- Git-based config sync for `people.md`, `initiatives.md`
+- Community RAG corpus write coordination
+- Facility glossary merge workflow
+
+**Trigger:** First deployment with >1 concurrent user
+
+---
+
+## Data Retention Policy Defaults
+
+| Data Category | Default Retention | Rationale |
+|---------------|-------------------|-----------|
+| Raw voice memos (`inbox/raw/voice/`) | 7 days after processed | Large files, transcript is the artifact |
+| Raw signal sources (`inbox/raw/{gitlab,teams}/`) | 30 days | Source of truth for processed signals |
+| Processed transcripts (`inbox/processed/`) | 90 days | Reference for corrections, briefings |
+| Sessions (`sessions/`) | 30 days after last accessed | Chat history, can regenerate |
+| Drafts (`drafts/`) | 14 days | Regeneratable, ephemeral |
+| Corrections/glossary (`corrections/`) | Indefinite | Valuable learned preferences, small |
+| Configuration (`config/`) | Indefinite | Critical operational data |
 
 ---
 
 ## Security Considerations
 
-### Encryption
-
-- **Algorithm**: age (X25519 + ChaCha20-Poly1305)
-- **Key Management**: Platform keychain integration
-- **Passphrase**: PBKDF2 with high iteration count
-
-### Access Control (Phase 2+)
-
-- **Authentication**: Delegated to Git/SSO provider
-- **Authorization**: Per-category permissions
-- **Audit**: All state access logged with timestamp, user, action
-
-### Secrets Handling
-
-- Secrets excluded from backup by default
-- `.env` files require re-provisioning
-- OAuth tokens require re-authentication
+- **Encryption at rest**: Handled by OS-level full-disk encryption (FileVault, LUKS). Not NeutronOS's job.
+- **Secrets**: Excluded from any state management. Always re-provisioned. `.env` stays in `.gitignore`.
+- **Audit trail**: Retention log is append-only JSONL. Tampering detection is a Phase 2 concern.
+- **Legal hold**: Binary flag in `retention.yaml`. When enabled, no automated deletion occurs.
 
 ---
 
 ## Success Metrics
 
-| Metric | Phase 0 Target | Phase 2 Target | Phase 4 Target |
-|--------|----------------|----------------|----------------|
-| Backup creation time | < 30 seconds | < 30 seconds | < 30 seconds |
-| Restore success rate | 100% | 100% | 100% |
-| State inventory accuracy | 100% coverage | 100% coverage | 100% coverage |
-| Encryption coverage | All sensitive state | All sensitive state | All sensitive state |
-| Audit log retention | N/A | 90 days | 90 days |
-| Retention policy compliance | N/A | N/A | 100% of categories |
-| Disk usage growth | Unbounded | Unbounded | < 10% monthly |
-| Cleanup audit coverage | N/A | N/A | 100% logged |
-
----
-
-## Dependencies
-
-- **age**: Encryption tool (Go implementation)
-- **git-crypt**: Transparent Git encryption (Phase 1)
-- **PostgreSQL**: Team state storage (Phase 2)
-- **Platform keychain APIs**: Secure key storage
+| Metric | Phase 0 Target | Phase 1 Target |
+|--------|----------------|----------------|
+| Concurrent write safety | All shared JSON files | All shared JSON files |
+| Data corruption incidents | Zero | Zero |
+| Retention policy coverage | N/A | 100% of data categories |
+| Retention compliance | N/A | All categories within policy |
+| Audit log coverage | N/A | 100% of automated deletions logged |
+| Disk usage growth | Unbounded | < 10% monthly |
 
 ---
 
 ## Open Questions
 
-1. Should raw voice memos be included in backup by default? (Currently excluded due to size)
-2. ~~What's the retention policy for state backups?~~ → Addressed in Data Retention section
-3. How do we handle state schema migrations between NeutronOS versions?
-4. Should we support S3/GCS as backup targets in Phase 1?
-5. Should retention cleanup require explicit opt-in, or run automatically after initial setup?
-6. How do we handle retention for data that spans multiple categories (e.g., a transcript with embedded corrections)?
-7. What's the notification UX when cleanup deletes significant data (e.g., "Freed 500MB")?
+1. ~~Should M-O's retention sweep run on its existing 300s timer, or should retention be a separate daily cron?~~ → Integrated into M-O sweep; timer frequency TBD for production.
+2. How do we handle retention for data that spans categories (e.g., a transcript with embedded corrections)?
+3. What notification UX when cleanup frees significant space (e.g., "Freed 500MB")?
+4. ~~Should `LockedJsonFile` support a callback-based API in addition to context manager?~~ → Context manager is sufficient; callback adds complexity without benefit.
+5. When should PostgreSQL state backend become the default? At first multi-user deployment, or sooner for single-user reliability?
 
 ---
 
-## Appendix A: State Location Reference
+## Related Documents
 
-Complete inventory of all agent state locations:
-
-```
-Neutron_OS/
-├── .doc-registry.json          # Published doc URL mappings
-├── .doc-state.json             # Document lifecycle state
-├── .doc-workflow.yaml          # DocFlow provider config
-├── .neut/                      # CLI setup state
-│   └── setup-state.json
-├── tools/agents/
-│   ├── config/                 # Facility-specific config
-│   │   ├── people.md
-│   │   ├── initiatives.md
-│   │   └── models.yaml
-│   ├── inbox/
-│   │   ├── raw/
-│   │   │   ├── voice/          # Voice memo files
-│   │   │   ├── gitlab/         # GitLab exports
-│   │   │   └── teams/          # Teams transcripts
-│   │   ├── processed/          # Transcripts, signals, corrections
-│   │   ├── state/              # Briefing state, sync state
-│   │   │   ├── briefing_state.json
-│   │   │   └── docflow_sync.json
-│   │   └── corrections/        # Review state, glossary
-│   │       ├── review_state.json
-│   │       ├── user_glossary.json
-│   │       └── propagation_queue.json
-│   ├── drafts/                 # Generated changelogs
-│   ├── approved/               # Human-approved outputs
-│   └── sessions/               # Chat session JSON
-└── .env                        # Secrets (excluded from backup)
-```
-
----
-
-## Appendix B: Related Documents
-
-- [NeutronOS Master PRD](neutron-os-executive-prd.md)
+- [NeutronOS Executive PRD](prd_neutron-os-executive.md)
+- [Intelligence Amplification Pillar](prd_intelligence-amplification-pillar.md)
 - [Agent State Management Tech Spec](../specs/agent-state-management-spec.md)
-- [DocFlow Specification](../specs/docflow-spec.md) — Document lifecycle and sync
-- [Data Architecture Specification](../specs/data-architecture-spec.md)
-- [Sense & Synthesis MVP Spec](../specs/sense-synthesis-mvp-spec.md)
+- [RAG Architecture Spec](../specs/neutron-os-rag-architecture-spec.md)
+- [Data Architecture Spec](../specs/data-architecture-spec.md)
+- [M-O Agent Extension](../../src/neutron_os/extensions/builtins/mo_agent/)

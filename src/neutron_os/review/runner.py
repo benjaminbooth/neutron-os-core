@@ -2,11 +2,11 @@
 
 Provides two review modes that share the same data model:
 
-    **Detailed mode** (default for ``neut doc review``):
+    **Detailed mode** (default for ``neut pub review``):
         Present items one at a time.  Reviewer decides per-item:
         accept / edit / drop / comment / skip / quit.
 
-    **Quick mode** (``neut doc review --quick`` or ``--approve-all``):
+    **Quick mode** (``neut pub review --quick`` or ``--approve-all``):
         Show the full document in a pager or dump to stdout,
         then ask for a single top-level verdict.  Optionally open
         $EDITOR for inline annotation before accepting.

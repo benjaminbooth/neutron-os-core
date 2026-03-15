@@ -4,7 +4,7 @@ Reads provider configuration from config/models.toml and routes requests
 to the first available provider. If no providers are configured or all
 calls fail, returns a stub response preserving the raw text.
 
-Both neut sense and neut doc (Phase 2) share this gateway.
+Both neut sense and neut pub (Phase 2) share this gateway.
 """
 
 from __future__ import annotations

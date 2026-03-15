@@ -144,7 +144,7 @@ TOOLS = [
         name="review_complete",
         description=(
             "Finalize the review session: write the approved draft and "
-            "register in docflow. Returns the path to the approved file."
+            "register in publisher. Returns the path to the approved file."
         ),
         category=ActionCategory.WRITE,
         parameters={
@@ -381,10 +381,10 @@ def _handle_complete(params: dict) -> dict:
     if approved_path is None:
         return {"message": "All items were rejected. No approved draft written."}
 
-    # Register in docflow
+    # Register in publisher
     try:
-        from neutron_os.review.adapters.draft_adapter import _register_in_docflow
-        _register_in_docflow(session, approved_path)
+        from neutron_os.review.adapters.draft_adapter import _register_in_publisher
+        _register_in_publisher(session, approved_path)
     except Exception:
         pass  # Non-fatal
 

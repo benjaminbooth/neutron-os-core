@@ -1,1068 +1,681 @@
-Table of Contents
+# NeutronOS Agent State Management — Technical Specification
 
-NeutronOS Agent State Management Technical Specification
+**Status:** Draft
+**Owner:** Ben Booth
+**Created:** 2026-02-24
+**Last Updated:** 2026-03-14
+**PRD Reference:** [agent-state-management PRD](../requirements/prd_agent-state-management.md)
 
-Status: Draft   Owner: Ben Lindley   Created: 2026-02-24   PRD Reference: agent-state-management-prd.md
+---
 
-Overview
+## Overview
 
-This specification defines the technical implementation of NeutronOS agent state management, enabling backup, encryption, restoration, and migration of agent state across devices and team members.
+This specification defines three infrastructure capabilities for NeutronOS agent state:
 
-Architecture
+1. **Safe concurrent access** — A shared module (`neutron_os.infra.state`) that provides locked, atomic JSON file I/O for any agent or extension.
+2. **Hybrid state backend** — A unified `StateBackend` protocol (`neutron_os.infra.state`) that routes to flat files or PostgreSQL with automatic fallback.
+3. **Retention enforcement** — M-O integration for configurable, auditable data lifecycle management.
 
-Component Diagram
+---
 
+## Architecture
+
+### Component Diagram
+
+```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         neut state CLI                          │
-├─────────────┬─────────────┬─────────────┬─────────────┬────────┤
-│  inventory  │   backup    │   restore   │   export    │  sync  │
-└──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴────┬───┘
-       │             │             │             │           │
-       ▼             ▼             ▼             ▼           ▼
+│                        M-O Agent                                 │
+│  ┌───────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ Scratch Mgmt  │  │ Retention Sweep  │  │ State Vitals     │  │
+│  │ (existing)    │  │ (new)            │  │ (new)            │  │
+│  └───────┬───────┘  └────────┬─────────┘  └────────┬─────────┘  │
+└──────────┼───────────────────┼──────────────────────┼────────────┘
+           │                   │                      │
+           ▼                   ▼                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     State Manager Service                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Inventory  │  │  Archiver   │  │  Encryption Provider    │  │
-│  │  Scanner    │  │  (tar/gz)   │  │  (age/git-crypt)        │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
+│              neutron_os.infra.state                        │
+│                                                                  │
+│  StateBackend protocol    HybridStateStore                       │
+│  get_state_store()        auto-detect backend                    │
+│                                                                  │
+│  ┌────────────────────┐   ┌────────────────────────────────┐     │
+│  │ FileStateBackend   │   │ PgStateBackend                 │     │
+│  │ (LockedJsonFile)   │   │ (PgStateStore / ACID)          │     │
+│  └────────────────────┘   └────────────────────────────────┘     │
+│                                                                  │
+│  StateRegistry: STATE_LOCATIONS, RetentionPolicy                 │
+│                                                                  │
 └─────────────────────────────────────────────────────────────────┘
-       │
-       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      State Locations                             │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │ Runtime  │ │  Config  │ │ DocFlow  │ │Corrections│ │Sessions│ │
-│  │  State   │ │  State   │ │  State   │ │  State   │ │ State  │ │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘ │
-└─────────────────────────────────────────────────────────────────┘
+```
 
-Module Structure
+### Module Structure
 
-tools/agents/state/
-├── __init__.py
-├── locations.py        # State location definitions
-├── inventory.py        # Inventory scanner
-├── backup.py           # Backup/restore operations
-├── encryption.py       # age/git-crypt integration
-├── export.py           # Portable export format
-└── cli.py              # CLI subcommands
+```
+src/neutron_os/infra/
+├── state.py                # LockedJsonFile, hybrid store, protocols, StateLocation registry
+├── state_pg.py             # PostgreSQL backend (PgStateStore)
+└── ...
 
-State Location Registry
+src/neutron_os/extensions/builtins/mo_agent/
+├── manager.py              # Add retention sweep to existing sweep cycle
+├── manifest.py             # Refactor: import LockedFile from infra.state
+├── retention.py            # Retention policy engine (NEW)
+├── cli.py                  # Add `neut mo retention` subcommand (EXTEND)
+└── ...
 
-Location Definition
+runtime/config.example/
+├── retention.yaml          # Default retention policies (NEW)
+└── ...
+```
 
-# tools/agents/state/locations.py
+---
 
+## Safe Concurrent Access Layer
+
+### Design
+
+The core insight: M-O's `manifest.py` already has a working `_LockedFile` implementation. We extract and generalize it into `neutron_os.infra.state` so all agents can use it.
+
+### `LockedJsonFile`
+
+```python
+# src/neutron_os/infra/state.py
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Optional
-
-class Sensitivity(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-class BackupPriority(Enum):
-    EXCLUDE = "exclude"
-    OPTIONAL = "optional"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-class Category(Enum):
-    RUNTIME = "runtime"
-    CONFIG = "config"
-    DOCUMENTS = "documents"
-    CORRECTIONS = "corrections"
-    SESSIONS = "sessions"
-    SECRETS = "secrets"
-
-class GitPolicy(Enum):
-    """How this state location should be treated in Git."""
-    IGNORE = "ignore"              # Always in .gitignore (large/sensitive)
-    TRACK_ENCRYPTED = "encrypted"  # Track in Git, encrypted via git-crypt
-    TRACK_PLAIN = "plain"          # Track in Git, unencrypted (non-sensitive)
-    OPTIONAL = "optional"          # User choice (not in .gitignore, not required)
+from typing import Any
 
 
+class LockedJsonFile:
+    """Safe concurrent JSON file access with advisory locking.
+
+    Uses fcntl.flock on Unix for process-level coordination.
+    Writes are atomic (tempfile + rename) to prevent corruption on crash.
+
+    Usage:
+        # Read-only (shared lock)
+        with LockedJsonFile(path) as f:
+            data = f.read()
+
+        # Read-modify-write (exclusive lock)
+        with LockedJsonFile(path, exclusive=True) as f:
+            data = f.read()
+            data["key"] = "value"
+            f.write(data)
+    """
+
+    def __init__(self, path: str | Path, *, exclusive: bool = False, timeout: float = 5.0):
+        self._path = Path(path)
+        self._exclusive = exclusive
+        self._timeout = timeout
+        self._fd: int | None = None
+        self._data: Any = None
+
+    def __enter__(self) -> LockedJsonFile:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        # Open or create the file
+        flags = os.O_RDWR | os.O_CREAT if self._exclusive else os.O_RDONLY | os.O_CREAT
+        self._fd = os.open(str(self._path), flags, 0o644)
+        self._acquire_lock()
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        if self._fd is not None:
+            self._release_lock()
+            os.close(self._fd)
+            self._fd = None
+        return False
+
+    def read(self) -> Any:
+        """Read and parse JSON content. Returns empty dict if file is empty."""
+        if self._fd is None:
+            raise RuntimeError("Must be used as context manager")
+        try:
+            with open(self._path, "r", encoding="utf-8") as f:
+                content = f.read()
+            if not content.strip():
+                return {}
+            return json.loads(content)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return {}
+
+    def write(self, data: Any) -> None:
+        """Atomically write JSON data (tempfile + rename)."""
+        if self._fd is None or not self._exclusive:
+            raise RuntimeError("write() requires exclusive=True in context manager")
+        # Write to temp file in same directory (ensures same filesystem for rename)
+        dir_path = self._path.parent
+        fd, tmp_path = tempfile.mkstemp(dir=str(dir_path), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+                f.write("\n")
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, str(self._path))
+        except BaseException:
+            # Clean up temp file on failure
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+    def _acquire_lock(self) -> None:
+        if sys.platform == "win32" or self._fd is None:
+            return
+        try:
+            import fcntl
+            lock_type = fcntl.LOCK_EX if self._exclusive else fcntl.LOCK_SH
+            fcntl.flock(self._fd, lock_type)
+        except (ImportError, OSError):
+            pass
+
+    def _release_lock(self) -> None:
+        if sys.platform == "win32" or self._fd is None:
+            return
+        try:
+            import fcntl
+            fcntl.flock(self._fd, fcntl.LOCK_UN)
+        except (ImportError, OSError):
+            pass
+```
+
+### `atomic_write` Convenience Function
+
+```python
+def atomic_write(path: str | Path, data: Any) -> None:
+    """Atomically write JSON data to a file with exclusive locking."""
+    with LockedJsonFile(path, exclusive=True) as f:
+        f.write(data)
+```
+
+### Refactoring M-O's Manifest
+
+M-O's `manifest.py` should be refactored to import from `neutron_os.infra.state`:
+
+```python
+# Before (manifest.py)
+class _LockedFile: ...  # 35 lines of locking logic
+
+# After (manifest.py)
+from neutron_os.infra.state import LockedJsonFile
+
+class Manifest:
+    def _load(self) -> None:
+        with LockedJsonFile(self._path) as f:
+            data = f.read()
+        # ... parse entries
+
+    def _save(self) -> None:
+        with LockedJsonFile(self._path, exclusive=True) as f:
+            f.write([e.to_dict() for e in self._entries.values()])
+```
+
+### Migration Path for Existing State Files
+
+Files that currently use raw `json.load`/`json.dump`:
+
+| File | Current Access | Migration |
+|------|---------------|-----------|
+| `.publisher-registry.json` | `json.load(open(...))` | `LockedJsonFile` |
+| `.publisher-state.json` | `json.load(open(...))` | `LockedJsonFile` |
+| `briefing_state.json` | `json.load(open(...))` | `LockedJsonFile` |
+| `review_state.json` | `json.load(open(...))` | `LockedJsonFile` |
+| `user_glossary.json` | `json.load(open(...))` | `LockedJsonFile` |
+| `propagation_queue.json` | `json.load(open(...))` | `LockedJsonFile` |
+| `.mo-manifest.json` | Custom `_LockedFile` | `LockedJsonFile` (already locked) |
+
+Priority: Publisher state files first (most likely to see concurrent access), then sense pipeline state.
+
+---
+
+## Hybrid State Backend
+
+### Protocols
+
+```python
+# src/neutron_os/infra/state_hybrid.py
+
+@runtime_checkable
+class StateHandle(Protocol):
+    """Handle to a single state document within a transaction/lock."""
+    def read(self) -> Any: ...
+    def write(self, data: Any) -> None: ...
+
+@runtime_checkable
+class StateBackend(Protocol):
+    """Backend that can open state documents for read/write."""
+    @contextmanager
+    def open(self, path: str, *, exclusive: bool = False) -> Generator[StateHandle]: ...
+    def read(self, path: str) -> Any: ...
+    def write(self, path: str, data: Any) -> None: ...
+    @property
+    def name(self) -> str: ...
+```
+
+### Backend Selection
+
+`HybridStateStore` resolves the backend once at initialization:
+
+1. `NEUTRON_STATE_BACKEND=file` → always flat files
+2. `NEUTRON_STATE_BACKEND=postgresql` → always PostgreSQL (fails if unavailable)
+3. `NEUTRON_STATE_DSN` or `DATABASE_URL` set → try PostgreSQL, fall back to file
+4. Nothing set → flat files (default)
+
+### Usage
+
+```python
+from neutron_os.infra.state import get_state_store
+
+store = get_state_store()
+
+# Read (backend-agnostic)
+data = store.read("runtime/inbox/state/briefing_state.json")
+
+# Read-modify-write (backend-agnostic)
+with store.open("runtime/inbox/state/briefing_state.json", exclusive=True) as h:
+    data = h.read()
+    data["counter"] += 1
+    h.write(data)
+
+# Check which backend is active
+print(store.backend_name)  # "file" or "postgresql"
+```
+
+### PostgreSQL Schema
+
+```sql
+CREATE TABLE IF NOT EXISTS agent_state (
+    path         TEXT PRIMARY KEY,
+    data         JSONB NOT NULL DEFAULT '{}',
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by   TEXT NOT NULL DEFAULT '',
+    version      INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS state_audit_log (
+    id           BIGSERIAL PRIMARY KEY,
+    path         TEXT NOT NULL,
+    action       TEXT NOT NULL,
+    old_version  INTEGER,
+    new_version  INTEGER,
+    actor        TEXT NOT NULL DEFAULT '',
+    timestamp    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    details      JSONB
+);
+```
+
+Key features:
+- **Optimistic concurrency** — `version` column incremented on write; raises `ConcurrentModificationError` on conflict
+- **Row-level locking** — `SELECT ... FOR UPDATE` (exclusive) / `FOR SHARE` (shared)
+- **Transactional audit** — audit log entry written in same transaction as state change
+
+---
+
+## State Location Registry
+
+### Declaration
+
+```python
+# src/neutron_os/infra/state.py
+
+@dataclass(frozen=True)
 class StateLocation:
-    """Definition of a state storage location."""
-    path: str                          # Relative to Neutron_OS root
-    category: Category
+    """Metadata about a known state storage location."""
+    path: str                          # Relative to project root
+    category: str                      # runtime | config | documents | corrections | sessions
     description: str
-    sensitivity: Sensitivity
-    backup_priority: BackupPriority
-    glob_pattern: Optional[str] = None  # For directories
-    git_policy: GitPolicy = GitPolicy.IGNORE  # Default: gitignored
-    merge_strategy: Optional[str] = None  # For Git merge conflicts
-    
-    def resolve(self, root: Path) -> Path:
-        return root / self.path
-    
-    @property
-    def should_encrypt_in_git(self) -> bool:
-        """Whether this location should use git-crypt if tracked."""
-        return self.git_policy == GitPolicy.TRACK_ENCRYPTED
-    
-    @property
-    def should_gitignore(self) -> bool:
-        """Whether this location should be in .gitignore."""
-        return self.git_policy == GitPolicy.IGNORE
+    sensitivity: str                   # low | medium | high | critical
+    retention_key: str | None = None   # Key in retention.yaml, or None = indefinite
+    glob_pattern: str = "*"            # For scanning directories
 
-# Registry of all state locations
+
 STATE_LOCATIONS: list[StateLocation] = [
-    # Runtime State — Large/ephemeral, always gitignored
-    StateLocation(
-        path="tools/agents/inbox/raw/voice",
-        category=Category.RUNTIME,
-        description="Voice memo audio files",
-        sensitivity=Sensitivity.MEDIUM,
-        backup_priority=BackupPriority.OPTIONAL,
-        glob_pattern="*.m4a",
-        git_policy=GitPolicy.IGNORE,  # Too large for Git
-    ),
-    StateLocation(
-        path="tools/agents/inbox/raw/gitlab",
-        category=Category.RUNTIME,
-        description="GitLab export JSON files",
-        sensitivity=Sensitivity.LOW,
-        backup_priority=BackupPriority.HIGH,
-        glob_pattern="*.json",
-        git_policy=GitPolicy.IGNORE,  # Ephemeral exports
-    ),
-    StateLocation(
-        path="tools/agents/inbox/raw/teams",
-        category=Category.RUNTIME,
-        description="Teams transcript files",
-        sensitivity=Sensitivity.HIGH,
-        backup_priority=BackupPriority.HIGH,
-        glob_pattern="*.json",
-        git_policy=GitPolicy.IGNORE,  # Sensitive meeting content
-    ),
-    StateLocation(
-        path="tools/agents/inbox/processed",
-        category=Category.RUNTIME,
-        description="Processed transcripts and signals",
-        sensitivity=Sensitivity.HIGH,
-        backup_priority=BackupPriority.CRITICAL,
-        glob_pattern="*",
-        git_policy=GitPolicy.IGNORE,  # Too large, use backup instead
-    ),
-    StateLocation(
-        path="tools/agents/inbox/state",
-        category=Category.RUNTIME,
-        description="Briefing and sync state",
-        sensitivity=Sensitivity.MEDIUM,
-        backup_priority=BackupPriority.HIGH,
-        glob_pattern="*.json",
-        git_policy=GitPolicy.IGNORE,  # Machine-specific state
-    ),
-    
-    # Configuration State — Valuable, should be Git-tracked with encryption
-    StateLocation(
-        path="tools/agents/config/people.md",
-        category=Category.CONFIG,
-        description="Team roster with aliases",
-        sensitivity=Sensitivity.MEDIUM,
-        backup_priority=BackupPriority.CRITICAL,
-        git_policy=GitPolicy.TRACK_ENCRYPTED,  # Encrypted in Git
-        merge_strategy="manual",  # Human review for team changes
-    ),
-    StateLocation(
-        path="tools/agents/config/initiatives.md",
-        category=Category.CONFIG,
-        description="Active initiatives list",
-        sensitivity=Sensitivity.LOW,
-        backup_priority=BackupPriority.CRITICAL,
-        git_policy=GitPolicy.TRACK_ENCRYPTED,  # Encrypted in Git
-        merge_strategy="manual",
-    ),
-    StateLocation(
-        path="tools/agents/config/models.yaml",
-        category=Category.CONFIG,
-        description="LLM endpoint configuration",
-        sensitivity=Sensitivity.LOW,
-        backup_priority=BackupPriority.HIGH,
-        git_policy=GitPolicy.TRACK_ENCRYPTED,  # May contain API endpoints
-    ),
-    StateLocation(
-        path=".doc-workflow.yaml",
-        category=Category.CONFIG,
-        description="DocFlow provider configuration",
-        sensitivity=Sensitivity.MEDIUM,
-        backup_priority=BackupPriority.HIGH,
-        git_policy=GitPolicy.TRACK_ENCRYPTED,  # May reference credentials
-    ),
-    
-    # Document Lifecycle State — Critical for continuity, Git-tracked encrypted
-    StateLocation(
-        path=".doc-registry.json",
-        category=Category.DOCUMENTS,
-        description="Published document URL mappings",
-        sensitivity=Sensitivity.MEDIUM,
-        backup_priority=BackupPriority.CRITICAL,
-        git_policy=GitPolicy.TRACK_ENCRYPTED,
-        merge_strategy="doc_registry",  # Merge by doc_id
-    ),
-    StateLocation(
-        path=".doc-state.json",
-        category=Category.DOCUMENTS,
-        description="Document lifecycle state",
-        sensitivity=Sensitivity.MEDIUM,
-        backup_priority=BackupPriority.CRITICAL,
-        git_policy=GitPolicy.TRACK_ENCRYPTED,
-        merge_strategy="doc_registry",  # Same as registry
-    ),
-    StateLocation(
-        path="tools/agents/drafts",
-        category=Category.DOCUMENTS,
-        description="Generated changelog drafts",
-        sensitivity=Sensitivity.LOW,
-        backup_priority=BackupPriority.MEDIUM,
-        glob_pattern="*.md",
-        git_policy=GitPolicy.IGNORE,  # Regenerated, not critical
-    ),
-    StateLocation(
-        path="tools/agents/approved",
-        category=Category.DOCUMENTS,
-        description="Human-approved outputs",
-        sensitivity=Sensitivity.MEDIUM,
-        backup_priority=BackupPriority.HIGH,
-        glob_pattern="*",
-        git_policy=GitPolicy.OPTIONAL,  # User may want history
-    ),
-    
-    # Corrections State — Valuable learning, Git-track the glossary
-    StateLocation(
-        path="tools/agents/inbox/corrections/review_state.json",
-        category=Category.CORRECTIONS,
-        description="Correction review progress",
-        sensitivity=Sensitivity.LOW,
-        backup_priority=BackupPriority.HIGH,
-        git_policy=GitPolicy.IGNORE,  # Session-specific progress
-    ),
-    StateLocation(
-        path="tools/agents/inbox/corrections/user_glossary.json",
-        category=Category.CORRECTIONS,
-        description="Learned transcription corrections",
-        sensitivity=Sensitivity.LOW,
-        backup_priority=BackupPriority.CRITICAL,
-        git_policy=GitPolicy.TRACK_ENCRYPTED,  # Valuable learning
-        merge_strategy="user_glossary",  # Additive merge
-    ),
-    StateLocation(
-        path="tools/agents/inbox/corrections/propagation_queue.json",
-        category=Category.CORRECTIONS,
-        description="Pending correction propagations",
-        sensitivity=Sensitivity.LOW,
-        backup_priority=BackupPriority.HIGH,
-        git_policy=GitPolicy.IGNORE,  # Transient queue
-    ),
-    
-    # Sessions State — Sensitive, gitignored
-    StateLocation(
-        path="tools/agents/sessions",
-        category=Category.SESSIONS,
-        description="Chat session history",
-        sensitivity=Sensitivity.HIGH,
-        backup_priority=BackupPriority.HIGH,
-        glob_pattern="*.json",
-        git_policy=GitPolicy.IGNORE,  # Too sensitive for Git
-    ),
-    
-    # Secrets (excluded from backup AND Git)
-    StateLocation(
-        path=".env",
-        category=Category.SECRETS,
-        description="API keys and tokens",
-        sensitivity=Sensitivity.CRITICAL,
-        backup_priority=BackupPriority.EXCLUDE,
-    ),
+    # Runtime — ephemeral, has retention
+    StateLocation("runtime/inbox/raw/voice",     "runtime",     "Voice memo audio files",         "medium",   "raw_voice",     "*.m4a"),
+    StateLocation("runtime/inbox/raw/gitlab",    "runtime",     "GitLab export JSON files",       "low",      "raw_signals",   "*.json"),
+    StateLocation("runtime/inbox/raw/teams",     "runtime",     "Teams transcript files",         "high",     "raw_signals",   "*.json"),
+    StateLocation("runtime/inbox/processed",     "runtime",     "Processed transcripts/signals",  "high",     "transcripts",   "*"),
+    StateLocation("runtime/inbox/state",         "runtime",     "Briefing and sync state",        "medium",   None),
+
+    # Configuration — indefinite, critical
+    StateLocation("runtime/config/people.md",       "config", "Team roster with aliases",    "medium"),
+    StateLocation("runtime/config/initiatives.md",  "config", "Active initiatives list",     "low"),
+    StateLocation("runtime/config/models.toml",     "config", "LLM endpoint configuration", "low"),
+
+    # Documents — publisher lifecycle
+    StateLocation(".publisher-registry.json", "documents", "Published doc URL mappings",   "medium"),
+    StateLocation(".publisher-state.json",    "documents", "Document lifecycle state",     "medium"),
+    StateLocation("runtime/drafts",           "documents", "Generated drafts",            "low",    "drafts",  "*.md"),
+
+    # Corrections — learned preferences
+    StateLocation("runtime/inbox/corrections/review_state.json",      "corrections", "Review progress",       "low"),
+    StateLocation("runtime/inbox/corrections/user_glossary.json",     "corrections", "Learned corrections",   "low"),
+    StateLocation("runtime/inbox/corrections/propagation_queue.json", "corrections", "Pending propagations",  "low"),
+
+    # Sessions
+    StateLocation("runtime/sessions", "sessions", "Chat session history", "high", "sessions", "*.json"),
 ]
+```
 
-CLI Commands
+---
 
-neut state inventory
+## Retention Policy Engine
 
-Usage: neut state inventory [OPTIONS]
+### Configuration Schema
 
-  Display inventory of all agent state locations.
+```yaml
+# runtime/config/retention.yaml
+retention:
+  raw_voice:
+    days: 7
+    after: processed     # "processed" | "ingested" | "created" | "last_accessed"
 
-Options:
-  --verbose, -v    Show file-level details
-  --json           Output as JSON
-  --category TEXT  Filter by category (runtime, config, documents, corrections, sessions)
-  --help           Show this message and exit.
+  raw_signals:
+    days: 30
+    after: ingested
 
-Example Output:
-  neut state — inventory
+  transcripts:
+    days: 90
+    after: created
 
-  Category: config (3 locations, 2 KB)
-    ✓ config/people.md           1.2 KB  [CRITICAL]
-    ✓ config/initiatives.md      0.5 KB  [CRITICAL]
-    ✗ config/models.yaml         (missing)
+  sessions:
+    days: 30
+    after: last_accessed
 
-  Category: corrections (3 locations, 45 KB)
-    ✓ corrections/review_state.json    12 KB  [HIGH]
-    ✓ corrections/user_glossary.json    8 KB  [CRITICAL]
-    ✓ corrections/propagation_queue.json  25 KB  [HIGH]
+  drafts:
+    days: 14
+    after: created
 
-  Category: runtime (5 locations, 1.2 MB)
-    ✓ inbox/processed/           1.1 MB (23 files)  [CRITICAL]
-    ✓ inbox/state/               45 KB (3 files)    [HIGH]
+legal_hold:
+  enabled: false
+
+audit:
+  log_deletions: true
+  log_path: runtime/logs/retention_audit.jsonl
+```
+
+### Retention Engine
+
+```python
+# src/neutron_os/extensions/builtins/mo_agent/retention.py
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import yaml
+
+from neutron_os.infra.state import STATE_LOCATIONS, StateLocation
+
+
+@dataclass
+class RetentionPolicy:
+    key: str
+    days: int
+    after: str  # "processed" | "ingested" | "created" | "last_accessed"
+
+
+@dataclass
+class RetentionAction:
+    path: Path
+    policy_key: str
+    age_days: int
+    action: str  # "delete" | "skip"
+    reason: str  # "retention_policy" | "legal_hold"
+
+
+def load_retention_config(config_dir: Path) -> tuple[list[RetentionPolicy], bool, Path]:
+    """Load retention config. Returns (policies, legal_hold, audit_path)."""
+    config_path = config_dir / "retention.yaml"
+    if not config_path.exists():
+        # Fall back to example defaults
+        config_path = config_dir.parent / "config.example" / "retention.yaml"
+    if not config_path.exists():
+        return [], False, config_dir.parent / "logs" / "retention_audit.jsonl"
+
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f)
+
+    policies = []
+    for key, val in cfg.get("retention", {}).items():
+        policies.append(RetentionPolicy(key=key, days=val["days"], after=val.get("after", "created")))
+
+    legal_hold = cfg.get("legal_hold", {}).get("enabled", False)
+    audit_path = Path(cfg.get("audit", {}).get("log_path", "runtime/logs/retention_audit.jsonl"))
+    return policies, legal_hold, audit_path
+
+
+def get_file_age_reference(path: Path, after: str) -> datetime:
+    """Determine the reference timestamp for retention calculation."""
+    stat = path.stat()
+    if after == "last_accessed":
+        return datetime.fromtimestamp(stat.st_atime, tz=timezone.utc)
+    elif after == "created":
+        return datetime.fromtimestamp(stat.st_ctime, tz=timezone.utc)
+    else:
+        # "processed", "ingested" — use mtime as proxy
+        return datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+
+
+def scan_retention(
+    project_root: Path,
+    policies: list[RetentionPolicy],
+    legal_hold: bool,
+) -> list[RetentionAction]:
+    """Scan state locations and identify files past retention."""
+    now = datetime.now(timezone.utc)
+    actions: list[RetentionAction] = []
+
+    policy_map = {p.key: p for p in policies}
+
+    for loc in STATE_LOCATIONS:
+        if loc.retention_key is None or loc.retention_key not in policy_map:
+            continue
+
+        policy = policy_map[loc.retention_key]
+        cutoff = now - timedelta(days=policy.days)
+        loc_path = project_root / loc.path
+
+        if not loc_path.exists():
+            continue
+
+        # Collect files to check
+        files: list[Path] = []
+        if loc_path.is_dir():
+            files = list(loc_path.glob(loc.glob_pattern))
+        elif loc_path.is_file():
+            files = [loc_path]
+
+        for file_path in files:
+            if not file_path.is_file():
+                continue
+            ref_time = get_file_age_reference(file_path, policy.after)
+            age_days = (now - ref_time).days
+
+            if ref_time < cutoff:
+                action = "skip" if legal_hold else "delete"
+                reason = "legal_hold" if legal_hold else "retention_policy"
+                actions.append(RetentionAction(
+                    path=file_path,
+                    policy_key=policy.key,
+                    age_days=age_days,
+                    action=action,
+                    reason=reason,
+                ))
+
+    return actions
+
+
+def execute_retention(
+    actions: list[RetentionAction],
+    audit_path: Path,
+    dry_run: bool = False,
+) -> dict[str, int]:
+    """Execute retention actions and log to audit trail.
+
+    Returns summary: {"deleted": N, "skipped": N, "bytes_freed": N}
+    """
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    summary = {"deleted": 0, "skipped": 0, "bytes_freed": 0}
+
+    for action in actions:
+        entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "action": action.action if not dry_run else "dry_run",
+            "path": str(action.path),
+            "reason": action.reason,
+            "policy": action.policy_key,
+            "age_days": action.age_days,
+        }
+
+        if action.action == "delete" and not dry_run:
+            try:
+                size = action.path.stat().st_size
+                action.path.unlink()
+                summary["deleted"] += 1
+                summary["bytes_freed"] += size
+            except OSError:
+                entry["action"] = "error"
+        elif action.action == "skip":
+            summary["skipped"] += 1
+
+        with open(audit_path, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+
+    return summary
+```
+
+### M-O Sweep Integration
+
+M-O's existing periodic sweep in `manager.py` gains retention awareness:
+
+```python
+# In MoManager.sweep() — extend existing method
+
+def sweep(self) -> dict:
+    """Periodic resource sweep — existing scratch cleanup + retention."""
+    results = self._sweep_scratch()  # existing
+
+    # Retention sweep (new)
+    config_dir = self._project_root / "runtime" / "config"
+    policies, legal_hold, audit_path = load_retention_config(config_dir)
+    if policies:
+        actions = scan_retention(self._project_root, policies, legal_hold)
+        retention_results = execute_retention(actions, self._project_root / audit_path)
+        results["retention"] = retention_results
+
+    return results
+```
+
+### CLI Extension
+
+```python
+# Extend mo_agent/cli.py
+
+def register_retention_commands(subparsers):
+    ret_parser = subparsers.add_parser("retention", help="Data retention status and cleanup")
+    ret_parser.add_argument("--status", action="store_true", help="Show retention status")
+    ret_parser.add_argument("--dry-run", action="store_true", help="Preview cleanup without deleting")
+    ret_parser.add_argument("--cleanup", action="store_true", help="Execute retention cleanup")
+    ret_parser.add_argument("--category", help="Filter by retention category")
+```
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+```python
+# src/neutron_os/extensions/builtins/mo_agent/tests/test_retention.py
+
+def test_scan_finds_expired_files(tmp_path):
+    """Files past retention cutoff are identified."""
     ...
 
-  Total: 15 locations, 1.4 MB
-  Critical: 5 | High: 6 | Medium: 3 | Optional: 1
+def test_legal_hold_prevents_deletion(tmp_path):
+    """Legal hold flag changes action from delete to skip."""
+    ...
 
-neut state backup
+def test_audit_log_written(tmp_path):
+    """Every retention action produces an audit log entry."""
+    ...
 
-Usage: neut state backup [OPTIONS]
+def test_dry_run_deletes_nothing(tmp_path):
+    """Dry run logs but doesn't delete."""
+    ...
+```
 
-  Create encrypted backup of agent state.
+```python
+# tests/infra/test_state.py
 
-Options:
-  --output, -o PATH      Output path (default: ~/.neut-backups/neut-state-{timestamp}.tar.gz.age)
-  --no-encrypt           Skip encryption (not recommended)
-  --include-media        Include voice/video files (large)
-  --include-secrets      Include .env (requires explicit opt-in)
-  --passphrase TEXT      Encryption passphrase (prompted if not provided)
-  --key-file PATH        Use age key file instead of passphrase
-  --help                 Show this message and exit.
+def test_locked_json_read_write(tmp_path):
+    """Basic read-modify-write cycle works."""
+    ...
 
-Example:
-  $ neut state backup
-  Enter passphrase: ********
-  Confirm passphrase: ********
+def test_atomic_write_survives_crash(tmp_path):
+    """Partial writes don't corrupt the file."""
+    ...
 
-  neut state — backup
+def test_concurrent_writes_no_corruption(tmp_path):
+    """Two processes writing simultaneously produce valid JSON."""
+    # Fork or use multiprocessing to verify locking
+    ...
 
-  Scanning state locations...
-  ✓ config/people.md (1.2 KB)
-  ✓ config/initiatives.md (0.5 KB)
-  ✓ inbox/processed/ (23 files, 1.1 MB)
-  ✓ corrections/user_glossary.json (8 KB)
-  ...
-  ⊘ .env (excluded: secrets)
-  ⊘ inbox/raw/voice/ (excluded: media)
+def test_exclusive_lock_blocks_concurrent_write(tmp_path):
+    """Second exclusive lock waits for first to release."""
+    ...
+```
 
-  Creating archive...
-  Encrypting with age...
+### Integration Tests
 
-  ✓ Backup created: ~/.neut-backups/neut-state-2026-02-24T143022.tar.gz.age
-    Size: 892 KB (compressed from 1.4 MB)
-    Files: 47
-    Checksum: sha256:a1b2c3d4...
+```python
+def test_mo_sweep_includes_retention(tmp_path):
+    """M-O's sweep cycle runs retention when config exists."""
+    ...
 
-neut state restore
+def test_retention_config_missing_is_noop(tmp_path):
+    """No retention.yaml = no retention actions."""
+    ...
+```
 
-Usage: neut state restore [OPTIONS] BACKUP_PATH
+---
 
-  Restore agent state from backup.
+## Migration Plan
 
-Arguments:
-  BACKUP_PATH  Path to backup file (.tar.gz or .tar.gz.age)
+### Phase 0: Safe State Access (3 days)
 
-Options:
-  --passphrase TEXT   Decryption passphrase (prompted if encrypted)
-  --key-file PATH     Use age key file for decryption
-  --dry-run           Show what would be restored without making changes
-  --force             Overwrite existing files without prompting
-  --category TEXT     Restore only specific category
-  --help              Show this message and exit.
+1. Create `src/neutron_os/infra/state.py` with `LockedJsonFile`, `atomic_write`, `StateLocation`, `STATE_LOCATIONS`
+2. Refactor M-O's `manifest.py` to import `LockedJsonFile` from `infra.state`
+3. Migrate publisher state files to use `LockedJsonFile`
+4. Tests for concurrent access safety
 
-Example:
-  $ neut state restore ~/.neut-backups/neut-state-2026-02-24T143022.tar.gz.age --dry-run
-  Enter passphrase: ********
+### Phase 1: Retention (1 week)
 
-  neut state — restore (dry run)
+1. Create `runtime/config.example/retention.yaml`
+2. Create `mo_agent/retention.py`
+3. Integrate retention sweep into M-O's `manager.py`
+4. Add `neut mo retention` CLI subcommand
+5. Migrate `CLIP_RETENTION_DAYS` to read from `retention.yaml`
+6. Tests for retention engine
 
-  Validating backup...
-  ✓ Checksum verified
-  ✓ Manifest version: 1.0
-  ✓ Created: 2026-02-24 14:30:22
+---
 
-  Would restore:
-    config/people.md (1.2 KB) → exists, would overwrite
-    config/initiatives.md (0.5 KB) → exists, would overwrite
-    inbox/processed/meeting_2026-02-20.json → new
-    corrections/user_glossary.json (8 KB) → exists, would merge
+## Related Documents
 
-  Total: 47 files, 892 KB
-  Run without --dry-run to apply.
-
-neut state export
-
-Usage: neut state export [OPTIONS] CATEGORY
-
-  Export state category to portable format.
-
-Arguments:
-  CATEGORY  Category to export (config, corrections, documents, sessions)
-
-Options:
-  --output, -o PATH   Output path (default: stdout)
-  --format TEXT       Output format: json, yaml (default: json)
-  --help              Show this message and exit.
-
-Example:
-  $ neut state export corrections -o my-corrections.json
-  
-  neut state — export
-
-  Exporting corrections state...
-  ✓ review_state.json
-  ✓ user_glossary.json
-  ✓ propagation_queue.json
-
-  Exported to: my-corrections.json
-  Schema version: 1.0
-
-Backup Format
-
-Archive Structure
-
-neut-state-{timestamp}.tar.gz
-├── manifest.json           # Backup metadata
-├── config/
-│   ├── people.md
-│   ├── initiatives.md
-│   └── models.yaml
-├── documents/
-│   ├── .doc-registry.json
-│   ├── .doc-state.json
-│   └── .doc-workflow.yaml
-├── corrections/
-│   ├── review_state.json
-│   ├── user_glossary.json
-│   └── propagation_queue.json
-├── runtime/
-│   ├── inbox_processed/
-│   │   └── *.json
-│   └── inbox_state/
-│       └── *.json
-└── sessions/
-    └── *.json
-
-Manifest Schema
-
-{
-  "$schema": "https://neutronos.dev/schemas/state-backup-manifest-v1.json",
-  "version": "1.0",
-  "created_at": "2026-02-24T14:30:22Z",
-  "neutron_os_version": "0.1.0",
-  "machine_id": "ME-A94401",
-  "user": "ben",
-  "checksum": "sha256:a1b2c3d4e5f6...",
-  "encryption": {
-    "algorithm": "age-x25519-chacha20poly1305",
-    "key_derivation": "scrypt"
-  },
-  "contents": {
-    "total_files": 47,
-    "total_bytes": 1474560,
-    "compressed_bytes": 913408,
-    "categories": {
-      "config": {"files": 3, "bytes": 2048},
-      "documents": {"files": 5, "bytes": 4096},
-      "corrections": {"files": 3, "bytes": 46080},
-      "runtime": {"files": 26, "bytes": 1126400},
-      "sessions": {"files": 10, "bytes": 296936}
-    }
-  },
-  "excluded": [
-    {"path": ".env", "reason": "secrets"},
-    {"path": "inbox/raw/voice/", "reason": "media", "files": 5, "bytes": 52428800}
-  ],
-  "files": [
-    {
-      "path": "config/people.md",
-      "size": 1234,
-      "modified": "2026-02-23T10:15:00Z",
-      "checksum": "sha256:..."
-    }
-  ]
-}
-
-Encryption
-
-age Integration
-
- is a modern, audited encryption tool:age
-
-# tools/agents/state/encryption.py
-
-import subprocess
-import tempfile
-from pathlib import Path
-from typing import Optional
-
-class AgeEncryption:
-    """Encrypt/decrypt using age."""
-    
-    @staticmethod
-    def encrypt_file(
-        input_path: Path,
-        output_path: Path,
-        passphrase: Optional[str] = None,
-        key_file: Optional[Path] = None,
-    ) -> None:
-        """Encrypt a file with age."""
-        cmd = ["age", "--encrypt", "--output", str(output_path)]
-        
-        if key_file:
-            cmd.extend(["--recipients-file", str(key_file)])
-        else:
-            cmd.append("--passphrase")
-        
-        cmd.append(str(input_path))
-        
-        env = None
-        if passphrase and not key_file:
-            # age reads passphrase from AGE_PASSPHRASE env var
-            env = {"AGE_PASSPHRASE": passphrase}
-        
-        subprocess.run(cmd, check=True, env=env)
-    
-    @staticmethod
-    def decrypt_file(
-        input_path: Path,
-        output_path: Path,
-        passphrase: Optional[str] = None,
-        key_file: Optional[Path] = None,
-    ) -> None:
-        """Decrypt a file with age."""
-        cmd = ["age", "--decrypt", "--output", str(output_path)]
-        
-        if key_file:
-            cmd.extend(["--identity", str(key_file)])
-        
-        cmd.append(str(input_path))
-        
-        env = None
-        if passphrase and not key_file:
-            env = {"AGE_PASSPHRASE": passphrase}
-        
-        subprocess.run(cmd, check=True, env=env)
-
-Keychain Integration (macOS)
-
-import subprocess
-
-def store_passphrase_keychain(service: str, account: str, passphrase: str) -> None:
-    """Store passphrase in macOS Keychain."""
-    subprocess.run([
-        "security", "add-generic-password",
-        "-s", service,
-        "-a", account,
-        "-w", passphrase,
-        "-U",  # Update if exists
-    ], check=True)
-
-def get_passphrase_keychain(service: str, account: str) -> str:
-    """Retrieve passphrase from macOS Keychain."""
-    result = subprocess.run([
-        "security", "find-generic-password",
-        "-s", service,
-        "-a", account,
-        "-w",
-    ], capture_output=True, text=True, check=True)
-    return result.stdout.strip()
-
-Git Integration
-
-State management is designed to be Git-aware but Git-optional. When running in a Git repository, the system can leverage Git for versioning, sync, and backup while remaining fully functional without Git.
-
-Git Detection
-
-# tools/agents/state/git_integration.py
-
-import subprocess
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Optional
-
-
-class GitStatus:
-    """Git repository status for state management."""
-    is_git_repo: bool
-    root: Optional[Path]
-    current_branch: Optional[str]
-    has_remote: bool
-    remote_url: Optional[str]
-    is_clean: bool
-    git_crypt_enabled: bool
-    git_crypt_unlocked: bool
-
-def detect_git_status(path: Path) -> GitStatus:
-    """Detect Git repository status at path."""
-    try:
-        # Check if in git repo
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            cwd=path, capture_output=True, text=True, timeout=5,
-        )
-        if result.returncode != 0:
-            return GitStatus(
-                is_git_repo=False, root=None, current_branch=None,
-                has_remote=False, remote_url=None, is_clean=True,
-                git_crypt_enabled=False, git_crypt_unlocked=False,
-            )
-        
-        # Get repo root
-        root_result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=path, capture_output=True, text=True, timeout=5,
-        )
-        root = Path(root_result.stdout.strip()) if root_result.returncode == 0 else None
-        
-        # Get current branch
-        branch_result = subprocess.run(
-            ["git", "branch", "--show-current"],
-            cwd=path, capture_output=True, text=True, timeout=5,
-        )
-        branch = branch_result.stdout.strip() or None
-        
-        # Check for remote
-        remote_result = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
-            cwd=path, capture_output=True, text=True, timeout=5,
-        )
-        has_remote = remote_result.returncode == 0
-        remote_url = remote_result.stdout.strip() if has_remote else None
-        
-        # Check if clean
-        status_result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=path, capture_output=True, text=True, timeout=5,
-        )
-        is_clean = len(status_result.stdout.strip()) == 0
-        
-        # Check git-crypt status
-        git_crypt_enabled = (root / ".git-crypt").exists() if root else False
-        git_crypt_unlocked = False
-        if git_crypt_enabled:
-            unlock_result = subprocess.run(
-                ["git-crypt", "status", "-e"],
-                cwd=path, capture_output=True, text=True, timeout=5,
-            )
-            # If exit code is 0 and no output, all files are decrypted
-            git_crypt_unlocked = unlock_result.returncode == 0
-        
-        return GitStatus(
-            is_git_repo=True,
-            root=root,
-            current_branch=branch,
-            has_remote=has_remote,
-            remote_url=remote_url,
-            is_clean=is_clean,
-            git_crypt_enabled=git_crypt_enabled,
-            git_crypt_unlocked=git_crypt_unlocked,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        return GitStatus(
-            is_git_repo=False, root=None, current_branch=None,
-            has_remote=False, remote_url=None, is_clean=True,
-            git_crypt_enabled=False, git_crypt_unlocked=False,
-        )
-
-Git-Aware Inventory Display
-
-def format_git_status(location: StateLocation, git_status: GitStatus) -> str:
-    """Format Git tracking status for display."""
-    if not git_status.is_git_repo:
-        return ""
-    
-    path = location.resolve(git_status.root)
-    
-    # Check if in .gitignore
-    result = subprocess.run(
-        ["git", "check-ignore", "-q", str(path)],
-        cwd=git_status.root, capture_output=True, timeout=5,
-    )
-    if result.returncode == 0:
-        return "git:ignored"
-    
-    # Check if tracked
-    result = subprocess.run(
-        ["git", "ls-files", "--error-unmatch", str(path)],
-        cwd=git_status.root, capture_output=True, timeout=5,
-    )
-    if result.returncode != 0:
-        return "git:untracked ⚠️"
-    
-    # Check if encrypted via git-crypt
-    if git_status.git_crypt_enabled:
-        result = subprocess.run(
-            ["git-crypt", "status", str(path)],
-            cwd=git_status.root, capture_output=True, text=True, timeout=5,
-        )
-        if "encrypted" in result.stdout.lower():
-            return "git:encrypted"
-    
-    return "git:tracked"
-
-Git-Crypt Integration (Phase 1)
-
- provides transparent encryption for Git-tracked files.git-crypt
-
-Setup
-
-# Initialize git-crypt in repo
-git-crypt init
-
-# Export symmetric key for team sharing
-git-crypt export-key /path/to/neutron-os.key
-
-# Or add GPG key for a team member
-git-crypt add-gpg-user --trusted KEYID
-
-# Add patterns to .gitattributes
-cat >> .gitattributes << 'EOF'
-# State files encrypted via git-crypt
-tools/agents/config/people.md filter=git-crypt diff=git-crypt
-tools/agents/config/initiatives.md filter=git-crypt diff=git-crypt
-.doc-registry.json filter=git-crypt diff=git-crypt
-.doc-state.json filter=git-crypt diff=git-crypt
-tools/agents/inbox/corrections/user_glossary.json filter=git-crypt diff=git-crypt
-EOF
-
-# Commit the configuration
-git add .gitattributes
-git commit -m "Configure git-crypt for state encryption"
-
-.gitattributes Patterns
-
-# Tier 1: Encrypted state (decrypted only on authorized machines)
-tools/agents/config/people.md filter=git-crypt diff=git-crypt
-tools/agents/config/initiatives.md filter=git-crypt diff=git-crypt
-tools/agents/config/models.yaml filter=git-crypt diff=git-crypt
-.doc-registry.json filter=git-crypt diff=git-crypt
-.doc-state.json filter=git-crypt diff=git-crypt
-.doc-workflow.yaml filter=git-crypt diff=git-crypt
-tools/agents/inbox/corrections/user_glossary.json filter=git-crypt diff=git-crypt
-
-# Note: Large/sensitive state stays in .gitignore (Tier 2)
-# inbox/raw/, inbox/processed/, sessions/ are NOT tracked
-
-Unlock on New Machine
-
-# Using symmetric key
-git-crypt unlock /path/to/neutron-os.key
-
-# Using GPG (if your key was added)
-git-crypt unlock
-
-Git-Aware Commands
-
-neut state sync
-
-Usage: neut state sync [OPTIONS]
-
-  Synchronize state with Git remote.
-
-Options:
-  --pull           Pull latest state from remote (default)
-  --push           Push local state to remote
-  --force          Force push/pull (use with caution)
-  --dry-run        Show what would change without applying
-  --help           Show this message and exit.
-
-Example:
-  $ neut state sync --pull
-
-  neut state — sync
-
-  Git status:
-    Repository: /Users/ben/Projects/UT_Computational_NE/Neutron_OS
-    Branch: main
-    Remote: origin (github.com:ut-nuclear/neutron-os.git)
-    git-crypt: enabled, unlocked
-
-  Pulling from origin/main...
-  ✓ config/people.md updated
-      + Alice Chen (new team member)
-      + Bob Smith (new team member)
-  ✓ user_glossary.json merged
-      + 12 new correction entries
-
-  State synchronized.
-
-neut state backup --git-commit
-
-Usage: neut state backup [OPTIONS]
-
-Options:
-  --git-commit     Commit encrypted state to Git after backup
-  --git-push       Push to remote after commit (implies --git-commit)
-  --git-message    Custom commit message
-
-Example:
-  $ neut state backup --git-push
-
-  neut state — backup
-
-  Creating backup archive...
-  ✓ 47 files, 892 KB (encrypted)
-
-  Git operations:
-  ✓ Updated .gitattributes for new state files
-  ✓ Staged encrypted state files
-  ✓ Committed: "state backup 2026-02-24T14:30:22"
-  ✓ Pushed to origin/main
-
-  Backup complete.
-
-State Merge Strategy
-
-When pulling state from Git, conflicts may occur. The system uses schema-aware merge:
-
-# tools/agents/state/merge.py
-
-from typing import Any
-import json
-
-def merge_user_glossary(local: dict, remote: dict) -> dict:
-    """Merge user glossary entries (corrections are additive)."""
-    merged = {"entries": {}, "metadata": remote.get("metadata", {})}
-    
-    # Corrections are keyed by (original_text, corrected_text)
-    # Take the union, preferring remote for conflicts
-    all_entries = {}
-    
-    for entry in local.get("entries", {}).values():
-        key = (entry["original"], entry["corrected"])
-        all_entries[key] = entry
-    
-    for entry in remote.get("entries", {}).values():
-        key = (entry["original"], entry["corrected"])
-        # Remote wins on conflict (more recent)
-        all_entries[key] = entry
-    
-    merged["entries"] = {
-        f"{i}": entry for i, entry in enumerate(all_entries.values())
-    }
-    return merged
-
-def merge_doc_registry(local: dict, remote: dict) -> dict:
-    """Merge document registry (by doc_id, remote wins)."""
-    merged = {"documents": []}
-    
-    local_docs = {d["doc_id"]: d for d in local.get("documents", [])}
-    remote_docs = {d["doc_id"]: d for d in remote.get("documents", [])}
-    
-    # Union of all doc_ids, remote wins on conflict
-    all_ids = set(local_docs.keys()) | set(remote_docs.keys())
-    for doc_id in sorted(all_ids):
-        if doc_id in remote_docs:
-            merged["documents"].append(remote_docs[doc_id])
-        else:
-            merged["documents"].append(local_docs[doc_id])
-    
-    return merged
-
-MERGE_STRATEGIES = {
-    "user_glossary.json": merge_user_glossary,
-    ".doc-registry.json": merge_doc_registry,
-    ".doc-state.json": merge_doc_registry,  # Same strategy
-    # For config files, prefer manual merge or remote-wins
-}
-
-Migration: Existing Repo to Git-Crypt
-
-For repositories with existing unencrypted state:
-
-# 1. Ensure state is in .gitignore first
-echo "tools/agents/config/" >> .gitignore
-git add .gitignore
-git commit -m "Temporarily ignore state for git-crypt migration"
-
-# 2. Initialize git-crypt
-git-crypt init
-
-# 3. Configure .gitattributes
-# (add patterns as shown above)
-git add .gitattributes
-git commit -m "Configure git-crypt encryption patterns"
-
-# 4. Remove state from .gitignore
-# Edit .gitignore to remove tools/agents/config/
-
-# 5. Add state files (now encrypted)
-git add tools/agents/config/
-git commit -m "Add encrypted state files"
-
-# 6. Force-push to rewrite history (optional, if state was previously tracked unencrypted)
-# WARNING: This rewrites history and requires team coordination
-# git filter-branch --force --tree-filter 'git-crypt status -e || true' HEAD
-
-PostgreSQL Schema (Phase 2)
-
--- State snapshots for team sync
-CREATE TABLE state_snapshots (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    category TEXT NOT NULL,
-    path TEXT NOT NULL,
-    content_hash TEXT NOT NULL,
-    content BYTEA NOT NULL,  -- Encrypted blob
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
-    UNIQUE (user_id, category, path)
-);
-
--- Access control
-CREATE TABLE state_shares (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    snapshot_id UUID NOT NULL REFERENCES state_snapshots(id),
-    shared_with_user_id UUID REFERENCES users(id),
-    shared_with_team_id UUID REFERENCES teams(id),
-    permission TEXT NOT NULL CHECK (permission IN ('viewer', 'editor', 'owner')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
-    CHECK (shared_with_user_id IS NOT NULL OR shared_with_team_id IS NOT NULL)
-);
-
--- Audit log
-CREATE TABLE state_access_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    snapshot_id UUID REFERENCES state_snapshots(id),
-    action TEXT NOT NULL,  -- 'view', 'download', 'upload', 'delete', 'share'
-    details JSONB,
-    ip_address INET,
-    user_agent TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX idx_state_snapshots_user ON state_snapshots(user_id);
-CREATE INDEX idx_state_access_log_user ON state_access_log(user_id);
-CREATE INDEX idx_state_access_log_time ON state_access_log(created_at);
-
-Testing Strategy
-
-Unit Tests
-
-# tests/agents/state/test_inventory.py
-
-def test_inventory_scanner_finds_all_locations():
-    """Scanner identifies all defined state locations."""
-    scanner = InventoryScanner(root=FIXTURES_ROOT)
-    inventory = scanner.scan()
-    
-    assert len(inventory.locations) == len(STATE_LOCATIONS)
-    assert inventory.total_size > 0
-
-def test_inventory_handles_missing_locations():
-    """Scanner gracefully handles missing directories."""
-    scanner = InventoryScanner(root=EMPTY_ROOT)
-    inventory = scanner.scan()
-    
-    missing = [loc for loc in inventory.locations if not loc.exists]
-    assert len(missing) > 0
-
-# tests/agents/state/test_backup.py
-
-def test_backup_creates_valid_archive():
-    """Backup creates tar.gz with manifest."""
-    backup = StateBackup(root=FIXTURES_ROOT)
-    archive_path = backup.create(output_dir=TMP_DIR)
-    
-    assert archive_path.exists()
-    assert archive_path.suffix == ".gz"
-    
-    with tarfile.open(archive_path) as tar:
-        assert "manifest.json" in tar.getnames()
-
-def test_backup_excludes_secrets():
-    """Backup never includes .env by default."""
-    backup = StateBackup(root=FIXTURES_ROOT)
-    archive_path = backup.create(output_dir=TMP_DIR)
-    
-    with tarfile.open(archive_path) as tar:
-        assert ".env" not in tar.getnames()
-
-def test_restore_validates_checksum():
-    """Restore fails on corrupted archive."""
-    backup = StateBackup(root=FIXTURES_ROOT)
-    archive_path = backup.create(output_dir=TMP_DIR)
-    
-    # Corrupt the archive
-    with open(archive_path, "r+b") as f:
-        f.seek(100)
-        f.write(b"CORRUPTED")
-    
-    with pytest.raises(ChecksumError):
-        backup.restore(archive_path)
-
-Integration Tests
-
-def test_backup_restore_roundtrip():
-    """Full backup and restore preserves all state."""
-    # Create state
-    with temp_neutron_root() as root:
-        (root / "tools/agents/config/people.md").write_text("# People\n")
-        (root / ".doc-registry.json").write_text("{}")
-        
-        # Backup
-        backup = StateBackup(root=root)
-        archive = backup.create(output_dir=TMP_DIR, encrypt=True, passphrase="test")
-        
-        # Clear state
-        shutil.rmtree(root / "tools/agents/config")
-        (root / ".doc-registry.json").unlink()
-        
-        # Restore
-        backup.restore(archive, passphrase="test")
-        
-        # Verify
-        assert (root / "tools/agents/config/people.md").read_text() == "# People\n"
-        assert (root / ".doc-registry.json").exists()
-
-Dependencies
-
-Installation
-
-# macOS
-brew install age git-crypt
-
-# Linux (apt)
-sudo apt install age git-crypt
-
-# Python dependencies
-pip install keyring
-
-Migration Notes
-
-Schema Versioning
-
-The manifest includes a version field for forward compatibility:
-
-• v1.0: Initial schema (Phase 0)
-
-• v1.1: Added git-crypt metadata (Phase 1)
-
-• v2.0: PostgreSQL sync metadata (Phase 2)
-
-Migration code checks version and applies transforms:
-
-def migrate_manifest(manifest: dict) -> dict:
-    version = manifest.get("version", "1.0")
-    
-    if version == "1.0":
-        # v1.0 → v1.1: Add git_crypt field
-        manifest["git_crypt"] = {"enabled": False}
-        manifest["version"] = "1.1"
-    
-    return manifest
-
-Related Documents
-
-• Agent State Management PRD
-
-•  — Document lifecycle stateDocFlow Specification
-
-• Data Architecture Specification
+- [Agent State Management PRD](../requirements/prd_agent-state-management.md)
+- [M-O Agent Extension](../../src/neutron_os/extensions/builtins/mo_agent/)
+- [RAG Architecture Spec](neutron-os-rag-architecture-spec.md)
+- [Data Architecture Spec](data-architecture-spec.md)

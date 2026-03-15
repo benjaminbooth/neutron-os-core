@@ -1,0 +1,106 @@
+{{- if .Values.webApi.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "neutron-os.fullname" . }}-web-api
+  labels:
+    {{- include "neutron-os.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web-api
+spec:
+  replicas: {{ .Values.webApi.replicas }}
+  selector:
+    matchLabels:
+      {{- include "neutron-os.webApiSelectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "neutron-os.webApiSelectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "neutron-os.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: web-api
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.webApi.image.repository }}:{{ .Values.webApi.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.webApi.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "neutron-os.fullname" . }}-config
+          env:
+            {{- if .Values.secrets.database }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.database }}
+                  key: url
+            {{- else }}
+            - name: DATABASE_URL
+              value: {{ include "neutron-os.databaseUrl" . | quote }}
+            {{- end }}
+            {{- if .Values.secrets.anthropic }}
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.anthropic }}
+                  key: api_key
+            {{- else }}
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "neutron-os.fullname" . }}-secrets
+                  key: anthropic-api-key
+                  optional: true
+            {{- end }}
+            {{- range $key, $value := .Values.webApi.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.webApi.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.webApi.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.webApi.resources | nindent 12 }}
+          volumeMounts:
+            - name: docs
+              mountPath: /app/docs
+            - name: runtime
+              mountPath: /app/runtime
+      volumes:
+        - name: docs
+          emptyDir: {}
+        - name: runtime
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

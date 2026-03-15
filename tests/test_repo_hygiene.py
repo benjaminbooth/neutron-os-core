@@ -44,7 +44,7 @@ class TestExtensionTestsColocated:
 
     EXTENSION_NAMES = [
         "sense_agent", "chat_agent", "mo_agent", "doctor_agent",
-        "docflow", "db", "demo", "status", "test", "update",
+        "publisher", "db", "demo", "status", "test", "update",
         "repo", "cost_estimation",
     ]
 

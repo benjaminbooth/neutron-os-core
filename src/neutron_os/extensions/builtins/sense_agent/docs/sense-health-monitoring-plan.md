@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The Sense system processes signals from multiple channels (voice memos, Teams transcripts, GitHub, DocFlow, etc.) and publishes synthesized outputs to various endpoints (PRDs, changelogs, briefings). Currently, there's no unified view of system health—whether channels are active, if pipelines are functioning, or what actions are recommended.
+The Sense system processes signals from multiple channels (voice memos, Teams transcripts, GitHub, publisher, etc.) and publishes synthesized outputs to various endpoints (PRDs, changelogs, briefings). Currently, there's no unified view of system health—whether channels are active, if pipelines are functioning, or what actions are recommended.
 
 This plan proposes a **Sense Health** subsystem that provides:
 1. Real-time visibility into signal source activity and health
@@ -36,7 +36,7 @@ This plan proposes a **Sense Health** subsystem that provides:
 
 **For Neut (Agent)**:
 - Query health data: "What's the status of my signal sources?"
-- Get suggested actions: "DocFlow sync is 14 days stale → run `neut doc pull --all`"
+- Get suggested actions: "publisher sync is 14 days stale → run `neut doc pull --all`"
 - Reference explicit health information when answering questions
 
 **For Human Operators (System Status View)**:
@@ -93,7 +93,7 @@ This plan proposes a **Sense Health** subsystem that provides:
 | **Teams Chat** | Messages extracted, API connection, sync cursor | Last sync, error rate |
 | **GitHub** | Events polled, issues/PRs processed | API rate limit, last poll |
 | **GitLab** | Export files processed, signal count | Last export, backlog |
-| **DocFlow** | Comments extracted, documents tracked | Sync staleness, error count |
+| **publisher** | Comments extracted, documents tracked | Sync staleness, error count |
 | **Calendar** | Events synced, upcoming meetings | Last sync, coverage window |
 | **Freetext/Notes** | Files ingested, signals extracted | Pending files, parse errors |
 
@@ -104,7 +104,7 @@ This plan proposes a **Sense Health** subsystem that provides:
 | **Voice→Signal** | Upload → Transcribe → Correct → Extract | Stage completion rate, avg duration |
 | **Teams→Signal** | Sync → Parse → Extract → Correlate | Success rate, error types |
 | **Signal→Synthesis** | Cluster → Draft → Approve → Publish | Queue depth, approval backlog |
-| **DocFlow→Local** | Pull → Extract → Diff → Update | Sync success, conflict count |
+| **publisher→Local** | Pull → Extract → Diff → Update | Sync success, conflict count |
 
 #### 3. Publication Endpoints
 
@@ -147,7 +147,7 @@ This plan proposes a **Sense Health** subsystem that provides:
         "last_sync_attempt": "2026-02-24T10:00:00Z"
       }
     },
-    "docflow": {
+    "publisher": {
       "status": "degraded",
       "last_activity": "2026-02-18T00:00:00Z",
       "pending_count": 4,
@@ -180,7 +180,7 @@ This plan proposes a **Sense Health** subsystem that provides:
       "priority": "high",
       "category": "sync",
       "action": "neut doc pull --all",
-      "reason": "DocFlow sync is 6 days stale with 4 pending documents",
+      "reason": "publisher sync is 6 days stale with 4 pending documents",
       "can_auto_execute": true
     },
     {
@@ -238,21 +238,21 @@ $ neut health
 │  ✓ voice          3 signals/24h      last: 2h ago                 │
 │  ✓ github         12 events/24h      last: 30m ago                │
 │  ⚠ teams_chat     0 signals/24h      last: 14d ago   [TOKEN EXPIRED]
-│  ⚠ docflow        0 signals/24h      last: 6d ago    [4 PENDING]  │
+│  ⚠ publisher        0 signals/24h      last: 6d ago    [4 PENDING]  │
 │  ○ calendar       not configured                                   │
 │                                                                    │
 ├─ Pipelines ────────────────────────────────────────────────────────┤
 │  ✓ voice→signal           95% success    avg: 2m                  │
 │  ✓ signal→synthesis       100% success   avg: 30s                 │
-│  ⚠ docflow→local          0% success     last: 6d ago             │
+│  ⚠ publisher→local          0% success     last: 6d ago             │
 │                                                                    │
 ├─ Endpoints ────────────────────────────────────────────────────────┤
 │  ⚠ reactor-ops-log-prd    stale (14d)   12 pending signals        │
 │  ⚠ experiment-manager-prd stale (14d)   8 pending signals         │
-│  ✓ docflow-spec           fresh (6d)    0 pending                 │
+│  ✓ publisher-spec           fresh (6d)    0 pending                 │
 │                                                                    │
 ├─ Suggested Actions ────────────────────────────────────────────────┤
-│  HIGH   Run `neut doc pull --all` — DocFlow 6d stale (auto-fix)   │
+│  HIGH   Run `neut doc pull --all` — publisher 6d stale (auto-fix)   │
 │  MEDIUM Renew Teams API token — auth expired                       │
 │  LOW    Configure calendar sync — enable for meeting context       │
 │                                                                    │
@@ -280,7 +280,7 @@ status = health.get_status()
 
 # Get stale channels
 stale = health.get_stale_channels(threshold_days=7)
-# → ["teams_chat", "docflow"]
+# → ["teams_chat", "publisher"]
 
 # Get suggested actions
 actions = health.get_actions(priority="high", auto_executable=True)
@@ -288,7 +288,7 @@ actions = health.get_actions(priority="high", auto_executable=True)
 
 # Natural language summary for Neut
 summary = health.get_summary_for_agent()
-# → "Sense system is degraded. DocFlow sync is 6 days stale..."
+# → "Sense system is degraded. publisher sync is 6 days stale..."
 ```
 
 ### MCP Tool Integration
@@ -324,7 +324,7 @@ async def sense_suggested_actions() -> list[dict]:
 voice   ██    ███   █     ████  ██          
 teams   ███   ███   ███   ███   ███         
 github  █     ██    ███   █████ ████  ██    █
-docflow                   █                 
+publisher                   █                 
 ```
 - 7-day rolling view
 - Intensity = signal volume
@@ -336,7 +336,7 @@ Endpoint                    │ Freshness │ Pending │
 ────────────────────────────┼───────────┼─────────┤
 reactor-ops-log-prd         │ ████████░░│ 12      │ 14d stale
 experiment-manager-prd      │ ████████░░│ 8       │ 14d stale
-docflow-spec               │ ██████████│ 0       │ fresh
+publisher-spec               │ ██████████│ 0       │ fresh
 neutron-os-executive-prd    │ ███░░░░░░░│ 5       │ 21d stale
 ```
 
@@ -344,7 +344,7 @@ neutron-os-executive-prd    │ ███░░░░░░░│ 5       │ 21
 ```
 voice→signal:    ▁▂▃▅▇█▇▅▃▂▁ (95% success, 2m avg)
 signal→synth:    █████████████ (100% success, 30s avg)
-docflow→local:   ▁▁▁▁▁▁▁▁▁▁▁ (0% - stale)
+publisher→local:   ▁▁▁▁▁▁▁▁▁▁▁ (0% - stale)
 ```
 
 #### 5. Actions Panel
@@ -373,7 +373,7 @@ Each existing command updates health state:
 | `neut sense ingest` | Channel activity, pipeline success |
 | `neut sense synthesize` | Pipeline completion, endpoint updates |
 | `neut doc publish` | Endpoint freshness |
-| `neut doc pull` | DocFlow sync status |
+| `neut doc pull` | publisher sync status |
 | `neut sense corrections` | Correction pipeline status |
 
 ### Active Probes (New)
@@ -396,7 +396,7 @@ Probes:
 probes:
   api_connectivity:
     schedule: "0 */6 * * *"  # Every 6 hours
-    channels: [teams_chat, github, docflow]
+    channels: [teams_chat, github, publisher]
   
   credential_check:
     schedule: "0 8 * * *"    # Daily at 8am
@@ -404,7 +404,7 @@ probes:
   
   external_sync:
     schedule: "0 */12 * * *" # Every 12 hours
-    check: [docflow, calendar]
+    check: [publisher, calendar]
 ```
 
 ---
@@ -427,13 +427,13 @@ probes:
 def generate_actions(health: HealthState) -> list[SuggestedAction]:
     actions = []
     
-    # DocFlow staleness
-    if health.channels.docflow.days_since_sync > 7:
+    # publisher staleness
+    if health.channels.publisher.days_since_sync > 7:
         actions.append(SuggestedAction(
             priority="high",
             category="sync",
             action="neut doc pull --all",
-            reason=f"DocFlow sync is {health.channels.docflow.days_since_sync}d stale",
+            reason=f"publisher sync is {health.channels.publisher.days_since_sync}d stale",
             can_auto_execute=True,
         ))
     
@@ -506,7 +506,7 @@ inbox/state/health.json                # Health state persistence
 tools/pipelines/sense/cli.py              # Add `neut health` commands
 tools/pipelines/sense/serve.py            # Add /system-status, /api/health
 tools/pipelines/sense/correlator.py       # Health update on ingest
-tools/docflow/engine.py                # Health update on publish/pull
+tools/publisher/engine.py                # Health update on publish/pull
 tools/mcp_server/server.py             # Add health MCP tools
 ```
 
@@ -537,4 +537,4 @@ tools/mcp_server/server.py             # Add health MCP tools
 
 - [Sense & Synthesis MVP Spec](../specs/sense-synthesis-mvp-spec.md)
 - [Agent State Management PRD](../prd/agent-state-management-prd.md) — Retention policies
-- [DocFlow Specification](../specs/docflow-spec.md) — Publication endpoints
+- [publisher Specification](../specs/publisher-spec.md) — Publication endpoints

@@ -1,8 +1,8 @@
 # NeutronOS Helm Chart - Default Values
 # Override for specific environments: values-local.yaml, values-stage.yaml, values-prod.yaml
 #
-# Extracted and adapted from docs/_tools/docflow/deploy/helm/docflow/
-# as part of DocFlow → Sense consolidation (Step 0)
+# Extracted and adapted from docs/_tools/publisher/deploy/helm/publisher/
+# as part of Publisher → Sense consolidation (Step 0)
 
 # =============================================================================
 # Global Configuration

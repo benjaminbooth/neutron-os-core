@@ -78,7 +78,7 @@ The [Media Library](../../tools/pipelines/sense/media_library.py) indexes all re
 
 ```bash
 # Search recordings
-neut media search "DocFlow architecture decision" --discuss
+neut media search "Publisher architecture decision" --discuss
 
 # Extract action items
 neut media discuss <id> --actions
@@ -140,9 +140,9 @@ neut media discuss <id> --concepts
 | **Collaborative Docs** | Stakeholder review/edit | OneDrive, Google Workspace |
 | **Stakeholder Briefings** | Narrative summaries | Email, Slack, Teams |
 
-**DocFlow Integration:**
+**Publisher Integration:**
 
-DocFlow synchronizes `.md` (repo) and `.docx` (collaborative) versions:
+Publisher synchronizes `.md` (repo) and `.docx` (collaborative) versions:
 - Human edits in Office 365 → reconcile back to `.md`
 - Agent edits in `.md` → publish to Office 365
 - Diagram intelligence (Mermaid parsing) is a Sense capability
@@ -236,14 +236,14 @@ Signal Sources (all feed into ONE RAG)
        ↓
        
    Neut answers questions about ANYTHING
-   - "What was decided about DocFlow?" → surfaces session notes, meetings, ADRs
+   - "What was decided about Publisher?" → surfaces session notes, meetings, ADRs
    - "Who is working on the pump experiment?" → calendar, project tracking, recordings
    - "What's the status of medical isotope production?" → PRDs, ops logs, signals
 ```
 
 **Key Design Decisions:**
 - **PostgreSQL + pgvector** — single embedding store, scales with infrastructure
-- **No parallel RAG systems** — DocFlow diagram intelligence is a Sense capability, not separate
+- **No parallel RAG systems** — Publisher diagram intelligence is a Sense capability, not separate
 - **Model-agnostic** — supports OpenAI, local LLMs (Llama, Mistral), keyword fallback
 
 ---
@@ -277,7 +277,7 @@ class IssueTrackingProvider(ABC):
 ### Document Publishing Provider
 
 ```python
-# tools/docflow/providers/storage.py
+# src/neutron_os/extensions/builtins/publisher/providers/storage.py
 class StorageProvider(ABC):
     @abstractmethod
     def upload(self, content: bytes, path: str) -> str: ...
@@ -328,7 +328,7 @@ Most "AI assistant" systems are one-shot: prompt in, response out. Intelligence 
 - [x] Basic signal correlation
 - [x] PRD/briefing synthesis
 - [ ] Infrastructure (K3D, PostgreSQL, pgvector)
-- [ ] DocFlow → Sense consolidation
+- [ ] Publisher → Sense consolidation
 
 ### Phase 1: Loop Instrumentation
 - [ ] Signal quality scoring
@@ -384,7 +384,7 @@ Most "AI assistant" systems are one-shot: prompt in, response out. Intelligence 
 - [Agent State Management PRD](../prd/agent-state-management-prd.md) — Agent patterns
 - [Data Platform PRD](../prd/data-platform-prd.md) — Lakehouse architecture
 - [Neut CLI PRD](../prd/neut-cli-prd.md) — CLI commands
-- [DocFlow Consolidation Session](.neut/SESSION_2026-02-24_docflow_consolidation.md) — Architecture decision
+- [Publisher Consolidation Session](.neut/SESSION_2026-02-24_docflow_consolidation.md) — Architecture decision
 
 ---
 

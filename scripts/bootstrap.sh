@@ -462,17 +462,89 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 6. Summary
+# 5.5. Ollama (optional — local export-control classifier)
+# ═══════════════════════════════════════════════════════════════════════════
+echo ""
+echo "Step 5.5: Ollama (Local AI)"
+echo "----------------------------"
+
+if command -v ollama &>/dev/null; then
+    echo "✓ Ollama installed"
+
+    # Check if ollama serve is running
+    if curl -s --max-time 1 http://localhost:11434/api/tags &>/dev/null; then
+        echo "✓ Ollama serving"
+
+        # Check if the routing model is pulled
+        _ROUTING_MODEL="llama3.2:1b"
+        if curl -s --max-time 2 http://localhost:11434/api/tags | grep -q "llama3.2"; then
+            echo "✓ Routing model (${_ROUTING_MODEL}) available"
+        else
+            echo "○ Routing model not pulled — pulling ${_ROUTING_MODEL}..."
+            ollama pull "${_ROUTING_MODEL}" 2>/dev/null && \
+                echo "✓ ${_ROUTING_MODEL} pulled" || \
+                echo "  (Run 'ollama pull ${_ROUTING_MODEL}' to complete)"
+        fi
+    else
+        echo "○ Ollama not serving"
+        echo "  Start with: ollama serve &"
+    fi
+else
+    echo "○ Ollama not installed (optional)"
+    echo "  Ollama enables smart export-control classification for chat routing."
+    echo "  Without it, routing uses keyword matching only (still safe, less nuanced)."
+    if command -v brew &>/dev/null; then
+        echo ""
+        if [[ "$_BOOTSTRAP_SOURCED" != true ]] && [[ -t 0 ]]; then
+            read -r -p "  Install Ollama via Homebrew? [y/N] " _ollama_response || true
+            if [[ "$_ollama_response" =~ ^[Yy]$ ]]; then
+                brew install ollama
+                echo "  Starting Ollama..."
+                ollama serve &>/dev/null &
+                sleep 2
+                echo "  Pulling routing model..."
+                ollama pull llama3.2:1b 2>/dev/null && \
+                    echo "✓ Ollama installed and ready" || \
+                    echo "  (Run 'ollama pull llama3.2:1b' when ready)"
+            fi
+        else
+            echo "  Install with: brew install ollama"
+        fi
+    else
+        echo "  Install: https://ollama.com/download"
+    fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 6. Git hooks
+# ═══════════════════════════════════════════════════════════════════════════
+HOOKS_SRC="$PROJECT_ROOT/scripts/hooks"
+HOOKS_DST="$PROJECT_ROOT/.git/hooks"
+if [ -d "$HOOKS_SRC" ] && [ -d "$HOOKS_DST" ]; then
+    for hook in "$HOOKS_SRC"/*; do
+        name="$(basename "$hook")"
+        cp "$hook" "$HOOKS_DST/$name"
+        chmod +x "$HOOKS_DST/$name"
+    done
+    echo "✓ Git hooks installed (pre-push: runs unit tests before every push)"
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 7. Summary
 # ═══════════════════════════════════════════════════════════════════════════
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "✅ Bootstrap Complete!"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
-echo "Try:"
-echo "  neut status                 # Check system health"
-echo "  neut sense brief            # Catch up on what happened"
+echo "Next steps:"
+echo "  neut config                 # Set up API keys and facility config"
+echo "  neut status                 # Check what's ready"
+echo ""
+echo "Then:"
 echo "  neut chat                   # Interactive agent"
+echo "  neut demo run               # Guided walkthrough (Jay's story)"
+echo "  neut sense brief            # Catch up on what happened"
 echo ""
 
 # Clear shell command cache so 'neut' resolves to the new script

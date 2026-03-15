@@ -65,6 +65,8 @@ def get_parser() -> argparse.ArgumentParser:
     reset_p = sub.add_parser("reset", help="Remove a setting override")
     reset_p.add_argument("key", help="Dotted key to reset")
 
+    sub.add_parser("edit", help="Open settings file in $EDITOR")
+
     return parser
 
 
@@ -118,4 +120,22 @@ def main():
             print(f"  Removed override: {args.key} ({scope})")
         else:
             print(f"  {args.key} not set in {scope} scope (nothing to reset)")
+        return
+
+    if args.cmd == "edit":
+        import os
+        import subprocess
+        from .store import _GLOBAL_SETTINGS_PATH, _PROJECT_SETTINGS_PATH
+
+        path = _GLOBAL_SETTINGS_PATH if scope == "global" else _PROJECT_SETTINGS_PATH
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists():
+            # Seed with current settings so the user has something to edit
+            store_snapshot = store.all()
+            from .store import _unflatten, _save_toml
+            _save_toml(path, _unflatten(store_snapshot))
+
+        editor = os.environ.get("EDITOR", os.environ.get("VISUAL", "vi"))
+        subprocess.call([editor, str(path)])
+        print(f"  Settings saved to {path}")
         return

@@ -468,13 +468,13 @@ def main():
 
 ## 4. Docflow Provider Contracts
 
-Providers implement abstract base classes from `tools.extensions.builtins.docflow.providers.base`:
+Providers implement abstract base classes from `tools.extensions.builtins.publisher.providers.base`:
 
 ### GenerationProvider
 
 ```python
 from pathlib import Path
-from neutron_os.extensions.builtins.docflow.providers.base import (
+from neutron_os.extensions.builtins.publisher.providers.base import (
     GenerationProvider,
     GenerationOptions,
     GenerationResult,
@@ -502,7 +502,7 @@ class PptxGenerationProvider(GenerationProvider):
 
 ### StorageProvider, NotificationProvider
 
-See `tools/docflow/providers/base.py` for all five provider ABCs.
+See `tools/publisher/providers/base.py` for all five provider ABCs.
 
 ---
 

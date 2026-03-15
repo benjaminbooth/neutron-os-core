@@ -141,10 +141,10 @@ speaker_profiles.json
 
 # DocFlow state files (inside .neut/)
 # .neut/ is already gitignored above; workflow.yaml.example is force-tracked
-.doc-registry.json
-.doc-state.json
-.doc-workflow.yaml
-.docflow.json
+.publisher-registry.json
+.publisher-state.json
+.publisher.yaml
+.publisher.json
 
 # Mermaid diagram cache
 docs/_tools/.diagram_cache.json
@@ -152,3 +152,7 @@ src/runtime
 
 # Launchd export logs (local runtime artifact)
 tools/
+.gitmessage
+coverage.json
+runtime/knowledge/
+ben-learning/

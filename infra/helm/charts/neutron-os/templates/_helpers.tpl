@@ -1,6 +1,6 @@
 {{/*
 NeutronOS Helm Chart Helpers
-Extracted and adapted from docs/_tools/docflow/deploy/helm/docflow/
+Extracted and adapted from docs/_tools/publisher/deploy/helm/publisher/
 */}}
 
 {{/*

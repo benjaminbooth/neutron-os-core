@@ -18,7 +18,7 @@ _STALE_SECONDS = 30 * 24 * 60 * 60
 
 
 def _find_project_root() -> Path:
-    """Find the project root (same strategy as docflow/config.py)."""
+    """Find the project root (same strategy as publisher/config.py)."""
     env_root = os.environ.get("NEUT_ROOT")
     if env_root:
         return Path(env_root).resolve()

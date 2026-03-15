@@ -9,7 +9,7 @@ see [CLAUDE.md](CLAUDE.md).
 ### Quick Start
 
 ```bash
-git clone https://github.com/UT-Computational-NE/neutron-os-core.git
+git clone https://github.com/benjaminbooth/neutron-os-core.git
 cd neutron-os-core
 ./scripts/bootstrap.sh
 ```

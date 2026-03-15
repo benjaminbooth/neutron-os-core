@@ -132,7 +132,7 @@ class TestProbeExistingConfig:
         result = ProbeResult()
         _probe_existing_config(result, tmp_path)
         assert result.config_files_exist[".env"] is True
-        assert result.config_files_exist[".doc-workflow.yaml"] is False
+        assert result.config_files_exist[".publisher.yaml"] is False
 
 
 class TestProbeNetwork:

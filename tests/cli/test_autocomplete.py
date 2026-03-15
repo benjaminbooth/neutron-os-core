@@ -98,10 +98,10 @@ class TestSenseCompletion:
 
 
 class TestDocCompletion:
-    """Test `neut doc <TAB>` shows doc subcommands."""
+    """Test `neut pub <TAB>` shows doc subcommands."""
 
     def test_doc_subcommands(self):
-        completions = _get_completions("neut doc ")
+        completions = _get_completions("neut pub ")
         assert "publish" in completions
         assert "status" in completions
         assert "generate" in completions

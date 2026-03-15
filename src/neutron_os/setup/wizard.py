@@ -423,15 +423,15 @@ class SetupWizard:
         # Check which files already exist
         facility_exists = (self.root / "runtime" / "config" / "facility.toml").exists()
         models_exists = (self.root / "runtime" / "config" / "models.toml").exists()
-        docflow_exists = (self.root / ".doc-workflow.yaml").exists()
+        publisher_exists = (self.root / ".publisher.yaml").exists()
         claude_exists = (self.root / ".claude" / "context.md").exists()
 
-        all_exist = facility_exists and models_exists and docflow_exists and claude_exists
+        all_exist = facility_exists and models_exists and publisher_exists and claude_exists
         if all_exist:
             renderer.info("All configuration files already in place.")
             self.state.config_files_created["facility.toml"] = True
             self.state.config_files_created["models.toml"] = True
-            self.state.config_files_created[".doc-workflow.yaml"] = True
+            self.state.config_files_created[".publisher.yaml"] = True
             self.state.config_files_created[".claude/context.md"] = True
             renderer.blank()
             return
@@ -452,6 +452,7 @@ class SetupWizard:
         # Generate only missing config files
         self._generate_facility_toml(facility_name, facility_type)
         self._generate_models_toml()
+        self._generate_retention_yaml()
         self._generate_doc_workflow_yaml()
         self._generate_claude_context()
 
@@ -525,17 +526,35 @@ class SetupWizard:
         renderer.success("Created models.toml")
         self.state.config_files_created["models.toml"] = True
 
-    def _generate_doc_workflow_yaml(self) -> None:
-        """Generate .doc-workflow.yaml from template."""
-        dest = self.root / ".doc-workflow.yaml"
+    def _generate_retention_yaml(self) -> None:
+        """Generate retention.yaml from template for data lifecycle management."""
+        dest = self.root / "runtime" / "config" / "retention.yaml"
         if dest.exists():
-            renderer.info(".doc-workflow.yaml already exists — keeping current version")
-            self.state.config_files_created[".doc-workflow.yaml"] = True
+            renderer.info("retention.yaml already exists — keeping current version")
+            self.state.config_files_created["retention.yaml"] = True
             return
 
-        template = self.root / ".doc-workflow.yaml.example"
+        template = self.root / "runtime" / "config.example" / "retention.yaml"
         if not template.exists():
-            renderer.warning(".doc-workflow.yaml template not found — skipping")
+            renderer.warning("retention.yaml template not found — skipping")
+            return
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(template, dest)
+        renderer.success("Created retention.yaml — data retention policies for M-O")
+        self.state.config_files_created["retention.yaml"] = True
+
+    def _generate_doc_workflow_yaml(self) -> None:
+        """Generate .publisher.yaml from template."""
+        dest = self.root / ".publisher.yaml"
+        if dest.exists():
+            renderer.info(".publisher.yaml already exists — keeping current version")
+            self.state.config_files_created[".publisher.yaml"] = True
+            return
+
+        template = self.root / ".publisher.yaml.example"
+        if not template.exists():
+            renderer.warning(".publisher.yaml template not found — skipping")
             return
 
         content = template.read_text(encoding="utf-8")
@@ -550,8 +569,8 @@ class SetupWizard:
             content = content.replace("provider: onedrive", "provider: local")
 
         dest.write_text(content, encoding="utf-8")
-        renderer.success("Created .doc-workflow.yaml")
-        self.state.config_files_created[".doc-workflow.yaml"] = True
+        renderer.success("Created .publisher.yaml")
+        self.state.config_files_created[".publisher.yaml"] = True
 
     def _generate_claude_context(self) -> None:
         """Generate .claude/context.md from template."""

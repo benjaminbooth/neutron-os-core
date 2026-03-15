@@ -1,6 +1,6 @@
 """Chat provider factory — auto-detect available deps, instantiate best provider.
 
-Follows the DocFlow Factory pattern. Detects rich/prompt_toolkit at runtime
+Follows the Publisher Factory pattern. Detects rich/prompt_toolkit at runtime
 and falls back to ANSI/basic providers when deps are missing.
 """
 

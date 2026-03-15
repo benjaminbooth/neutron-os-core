@@ -1,4 +1,4 @@
-"""Integration test: DocFlow merge workflow with concurrent signals and reviews.
+"""Integration test: Publisher merge workflow with concurrent signals and reviews.
 
 Scenario: A published PRD (Advanced Analytics) has been in review on SharePoint for 2 weeks.
 During that time:
@@ -7,7 +7,7 @@ During that time:
 2. Remote changes: 4 reviewers made concurrent comments, tracked changes, and
    content edits on the SharePoint version
 3. Divergence: Both .md and external doc have evolved independently
-4. Merge task: DocFlow must perform semantic merge using Neut's RAG context
+4. Merge task: Publisher must perform semantic merge using Neut's RAG context
 
 This test validates the complete workflow without assuming Git or live APIs,
 focusing on the merge logic and signal synthesis.
@@ -28,7 +28,7 @@ from neutron_os.extensions.builtins.sense_agent.extractors.docflow_review import
     DivergenceReport,
     DocFormat,
 )
-from neutron_os.extensions.builtins.docflow.state import DocumentState, PublicationRecord
+from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord
 
 
 # ============================================================================
@@ -881,7 +881,7 @@ class TestCompleteSenseToMergePipeline:
     2. Signals synthesized into changelog via Synthesizer
     3. Changelog reviewed → converted to draft revisions
     4. Simultaneously, external reviewers comment on SharePoint version
-    5. DocFlow detects divergence between .md and external doc
+    5. Publisher detects divergence between .md and external doc
     6. Merge engine reconciles: Sense-derived drafts + external comments
     7. Result: coherent v2.1.0 PRD ready for publication
     """

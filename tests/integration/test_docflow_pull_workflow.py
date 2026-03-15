@@ -1,4 +1,4 @@
-"""Integration tests for the DocFlow pull workflow.
+"""Integration tests for the Publisher pull workflow.
 
 Tests the complete pull cycle: publish → external edit simulation → pull back.
 These tests hit real filesystem operations but mock external storage.
@@ -8,15 +8,15 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch
 
-from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
-from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
-from neutron_os.extensions.builtins.docflow.state import DocumentState, PublicationRecord
+from neutron_os.extensions.builtins.publisher.config import PublisherConfig, GitPolicy, ProviderConfig
+from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord
 
 
 @pytest.fixture
 def workflow_engine(tmp_path):
     """Create an engine for workflow testing with isolated state."""
-    config = DocFlowConfig(
+    config = PublisherConfig(
         git=GitPolicy(
             require_clean=False,
             require_pushed=False,
@@ -30,7 +30,7 @@ def workflow_engine(tmp_path):
         notification=ProviderConfig(provider="terminal"),
         repo_root=tmp_path,
     )
-    engine = DocFlowEngine(config)
+    engine = PublisherEngine(config)
     return engine
 
 

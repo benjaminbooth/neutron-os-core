@@ -22,7 +22,7 @@ class CLICommandDef:
 
 @dataclass
 class ProviderDef:
-    """A docflow provider registered by an extension."""
+    """A publisher provider registered by an extension."""
 
     type: str  # "generation", "storage", "notification", etc.
     name: str

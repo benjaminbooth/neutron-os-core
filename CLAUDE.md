@@ -42,7 +42,7 @@ Neutron_OS/
         chat_agent/            #     Interactive LLM assistant agent
         mo_agent/              #     M-O resource steward agent
         doctor_agent/          #     AI diagnostics agent
-        docflow/               #     Document lifecycle tool
+        publisher/               #     Document lifecycle tool
         db/                    #     Database management tool
         demo/                  #     Guided walkthroughs
         repo/                  #     Repository analytics
@@ -111,7 +111,7 @@ separate repo, installed to `.neut/extensions/`).
 
 - `agent` — Has LLM autonomy. **Directory name MUST end with `_agent`.**
   Examples: `sense_agent`, `chat_agent`, `mo_agent`, `doctor_agent`
-- `tool` — Capability invoked by agents or CLI (docflow, db, demo)
+- `tool` — Capability invoked by agents or CLI (publisher, db, demo)
 - `utility` — Platform plumbing (status, test, update)
 
 ### Extension Layout
@@ -216,17 +216,17 @@ Full design: `docs/specs/neutron-os-agent-architecture.md`
 
 ## Document Lifecycle (`neut pub`)
 
-DocFlow extension manages document lifecycle: markdown → docx → published.
+Publisher extension manages document lifecycle: markdown → docx → published.
 
 ### Key Files
 
-- `src/neutron_os/extensions/builtins/docflow/engine.py` — Core engine
-- `src/neutron_os/extensions/builtins/docflow/factory.py` — Provider factory
-- `src/neutron_os/extensions/builtins/docflow/providers/` — Generation, storage, feedback
+- `src/neutron_os/extensions/builtins/publisher/engine.py` — Core engine
+- `src/neutron_os/extensions/builtins/publisher/factory.py` — Provider factory
+- `src/neutron_os/extensions/builtins/publisher/providers/` — Generation, storage, feedback
 
 ### Configuration
 
-Copy `.docflow/workflow.yaml.example` to `.docflow/workflow.yaml` (gitignored).
+Copy `.publisher/workflow.yaml.example` to `.publisher/workflow.yaml` (gitignored).
 
 ---
 
@@ -264,11 +264,24 @@ cd /path/to/Neutron_OS && direnv allow
 # All tests
 pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short
 
-# Unit only
+# Unit only (runs as pre-push git hook)
 pytest -m "not integration"
 
 # Single extension
 pytest src/neutron_os/extensions/builtins/sense_agent/tests/ -v
+
+# Export control classifier red-team suite
+pytest tests/routing/test_classifier_accuracy.py -v
+```
+
+### Prompt Evals (promptfoo)
+
+```bash
+cd tests/promptfoo
+npx promptfoo eval                                      # chat quality (Ollama judge, no API cost)
+npx promptfoo eval -c rag-evals.yaml                   # RAG grounding (requires running DB + indexed)
+npx promptfoo redteam run -c redteam-export-control.yaml  # adversarial EC safety sweep
+npx promptfoo view                                      # open results dashboard
 ```
 
 ### Direct Module Execution

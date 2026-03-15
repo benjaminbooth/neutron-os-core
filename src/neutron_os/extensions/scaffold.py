@@ -215,7 +215,7 @@ Generate weekly slides for 2026-03-04
 
 
 def _provider_template() -> str:
-    return '''"""PowerPoint generation provider for docflow.
+    return '''"""PowerPoint generation provider for publisher.
 
 Converts markdown source files to .pptx presentations.
 Requires python-pptx: pip install python-pptx
@@ -233,7 +233,7 @@ from typing import Any
 class PptxGenerationProvider:
     """Docflow GenerationProvider for PowerPoint output.
 
-    Implements the same contract as tools.extensions.builtins.docflow.providers.base.GenerationProvider
+    Implements the same contract as tools.extensions.builtins.publisher.providers.base.GenerationProvider
     without importing it (keeps extension dependency-free).
     """
 

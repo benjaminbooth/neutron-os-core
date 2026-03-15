@@ -18,7 +18,7 @@ Week of 2026-03-04: 10 signals across 3 initiatives.
 
 ### Progress
 
-- Published 8 documents to docflow.
+- Published 8 documents to publisher.
 
 ## TRIGA Digital Twin
 

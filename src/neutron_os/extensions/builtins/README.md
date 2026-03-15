@@ -15,7 +15,7 @@ extensions with LLM autonomy from passive tools and utilities.
 | `chat_agent/` | agent | Interactive LLM assistant |
 | `mo_agent/` | agent | M-O resource steward |
 | `doctor_agent/` | agent | AI-powered diagnostics and self-healing |
-| `docflow/` | tool | Document lifecycle (md → docx → publish) |
+| `publisher/` | tool | Document lifecycle (md → docx → publish) |
 | `db/` | tool | Database management |
 | `demo/` | tool | Guided walkthroughs |
 | `repo_sensing/` | tool | Multi-source repository analytics |

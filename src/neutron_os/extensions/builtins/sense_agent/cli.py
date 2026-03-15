@@ -256,8 +256,8 @@ def cmd_ingest(args: argparse.Namespace) -> None:
         signals = _ingest_prd_comments(correlator)
         all_signals.extend(signals)
 
-    if source in ("docflow", "all"):
-        signals = _ingest_docflow(gateway, correlator)
+    if source in ("publisher", "all"):
+        signals = _ingest_publisher(gateway, correlator)
         all_signals.extend(signals)
 
     # Save extracted signals
@@ -516,23 +516,23 @@ def _ingest_prd_comments(correlator) -> list:
     return extraction.signals
 
 
-def _ingest_docflow(gateway, correlator) -> list:
-    """Process Office 365 documents from inbox/raw/docflow/ and registry.
+def _ingest_publisher(gateway, correlator) -> list:
+    """Process Office 365 documents from inbox/raw/publisher/ and registry.
 
     Extracts changes from Word/Excel/PowerPoint documents that are
-    linked to PRDs in the docflow registry.
+    linked to PRDs in the publisher registry.
     """
     from .extractors.docflow_review import DocFlowReviewExtractor
 
-    print("\nDocFlow extractor (Office 365 documents)")
+    print("\nPublisher extractor (Office 365 documents)")
     print("-" * 40)
 
-    # Check for local docs in inbox/raw/docflow/
-    docflow_dir = INBOX_RAW / "docflow"
+    # Check for local docs in inbox/raw/publisher/
+    publisher_dir = INBOX_RAW / "publisher"
     local_docs = []
-    if docflow_dir.exists():
+    if publisher_dir.exists():
         for ext in (".docx", ".xlsx", ".pptx"):
-            local_docs.extend(docflow_dir.glob(f"*{ext}"))
+            local_docs.extend(publisher_dir.glob(f"*{ext}"))
 
     if local_docs:
         print(f"  Found {len(local_docs)} local document(s)")
@@ -574,8 +574,8 @@ def _ingest_docflow(gateway, correlator) -> list:
             print(f"  {doc_path.name}: Error - {e}")
 
     if not all_signals and not local_docs:
-        print("  No documents in inbox/raw/docflow/ and no registered docs")
-        print("  To register a PRD: neut docflow register --prd <id> --uri <sharepoint_url>")
+        print("  No documents in inbox/raw/publisher/ and no registered docs")
+        print("  To register a PRD: neut pub register --prd <id> --uri <sharepoint_url>")
 
     return all_signals
 
@@ -1272,7 +1272,7 @@ def _add_pipeline_subparsers(subparsers) -> None:
     ingest_parser = subparsers.add_parser("ingest", help="Run extractors on inbox data")
     ingest_parser.add_argument(
         "--source",
-        choices=["gitlab", "voice", "freetext", "transcript", "prd", "docflow", "all"],
+        choices=["gitlab", "voice", "freetext", "transcript", "prd", "publisher", "all"],
         default="all",
         help="Which source(s) to ingest (default: all)",
     )
@@ -2786,7 +2786,7 @@ def cmd_subscribers(args):
 
 
 def cmd_providers(args):
-    """List and manage docflow providers (Google Docs, Dropbox, Box, etc.)."""
+    """List and manage publisher providers (Google Docs, Dropbox, Box, etc.)."""
     try:
         from .extractors.docflow_providers import (
             ProviderRegistry,
@@ -2796,7 +2796,7 @@ def cmd_providers(args):
         print(f"Error: Could not import provider registry: {e}")
         return
 
-    print("\n=== DocFlow Providers ===\n")
+    print("\n=== Publisher Providers ===\n")
 
     # Test a specific provider
     if args.test:

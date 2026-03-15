@@ -1,19 +1,19 @@
 """ScratchEntry dataclass and manifest I/O with file-level locking.
 
 The manifest tracks all M-O managed scratch entries across processes.
-Uses fcntl.flock on Unix for concurrent access safety.
+Uses LockedJsonFile from neutron_os.infra.state for concurrent access safety.
 """
 
 from __future__ import annotations
 
-import json
 import os
-import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+from neutron_os.infra.state import LockedJsonFile
 
 
 @dataclass
@@ -96,65 +96,23 @@ class Manifest:
             self._entries = {}
             return
         try:
-            with self._locked_open("r") as f:
-                data = json.load(f)
-            self._entries = {
-                e["id"]: ScratchEntry.from_dict(e)
-                for e in data
-                if isinstance(e, dict) and "id" in e
-            }
-        except (json.JSONDecodeError, OSError, KeyError):
+            with LockedJsonFile(self._path) as f:
+                data = f.read()
+            if isinstance(data, list):
+                self._entries = {
+                    e["id"]: ScratchEntry.from_dict(e)
+                    for e in data
+                    if isinstance(e, dict) and "id" in e
+                }
+            else:
+                self._entries = {}
+        except (OSError, KeyError):
             self._entries = {}
 
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with self._locked_open("w") as f:
-                json.dump(
-                    [e.to_dict() for e in self._entries.values()],
-                    f,
-                    indent=2,
-                )
+            with LockedJsonFile(self._path, exclusive=True) as f:
+                f.write([e.to_dict() for e in self._entries.values()])
         except OSError:
             pass
-
-    def _locked_open(self, mode: str):
-        """Context manager that opens the manifest file with an advisory lock."""
-        return _LockedFile(self._path, mode)
-
-
-class _LockedFile:
-    """File context manager with fcntl.flock on Unix, no-op on Windows."""
-
-    def __init__(self, path: Path, mode: str):
-        self._path = path
-        self._mode = mode
-        self._f = None
-
-    def __enter__(self):
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        if self._mode == "r" and not self._path.exists():
-            # Return empty for reads on missing file
-            import io
-            self._f = io.StringIO("[]")
-            return self._f
-        self._f = open(self._path, self._mode, encoding="utf-8")
-        if sys.platform != "win32":
-            try:
-                import fcntl
-                lock_type = fcntl.LOCK_SH if "r" in self._mode else fcntl.LOCK_EX
-                fcntl.flock(self._f.fileno(), lock_type)
-            except (ImportError, OSError):
-                pass
-        return self._f
-
-    def __exit__(self, *exc):
-        if self._f is not None:
-            if sys.platform != "win32" and hasattr(self._f, "fileno"):
-                try:
-                    import fcntl
-                    fcntl.flock(self._f.fileno(), fcntl.LOCK_UN)
-                except (ImportError, OSError, ValueError):
-                    pass
-            self._f.close()
-        return False

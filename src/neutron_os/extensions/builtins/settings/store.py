@@ -29,6 +29,8 @@ _DEFAULTS: dict[str, Any] = {
     "routing.cloud_provider": "anthropic",
     "routing.vpn_provider": "qwen-tacc",
     "routing.on_vpn_unavailable": "warn",
+    "routing.ollama_model": "llama3.2:1b",
+    "routing.audit_log": True,
     "interface.stream": True,
     "interface.theme": "dark",
     "rag.database_url": "",  # empty = RAG disabled; set to postgresql:// to enable

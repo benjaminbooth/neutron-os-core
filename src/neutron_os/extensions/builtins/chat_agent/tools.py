@@ -48,7 +48,7 @@ def _build_tool_defs() -> dict[str, ToolDef]:
 
     tools["query_docs"] = ToolDef(
         name="query_docs",
-        description="Check docflow status of tracked documents.",
+        description="Check publisher status of tracked documents.",
         category=ActionCategory.READ,
         parameters={
             "type": "object",
@@ -70,7 +70,7 @@ def _build_tool_defs() -> dict[str, ToolDef]:
 
     tools["list_providers"] = ToolDef(
         name="list_providers",
-        description="List all registered docflow providers by category.",
+        description="List all registered publisher providers by category.",
         category=ActionCategory.READ,
         parameters={"type": "object", "properties": {}},
     )
@@ -313,8 +313,8 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
 
     # Built-in tool handlers (lazy imports)
     if name == "query_docs":
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
-        engine = DocFlowEngine()
+        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        engine = PublisherEngine()
         source = Path(params["file"]) if params.get("file") else None
         docs = engine.status(source)
         return {
@@ -349,30 +349,30 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
         return {"inbox_raw": counts, "processed": processed, "drafts": drafts}
 
     elif name == "list_providers":
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
-        engine = DocFlowEngine()
+        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        engine = PublisherEngine()
         return engine.list_providers()
 
     elif name == "doc_check_links":
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
-        engine = DocFlowEngine()
+        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        engine = PublisherEngine()
         return engine.check_links()
 
     elif name == "doc_diff":
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
-        engine = DocFlowEngine()
+        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        engine = PublisherEngine()
         return {"changed": engine.diff()}
 
     elif name == "doc_generate":
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
-        engine = DocFlowEngine()
+        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        engine = PublisherEngine()
         source = Path(params["source"])
         output = engine.generate(source)
         return {"output": str(output), "exists": output.exists()}
 
     elif name == "doc_publish":
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
-        engine = DocFlowEngine()
+        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        engine = PublisherEngine()
         source = Path(params["source"])
         record = engine.publish(
             source,

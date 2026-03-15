@@ -1,4 +1,4 @@
-"""Shared test fixtures for neut sense and docflow test suites."""
+"""Shared test fixtures for neut sense and publisher test suites."""
 
 import json
 import sys
@@ -213,11 +213,11 @@ def sample_gitlab_export_previous(tmp_path):
 
 
 @pytest.fixture
-def docflow_config(tmp_path):
-    """Create a minimal docflow config for testing."""
-    from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
+def publisher_config(tmp_path):
+    """Create a minimal publisher config for testing."""
+    from neutron_os.extensions.builtins.publisher.config import PublisherConfig, GitPolicy, ProviderConfig
 
-    return DocFlowConfig(
+    return PublisherConfig(
         git=GitPolicy(require_clean=False, require_pushed=False),
         generation=ProviderConfig(provider="pandoc-docx"),
         storage=ProviderConfig(

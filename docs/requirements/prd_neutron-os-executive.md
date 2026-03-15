@@ -572,6 +572,21 @@ Each module has a detailed PRD with user stories, schemas, and mockups:
    - Fuel burnup visualization
    - Data quality monitoring
 
+### Platform Tooling
+
+7. **[Publisher PRD](prd_publisher.md)** *(neut pub)*
+   - Document lifecycle: markdown → generate → publish
+   - Multi-endpoint publishing (local, OneDrive, Google Drive, S3)
+   - Declarative format-endpoint compatibility with graceful fallback
+   - Audience targeting system (forward-looking)
+   - See also: [Publisher Architecture Spec](../specs/neutron-os-publisher-spec.md)
+
+8. **[Agent State Management PRD](prd_agent-state-management.md)**
+   - Safe concurrent access to shared agent state files
+   - Verifiable data retention policies (M-O enforced)
+   - Retention audit logging for compliance
+   - See also: [Agent State Management Spec](../specs/agent-state-management-spec.md)
+
 ### Optional Modules
 
 5. **[Medical Isotope Production PRD](prd_medical-isotope.md)**

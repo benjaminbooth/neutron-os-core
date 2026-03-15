@@ -199,17 +199,17 @@ def create_draft_session(
 
 # ── adapter ──────────────────────────────────────────────────────────
 
-def _register_in_docflow(session: ReviewSession, approved_path: Path) -> None:
-    """Record the reviewed draft in docflow's state store.
+def _register_in_publisher(session: ReviewSession, approved_path: Path) -> None:
+    """Record the reviewed draft in publisher's state store.
 
-    This bridges the review framework into docflow's document lifecycle
-    so that ``neut doc status`` can show reviewed drafts and
-    ``neut doc publish`` can pick them up for delivery.
+    This bridges the review framework into publisher's document lifecycle
+    so that ``neut pub status`` can show reviewed drafts and
+    ``neut pub publish`` can pick them up for delivery.
     """
     try:
-        from neutron_os.extensions.builtins.docflow.state import DocumentState, PublicationRecord, StateStore
+        from neutron_os.extensions.builtins.publisher.state import DocumentState, PublicationRecord, StateStore
 
-        state_path = _REPO_ROOT / ".neut" / ".doc-state.json"
+        state_path = _REPO_ROOT / ".neut" / ".publisher-state.json"
         store = StateStore(state_path)
 
         doc_id = approved_path.stem
@@ -243,11 +243,11 @@ def _register_in_docflow(session: ReviewSession, approved_path: Path) -> None:
              "total": total},
         ]
         store.update(doc_state)
-        print(f"Registered in docflow state: {doc_id}")
-        print(f"  neut doc status {approved_path}")
+        print(f"Registered in publisher state: {doc_id}")
+        print(f"  neut pub status {approved_path}")
     except Exception as e:
-        # Non-fatal — review is still saved even if docflow bridge fails
-        print(f"  (docflow registration skipped: {e})")
+        # Non-fatal — review is still saved even if publisher bridge fails
+        print(f"  (publisher registration skipped: {e})")
 
 
 class DraftReviewAdapter:
@@ -286,7 +286,7 @@ class DraftReviewAdapter:
         approved_path = write_approved_draft(session)
         if approved_path:
             print(f"\nApproved draft written to: {approved_path}")
-            _register_in_docflow(session, approved_path)
+            _register_in_publisher(session, approved_path)
 
     # ── command implementations ──────────────────────────────────────
 

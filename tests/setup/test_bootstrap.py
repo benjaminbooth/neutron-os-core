@@ -175,7 +175,7 @@ class TestDevelopmentSetup:
 
     @pytest.mark.slow
     def test_neut_doc_providers(self):
-        """neut doc providers runs successfully."""
+        """neut pub providers runs successfully."""
         venv_python = REPO_ROOT.parent / ".venv" / "bin" / "python"
 
         if venv_python.exists():

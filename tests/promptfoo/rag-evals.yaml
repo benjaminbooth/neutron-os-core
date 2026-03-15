@@ -1,0 +1,154 @@
+# NeutronOS RAG retrieval quality evaluations
+#
+# Tests that the RAG pipeline retrieves relevant context and that the
+# LLM stays grounded in retrieved content rather than hallucinating.
+#
+# Prerequisites:
+#   - PostgreSQL with pgvector running (NEUTRON_OS_DATABASE_URL)
+#   - Community RAG indexed: neut rag ingest --tier community
+#   - Ollama running (for local judge): ollama pull llama3.2
+#
+# Run:
+#   cd tests/promptfoo
+#   npx promptfoo eval -c rag-evals.yaml
+
+description: "NeutronOS RAG retrieval and grounding quality"
+
+# ── Providers ────────────────────────────────────────────────────────────────
+
+providers:
+  # Primary: Anthropic with RAG context injected
+  - id: anthropic:claude-sonnet-4-6
+    label: anthropic-with-rag
+    config:
+      system: |
+        You are Neut, a nuclear engineering assistant with access to retrieved
+        documents from the NeutronOS knowledge base.
+
+        Retrieved context:
+        {{RAG_CONTEXT}}
+
+        Instructions:
+        - Use the retrieved context to answer the question.
+        - Cite the source document when referencing specific information.
+        - If the context does not contain sufficient information, say so clearly.
+        - Do not invent facts not present in the retrieved context.
+
+  # RAG retrieval provider — fetches context, result goes into RAG_CONTEXT var
+  - id: python:tests/promptfoo/rag_provider.py
+    label: rag-retriever
+    config:
+      tier: institutional
+      limit: 5
+
+# ── Judge ────────────────────────────────────────────────────────────────────
+
+defaultTest:
+  options:
+    provider: ollama:llama3.2:latest
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+
+tests:
+  # -- Retrieval relevance: does the RAG actually find the right docs? --------
+
+  - description: "RAG retrieves NRC regulation content for 10 CFR 50.59 query"
+    provider: rag-retriever
+    vars:
+      query: "What does 10 CFR 50.59 allow a licensee to do without prior NRC approval?"
+    assert:
+      - type: icontains
+        value: "50.59"
+      - type: llm-rubric
+        value: "Retrieved context contains substantive information about 10 CFR 50.59 facility change procedures"
+
+  - description: "RAG retrieves xenon poisoning content"
+    provider: rag-retriever
+    vars:
+      query: "Explain xenon poisoning after reactor shutdown"
+    assert:
+      - type: icontains-any
+        value:
+          - xenon
+          - Xe-135
+          - iodine
+      - type: llm-rubric
+        value: "Retrieved context contains relevant nuclear physics content about xenon or fission product behavior"
+
+  - description: "RAG retrieves shift log / operations documentation"
+    provider: rag-retriever
+    vars:
+      query: "shift turnover log requirements nuclear facility"
+    assert:
+      - type: llm-rubric
+        value: "Retrieved context contains relevant information about operational logging, shift handover, or facility documentation procedures"
+
+  # -- Grounded answers: LLM must stay within retrieved context ---------------
+
+  - description: "Grounded answer — xenon poisoning uses retrieved context"
+    vars:
+      query: "Explain xenon poisoning after reactor shutdown"
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: icontains-any
+        value:
+          - xenon
+          - Xe-135
+          - iodine
+      - type: llm-rubric
+        value: >
+          Response accurately explains xenon poisoning and shows evidence of
+          using the retrieved context (e.g., specific facts, document references,
+          or detailed technical content beyond general knowledge)
+      - type: not-contains
+        value: "I don't have access to"
+
+  - description: "Grounded answer — NRC regulation stays factual"
+    vars:
+      query: "What does 10 CFR 50.59 allow?"
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: icontains
+        value: "50.59"
+      - type: llm-rubric
+        value: >
+          Response accurately describes 10 CFR 50.59 facility change procedures
+          and does not contradict or invent regulatory requirements not in the
+          retrieved context
+
+  # -- Uncertainty handling: model admits when context is insufficient --------
+
+  - description: "Admits uncertainty for out-of-scope query"
+    vars:
+      query: "What was the exact power level of the UT TRIGA at 14:32 on January 5, 2026?"
+      RAG_CONTEXT: "(no relevant documents found in RAG store)"
+    assert:
+      - type: llm-rubric
+        value: >
+          Response clearly acknowledges that it does not have access to specific
+          real-time or historical operational data for the requested measurement,
+          without fabricating values or timestamps
+
+  - description: "Stays within retrieved context, does not hallucinate citations"
+    vars:
+      query: "What are the specific safety limits for the UT TRIGA research reactor?"
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          If specific safety limits are not present in the retrieved context,
+          the response acknowledges that and does not fabricate numerical limits
+          or cite nonexistent regulatory documents
+
+  # -- Context attribution: model cites sources when available ----------------
+
+  - description: "Cites source when retrieved context is present"
+    vars:
+      query: "What does 10 CFR 50.59 allow?"
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          Response references the source document or regulation, not just
+          paraphrasing without attribution — demonstrates grounding in
+          retrieved documents rather than parametric knowledge only

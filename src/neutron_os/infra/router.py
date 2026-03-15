@@ -3,21 +3,28 @@
 Runs entirely locally. No cloud calls are made to determine routing.
 Classification result determines which provider tier handles the request:
   - "public"            → cloud LLM (Anthropic, OpenAI, etc.)
-  - "export_controlled" → VPN-gated model (qwen-tacc / rascal)
+  - "export_controlled" → VPN-gated model (qwen-rascal on rascal.tacc.utexas.edu)
 
 Classification pipeline (in order, short-circuits on first definitive result):
   1. Session mode override  → immediate (fastest)
   2. Keyword match          → export_controlled (zero latency, definitive)
+     └─ allowlist filter    → suppress facility-specific false positives
   3. Ollama SLM classifier  → semantic judgment on the full context window
-  4. Fallback               → public (conservative default when Ollama unavailable)
+     └─ uncertain response  → behavior depends on sensitivity setting
+  4. Fallback               → public or export_controlled per sensitivity
 
-Option A — Context Window:
+Sensitivity (routing.sensitivity setting):
+  strict     — fallback is export_controlled; Ollama "uncertain" → export_controlled
+  balanced   — fallback is public; Ollama "uncertain" → skip to fallback (default)
+  permissive — skip Ollama entirely; fallback is public
+
+Context Window (Option A):
   classify() accepts `context`: the last N conversation turns. Classifying
   the window (not just the current message) catches cases like "what's the
   source definition?" after several turns about MCNP — no keyword, but clearly
   in an export-controlled conversation.
 
-Option C — Ollama SLM Classifier:
+Ollama SLM Classifier (Option C):
   A small local model (e.g., llama3.2:1b via Ollama) provides semantic
   classification for queries that pass the keyword filter. Runs in <500ms on
   Apple Silicon, fully offline, zero new Python dependencies (plain HTTP).
@@ -43,6 +50,7 @@ _INFRA_DIR = Path(__file__).parent
 _MIRROR_SCRUB_FILE = _RUNTIME_CONFIG / "mirror_scrub_terms.txt"
 _USER_TERMS_FILE = _RUNTIME_CONFIG / "export_control_terms.txt"
 _BUILTIN_TERMS_FILE = _INFRA_DIR / "_export_control_terms_default.txt"
+_ALLOWLIST_FILE = _RUNTIME_CONFIG / "routing_allowlist.txt"
 
 # Number of prior conversation turns to include in classification window.
 # Each "turn" = one user message. We look back this many user messages plus
@@ -66,7 +74,14 @@ General nuclear topics that are NOT export-controlled: reactor physics education
 safety discussions, published literature, operational procedures, administrative tasks,
 training, and software engineering unrelated to sensitive codes.
 
-Answer with exactly one word: yes or no."""
+Answer with exactly one word: yes, no, or uncertain.
+Use "uncertain" only if you genuinely cannot tell. Prefer yes or no."""
+
+# Valid sensitivity values
+SENSITIVITY_STRICT = "strict"
+SENSITIVITY_BALANCED = "balanced"
+SENSITIVITY_PERMISSIVE = "permissive"
+_VALID_SENSITIVITIES = {SENSITIVITY_STRICT, SENSITIVITY_BALANCED, SENSITIVITY_PERMISSIVE}
 
 
 class RoutingTier(str, Enum):
@@ -101,25 +116,27 @@ def _load_terms(path: Path) -> list[str]:
     return terms
 
 
-def _extract_user_text(messages: list[dict]) -> str:
-    """Pull user-role text from a list of conversation message dicts."""
+def _extract_user_text(messages: list) -> str:
+    """Pull user-role text from conversation messages (dicts or Message objects)."""
     parts = []
     for m in messages:
-        if m.get("role") == "user":
-            content = m.get("content", "")
-            if isinstance(content, str):
-                parts.append(content)
-            elif isinstance(content, list):
-                # Anthropic multi-part content blocks
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "text":
-                        parts.append(block.get("text", ""))
+        role = m.get("role") if isinstance(m, dict) else getattr(m, "role", None)
+        if role != "user":
+            continue
+        content = m.get("content", "") if isinstance(m, dict) else getattr(m, "content", "")
+        if isinstance(content, str):
+            parts.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
     return " ".join(parts)
 
 
 class OllamaClassifier:
     """Semantic export-control classifier using a local Ollama model.
 
+    Supports three responses: yes, no, uncertain.
     Fails silently — never blocks the chat loop.
     """
 
@@ -147,8 +164,15 @@ class OllamaClassifier:
             self._available = False
         return self._available
 
-    def classify(self, text: str) -> Optional[RoutingTier]:
-        """Ask the SLM to classify text. Returns None if unavailable or inconclusive."""
+    def classify(self, text: str) -> Optional[RoutingTier | str]:
+        """Ask the SLM to classify text.
+
+        Returns:
+            RoutingTier.EXPORT_CONTROLLED  — confident yes
+            RoutingTier.PUBLIC             — confident no
+            "uncertain"                    — SLM couldn't decide; caller applies sensitivity
+            None                           — Ollama unavailable or failed
+        """
         if not self._check_available():
             return None
         try:
@@ -171,6 +195,8 @@ class OllamaClassifier:
                 return RoutingTier.EXPORT_CONTROLLED
             if answer.startswith("no"):
                 return RoutingTier.PUBLIC
+            if answer.startswith("uncertain"):
+                return "uncertain"
             return None  # unexpected response — don't commit
         except Exception:
             return None
@@ -190,11 +216,26 @@ class QueryRouter:
             user_input,
             context=session.messages[-10:],   # last 5 turns (user+assistant pairs)
         )
+
+        # With sensitivity override:
+        decision = router.classify(user_input, sensitivity="strict")
     """
 
     def __init__(self, ollama: Optional[OllamaClassifier] = None) -> None:
         self._terms: list[str] | None = None
-        self._ollama = ollama or OllamaClassifier()
+        self._allowlist: set[str] | None = None
+        self._ollama = ollama or self._default_ollama()
+
+    @staticmethod
+    def _default_ollama() -> OllamaClassifier:
+        """Create OllamaClassifier with model from settings (if available)."""
+        model = _OLLAMA_MODEL
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            model = SettingsStore().get("routing.ollama_model", _OLLAMA_MODEL)
+        except Exception:
+            pass
+        return OllamaClassifier(model=model)
 
     def _get_terms(self) -> list[str]:
         """Lazy-load and cache the combined term list."""
@@ -212,13 +253,21 @@ class QueryRouter:
             self._terms = deduped
         return self._terms
 
+    def _get_allowlist(self) -> set[str]:
+        """Lazy-load and cache the allowlist (false-positive suppression)."""
+        if self._allowlist is None:
+            self._allowlist = {t.lower() for t in _load_terms(_ALLOWLIST_FILE)}
+        return self._allowlist
+
     def _keyword_check(self, text: str) -> list[str]:
-        """Return list of matched export-control terms, or empty list."""
+        """Return matched export-control terms after filtering the allowlist."""
         normalized = re.sub(r"\s+", " ", text.lower())
-        return [t for t in self._get_terms() if t.lower() in normalized]
+        matched = [t for t in self._get_terms() if t.lower() in normalized]
+        allowlist = self._get_allowlist()
+        return [t for t in matched if t.lower() not in allowlist]
 
     def _build_window(
-        self, current_message: str, context: Optional[list[dict]]
+        self, current_message: str, context: Optional[list]
     ) -> str:
         """Concatenate recent conversation user turns + current message."""
         if not context:
@@ -231,11 +280,23 @@ class QueryRouter:
             return f"{prior} {current_message}"
         return current_message
 
+    def _resolve_sensitivity(self, sensitivity: Optional[str]) -> str:
+        """Return sensitivity, falling back to settings then default."""
+        if sensitivity is not None:
+            return sensitivity if sensitivity in _VALID_SENSITIVITIES else SENSITIVITY_BALANCED
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            val = SettingsStore().get("routing.sensitivity", SENSITIVITY_BALANCED)
+            return val if val in _VALID_SENSITIVITIES else SENSITIVITY_BALANCED
+        except Exception:
+            return SENSITIVITY_BALANCED
+
     def classify(
         self,
         text: str,
         session_mode: str = "auto",
-        context: Optional[list[dict]] = None,
+        context: Optional[list] = None,
+        sensitivity: Optional[str] = None,
     ) -> RoutingDecision:
         """Classify a query using the full pipeline.
 
@@ -245,10 +306,14 @@ class QueryRouter:
             context:      Recent conversation messages (list of role/content dicts).
                           When provided, the classifier considers the full window,
                           catching context-dependent sensitivity.
+            sensitivity:  Override sensitivity for this call. When None, reads from
+                          settings (routing.sensitivity). Values: strict | balanced | permissive.
 
         Returns:
             RoutingDecision with tier, reason, and which classifier decided.
         """
+        sens = self._resolve_sensitivity(sensitivity)
+
         # ── 1. Session mode override (fastest) ──────────────────────────────
         if session_mode == "export_controlled":
             return RoutingDecision(
@@ -277,26 +342,42 @@ class QueryRouter:
             )
 
         # ── 4. Ollama SLM (semantic, local, no new deps) ─────────────────────
-        ollama_result = self._ollama.classify(window)
-        if ollama_result is not None:
-            reason = (
-                "SLM: export-controlled content detected"
-                if ollama_result == RoutingTier.EXPORT_CONTROLLED
-                else "SLM: no export-controlled content detected"
-            )
-            return RoutingDecision(
-                tier=ollama_result,
-                reason=reason,
-                classifier="ollama",
-            )
+        if sens != SENSITIVITY_PERMISSIVE:
+            ollama_result = self._ollama.classify(window)
+            if ollama_result == RoutingTier.EXPORT_CONTROLLED:
+                return RoutingDecision(
+                    tier=RoutingTier.EXPORT_CONTROLLED,
+                    reason="SLM: export-controlled content detected",
+                    classifier="ollama",
+                )
+            if ollama_result == RoutingTier.PUBLIC:
+                return RoutingDecision(
+                    tier=RoutingTier.PUBLIC,
+                    reason="SLM: no export-controlled content detected",
+                    classifier="ollama",
+                )
+            if ollama_result == "uncertain" and sens == SENSITIVITY_STRICT:
+                return RoutingDecision(
+                    tier=RoutingTier.EXPORT_CONTROLLED,
+                    reason="SLM: uncertain — routing conservatively (strict mode)",
+                    classifier="ollama",
+                )
+            # ollama_result is None (unavailable) or "uncertain" in balanced mode → fallback
 
         # ── 5. Fallback ───────────────────────────────────────────────────────
+        if sens == SENSITIVITY_STRICT:
+            return RoutingDecision(
+                tier=RoutingTier.EXPORT_CONTROLLED,
+                reason="no keyword match; routing conservatively (strict mode)",
+                classifier="fallback",
+            )
         return RoutingDecision(
             tier=RoutingTier.PUBLIC,
-            reason="no export-control terms detected (Ollama unavailable)",
+            reason="no export-control terms detected",
             classifier="fallback",
         )
 
     def reload_terms(self) -> None:
-        """Force reload of the term list (e.g., after user edits config)."""
+        """Force reload of the term and allowlist caches (e.g., after user edits config)."""
         self._terms = None
+        self._allowlist = None

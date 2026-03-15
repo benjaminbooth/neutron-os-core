@@ -110,6 +110,21 @@ class ChatAgent:
         )
         routing_tier = routing.tier.value
 
+        # Audit log — record routing decision (no plaintext)
+        try:
+            from neutron_os.infra.routing_audit import hash_query, log_routing_decision
+            log_routing_decision(
+                session_id=getattr(self.session, "id", ""),
+                query_hash=hash_query(user_input),
+                tier=routing_tier,
+                classifier=routing.classifier,
+                provider=getattr(self.gateway, "_provider_override", ""),
+                matched_terms=routing.matched_terms,
+                reason=routing.reason,
+            )
+        except Exception:
+            pass  # audit is best-effort; never block the chat loop
+
         self.session.add_message("user", user_input)
 
         system = self._build_system_prompt()
