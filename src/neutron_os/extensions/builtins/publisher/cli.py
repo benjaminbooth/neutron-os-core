@@ -1010,6 +1010,7 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
 
     push_all = getattr(args, "all", False)
     single_path = getattr(args, "path", None)
+    config_path = REPO_ROOT / ".publisher.yaml"
 
     # (source_md, docx_path, onedrive_subfolder)
     files_to_push: list[tuple[Path, Path, str]] = []
