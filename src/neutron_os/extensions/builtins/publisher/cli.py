@@ -1218,19 +1218,28 @@ def _generate_docx(md_path: Path) -> Path:
     except Exception:
         pass
 
+    # Build pandoc command with quality improvements
+    cmd = [
+        "pandoc", str(md_path),
+        "-o", str(output_path),
+        "--from", "markdown",
+        "--to", "docx",
+        "--toc", "--toc-depth=3",
+        "--metadata", f"title={title}",
+    ]
+
+    # Use reference doc for table styles (borders, widths) if available
+    ref_doc = REPO_ROOT / ".neut" / "publisher" / "reference.docx"
+    if ref_doc.exists():
+        cmd.extend(["--reference-doc", str(ref_doc)])
+
+    # Mermaid diagram filter (renders to images via mermaid.ink)
+    lua_filter = REPO_ROOT / ".neut" / "publisher" / "mermaid-filter.lua"
+    if lua_filter.exists():
+        cmd.extend(["--lua-filter", str(lua_filter)])
+
     try:
-        subprocess.run(
-            [
-                "pandoc", str(md_path),
-                "-o", str(output_path),
-                "--from", "markdown",
-                "--to", "docx",
-                "--toc", "--toc-depth=3",
-                "--metadata", f"title={title}",
-            ],
-            check=True,
-            capture_output=True,
-        )
+        subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         print(f"\n    Warning: pandoc failed for {md_path.name}: {e.stderr.decode()[:200]}")
     except FileNotFoundError:

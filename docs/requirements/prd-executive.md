@@ -70,7 +70,7 @@ flowchart LR
 
 ## Product Modules
 
-Neutron OS is modular. Facilities enable only what they need.
+Neutron OS is modular — facilities enable only the modules they need. Each module is a self-contained extension that can be installed, configured, and updated independently. Core infrastructure modules are required; application modules default to "on" but can be disabled; future modules are roadmap items not yet implemented.
 
 ### Core Infrastructure
 
@@ -267,10 +267,11 @@ flowchart TB
 
 | Pain Point | Neutron OS Solution |
 |------------|---------------------|
-| Scheduling via email is slow | Self-service time slot booking |
-| Sample tracking in personal spreadsheets | Unified sample lifecycle management |
-| "What were reactor conditions during my experiment?" | Automatic correlation with time-series data |
-| Repeating experiment setup is tedious | Templates, smart defaults, AI assistance |
+| Scheduling via email is slow | AI-assisted scheduling with conflict detection and automatic optimization |
+| Sample tracking in personal spreadsheets | Unified sample lifecycle with chain-of-custody audit trail |
+| "What were reactor conditions during my experiment?" | Real-time digital twin correlation with sub-second query response |
+| Repeating experiment setup is tedious | Template library with institutional memory — learn from every past experiment |
+| Research results scattered across HPC systems | Unified RAG-indexed knowledge base across all research outputs |
 
 ### For Facility Management
 
@@ -280,6 +281,17 @@ flowchart TB
 | Compliance gaps discovered during audits | Real-time compliance monitoring |
 | Medical isotope orders via phone calls | Customer self-service portal |
 | Revenue tracking in spreadsheets | Integrated billing and reporting |
+
+---
+
+## Community & Collaboration
+
+NeutronOS is designed for teams, not individuals. Key collaboration features:
+
+- **Shared RAG corpus** — facility-wide knowledge indexed and searchable by all team members
+- **Published document lifecycle** — .md → .docx → OneDrive with bidirectional sync
+- **Signal pipeline** — meeting transcripts, code changes, and chat messages automatically processed into actionable intelligence
+- **Role-based access** — OpenFGA authorization controls who can access export-controlled endpoints
 
 ---
 
