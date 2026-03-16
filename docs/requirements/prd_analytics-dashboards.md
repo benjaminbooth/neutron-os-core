@@ -6,7 +6,7 @@
 **Status:** Draft
 **Last Updated:** January 21, 2026
 **Stakeholder Input:** Jim (TJ), Nick Luciano (Jan 2026)  
-**Parent:** [Executive PRD](neutron-os-executive-prd.md)
+**Parent:** [Executive PRD](prd_neutron-os-executive.md)
 
 ---
 
@@ -138,7 +138,7 @@ mindmap
 #### On Live Streaming
 > "We'd ideally get live streaming, but currently we just upload the data after-hours due to cost."
 
-**Design Implication:** Dashboard architecture is streaming-first with batch fallbacks. Real-time is the default; batch processing handles historical aggregations and disaster recovery. See [ADR 007](../adr/007-streaming-first-architecture.md).
+**Design Implication:** Dashboard architecture is streaming-first with batch fallbacks. Real-time is the default; batch processing handles historical aggregations and disaster recovery. See [ADR 007](adr_007-streaming-first-architecture.md).
 
 #### On Security Concerns
 > "The public should generally not know when the reactor is at power. More specifically, we don't want live updates on the reactor status available online. A Superset login that is well protected is sufficient."
@@ -238,7 +238,7 @@ Based on stakeholder feedback, prioritized:
 
 **Data Refresh & Freshness:**
 
-> **Design Decision:** Streaming-first with batch fallbacks. See [ADR 007](../adr/007-streaming-first-architecture.md)
+> **Design Decision:** Streaming-first with batch fallbacks. See [ADR 007](adr_007-streaming-first-architecture.md)
 
 | Data Type | Target Latency | Implementation |
 |-----------|---------------|----------------|
@@ -443,7 +443,7 @@ From Nick:
 
 **Nick's note:** "We'd ideally get live streaming, but currently we just upload the data after-hours due to cost."
 
-**Design Decision:** Streaming-first architecture. Real-time is the default; batch for historical aggregations and fallback. See [ADR 007](../adr/007-streaming-first-architecture.md).
+**Design Decision:** Streaming-first architecture. Real-time is the default; batch for historical aggregations and fallback. See [ADR 007](adr_007-streaming-first-architecture.md).
 
 ---
 

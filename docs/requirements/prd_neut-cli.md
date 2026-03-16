@@ -5,7 +5,7 @@
 **Module:** neut Command-Line Interface
 **Status:** Planning
 **Last Updated:** February 26, 2026
-**Parent:** [Executive PRD](neutron-os-executive-prd.md)  
+**Parent:** [Executive PRD](prd_neutron-os-executive.md)  
 **Tech Spec:** [neut CLI Specification](../specs/neut-cli-spec.md)  
 **Brand Reference:** [Brand Identity - CLI Section](../design/brand-identity.md#cli-identity)
 
@@ -271,7 +271,7 @@ neut signal synthesize --preview
 neut signal status
 ```
 
-See [Neut Signal & Synthesis MVP Spec](../specs/signal-synthesis-mvp-spec.md) for full design.
+See [Agent Architecture Spec](../specs/neutron-os-agent-architecture.md) for full design.
 
 ### 10. Media Library (`neut media`)
 
@@ -288,7 +288,7 @@ neut media search "beam port schedule" --type audio
 neut media share <id> ops-team
 ```
 
-See [Media Library PRD](media-library-prd.md) for full design.
+See [Media Library PRD](prd_media-library.md) for full design.
 
 ### 11. Document Lifecycle (`neut pub`)
 

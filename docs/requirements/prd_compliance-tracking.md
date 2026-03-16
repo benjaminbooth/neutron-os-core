@@ -6,8 +6,8 @@
 **Status:** Draft
 **Last Updated:** January 22, 2026
 **Stakeholder Input:** Jim (TJ) - NRC requirements, 30-min checks, 2-year inspection scope  
-**Related Modules:** [Reactor Ops Log](reactor-ops-log-prd.md), [Experiment Manager](experiment-manager-prd.md), [Training](../specs/neutron-os-master-tech-spec.md)  
-**Parent:** [Executive PRD](neutron-os-executive-prd.md)
+**Related Modules:** [Reactor Ops Log](prd_reactor-ops-log.md), [Experiment Manager](prd_experiment-manager.md), [Training](../specs/neutron-os-master-tech-spec.md)
+**Parent:** [Executive PRD](prd_neutron-os-executive.md)
 
 ---
 

@@ -6,8 +6,8 @@
 **Status:** Draft
 **Last Updated:** January 22, 2026
 **Stakeholder Input:** Jim (TJ), Khiloni Shah, Nick Luciano  
-**Related Modules:** [Experiment Manager](experiment-manager-prd.md), [Reactor Ops Log](reactor-ops-log-prd.md), [Medical Isotope](medical-isotope-prd.md)  
-**Parent:** [Executive PRD](neutron-os-executive-prd.md)
+**Related Modules:** [Experiment Manager](prd_experiment-manager.md), [Reactor Ops Log](prd_reactor-ops-log.md), [Medical Isotope](prd_medical-isotope.md)
+**Parent:** [Executive PRD](prd_neutron-os-executive.md)
 
 ---
 

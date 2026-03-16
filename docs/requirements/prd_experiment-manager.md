@@ -6,14 +6,14 @@
 **Status:** Draft
 **Last Updated:** January 22, 2026
 **Stakeholder Input:** Khiloni Shah, Nick Luciano (Jan 2026)  
-**Related Module:** [Medical Isotope Production](medical-isotope-prd.md) (shared backend, separate workflow)  
-**Parent:** [Executive PRD](neutron-os-executive-prd.md)
+**Related Module:** [Medical Isotope Production](prd_medical-isotope.md) (shared backend, separate workflow)  
+**Parent:** [Executive PRD](prd_neutron-os-executive.md)
 
 ---
 
 ## Executive Summary
 
-The Experiment Manager provides digital tracking of samples from preparation through irradiation, decay, counting, and analysis. It **focuses exclusively on experiment lifecycle management** — sample metadata, state tracking, chain of custody, and result correlation. The module integrates with the [Scheduling System](scheduling-system-prd.md) for reactor time allocation and the [Compliance Tracking System](compliance-tracking-prd.md) for regulatory requirements, but does not own these cross-cutting concerns.
+The Experiment Manager provides digital tracking of samples from preparation through irradiation, decay, counting, and analysis. It **focuses exclusively on experiment lifecycle management** — sample metadata, state tracking, chain of custody, and result correlation. The module integrates with the [Scheduling System](prd_scheduling-system.md) for reactor time allocation and the [Compliance Tracking System](prd_compliance-tracking.md) for regulatory requirements, but does not own these cross-cutting concerns.
 
 **Design Philosophy:**
 - **Minimize data entry** through smart defaults, inference from past experiments, and AI assistance
@@ -40,11 +40,11 @@ The Experiment Manager provides digital tracking of samples from preparation thr
 
 | External System | Integration | Purpose |
 |-----------------|-------------|----------|
-| **[Scheduling System](scheduling-system-prd.md)** | Request time slots, receive confirmations | Reactor time, facility bookings |
-| **[Compliance Tracking](compliance-tracking-prd.md)** | Provide experiment records, receive alerts | ROC approvals, retention requirements |
-| **[Reactor Ops Log](reactor-ops-log-prd.md)** | Query reactor conditions during irradiation | Power levels, console checks |
-| **[Data Platform](data-platform-prd.md)** | Store sample data, query time-series | Bronze/Silver/Gold layers |
-| **[Analytics Dashboards](analytics-dashboards-prd.md)** | Provide metrics for visualization | Utilization, success rates |
+| **[Scheduling System](prd_scheduling-system.md)** | Request time slots, receive confirmations | Reactor time, facility bookings |
+| **[Compliance Tracking](prd_compliance-tracking.md)** | Provide experiment records, receive alerts | ROC approvals, retention requirements |
+| **[Reactor Ops Log](prd_reactor-ops-log.md)** | Query reactor conditions during irradiation | Power levels, console checks |
+| **[Data Platform](prd_data-platform.md)** | Store sample data, query time-series | Bronze/Silver/Gold layers |
+| **[Analytics Dashboards](prd_analytics-dashboards.md)** | Provide metrics for visualization | Utilization, success rates |
 
 ### Integration Architecture
 
@@ -297,7 +297,7 @@ flowchart LR
 
 8. **As a researcher**, I want my experiment to automatically transition to "Scheduled" state when the Scheduling System confirms my slot.
 
-*Note: Full scheduling capabilities (viewing calendars, managing conflicts, facility displays) are handled by the [Scheduling System](scheduling-system-prd.md).*
+*Note: Full scheduling capabilities (viewing calendars, managing conflicts, facility displays) are handled by the [Scheduling System](prd_scheduling-system.md).*
 
 ### User Stories: Integration with Compliance
 
@@ -307,7 +307,7 @@ flowchart LR
 
 11. **As an auditor**, I want to see the complete chain of custody for any sample including all state transitions and who performed them.
 
-*Note: Full compliance tracking (ROC approvals, evidence packages, audit reports) is handled by the [Compliance Tracking System](compliance-tracking-prd.md).*
+*Note: Full compliance tracking (ROC approvals, evidence packages, audit reports) is handled by the [Compliance Tracking System](prd_compliance-tracking.md).*
 
 ---
 
@@ -610,7 +610,7 @@ flowchart TB
 
 > **Design Decision:** Streaming-first architecture. Real-time is the default; batch for aggregations and fallback.
 >
-> See [ADR 007](../adr/007-streaming-first-architecture.md)
+> See [ADR 007](adr_007-streaming-first-architecture.md)
 
 ### Experiment Manager Latency Targets
 

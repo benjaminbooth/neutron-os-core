@@ -5,9 +5,9 @@
 **Module:** Cross-Cutting Media Management
 **Status:** Draft
 **Last Updated:** February 26, 2026
-**Related Modules:** [Reactor Ops Log](reactor-ops-log-prd.md), [Experiment Manager](experiment-manager-prd.md), [Compliance Tracking](compliance-tracking-prd.md)
-**Parent:** [Executive PRD](neutron-os-executive-prd.md)
-**ADR:** [ADR-009: Promote Media to Top-Level Noun](../adr/009-promote-media-internalize-db.md)
+**Related Modules:** [Reactor Ops Log](prd_reactor-ops-log.md), [Experiment Manager](prd_experiment-manager.md), [Compliance Tracking](prd_compliance-tracking.md)
+**Parent:** [Executive PRD](prd_neutron-os-executive.md)
+**ADR:** [ADR-009: Promote Media to Top-Level Noun](adr_009-promote-media-internalize-db.md)
 
 ---
 
@@ -378,7 +378,7 @@ This separation means:
 
 ## Migration from Neut Signal
 
-Per [ADR-009](../adr/009-promote-media-internalize-db.md), the following code
+Per [ADR-009](adr_009-promote-media-internalize-db.md), the following code
 moves from `signal_agent/` to a future `media/` extension:
 
 | Current Location | New Location |
@@ -412,7 +412,7 @@ transition period.
 ## Contacts & Links
 
 - **Product lead:** Ben
-- **Parent PRD:** [Executive PRD](neutron-os-executive-prd.md)
-- **Architecture decision:** [ADR-009](../adr/009-promote-media-internalize-db.md)
-- **CLI design:** [neut CLI PRD](neut-cli-prd.md)
+- **Parent PRD:** [Executive PRD](prd_neutron-os-executive.md)
+- **Architecture decision:** [ADR-009](adr_009-promote-media-internalize-db.md)
+- **CLI design:** [neut CLI PRD](prd_neut-cli.md)
 - **Related spec:** *(future — media-library-spec.md)*

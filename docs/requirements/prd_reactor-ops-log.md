@@ -6,7 +6,7 @@
 **Status:** Draft
 **Last Updated:** March 5, 2026
 **Stakeholder Input:** Jim (TJ), Nick Luciano (Jan 2026), Jay Torres (eLogger prototype)  
-**Parent:** [Executive PRD](neutron-os-executive-prd.md)  
+**Parent:** [Executive PRD](prd_neutron-os-executive.md)  
 **Historical Reference:** Previously referred to as "elog" in some contexts  
 **Prior Art:** Jay Torres' NETL eLogger prototype ([triga_dt_website/routes/operation_log_routes.py](../../TRIGA_Digital_Twin/triga_dt_website/routes/operation_log_routes.py))
 
@@ -673,7 +673,7 @@ From Jim: "Export to PDF would work, but a simple text file for archive and futu
 
 > **Design Decision:** Streaming-first architecture. Real-time is the default; batch for aggregations and fallback.
 >
-> See [ADR 007](../adr/007-streaming-first-architecture.md)
+> See [ADR 007](adr_007-streaming-first-architecture.md)
 
 **Reactor Ops Log Latency Targets:**
 

@@ -5,7 +5,7 @@
 **Product:** Neutron OS Data Platform
 **Status:** Draft
 **Last Updated:** 2026-01-21
-**Parent:** [Executive PRD](neutron-os-executive-prd.md)
+**Parent:** [Executive PRD](prd_neutron-os-executive.md)
 
 ---
 
@@ -315,7 +315,7 @@ See: [Superset Scenarios](../specs/superset-scenarios/)
 - Dagster (orchestration)
 - Object storage (pending hosting decision)
 - **Semantic search capability** (Vector database / embeddings infrastructure — specification TBD)
-- **Neut agent integration** (Signal extraction and Bronze ingestion via Neut's sensing role — see [Intelligence Amplification Pillar](../strategy/intelligence-amplification-pillar.md))
+- **Neut agent integration** (Signal extraction and Bronze ingestion via Neut's sensing role — see [Intelligence Amplification Pillar](prd_intelligence-amplification-pillar.md))
 
 ---
 
