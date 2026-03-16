@@ -43,10 +43,19 @@ class GenerationResult:
 class UploadResult:
     """Result from StorageProvider.upload()."""
 
-    storage_id: str
-    canonical_url: str
+    storage_id: str = ""
+    canonical_url: str = ""
     version: str = "v1"
+    success: bool = True
+    error: str = ""
+    url: str = ""  # Alias for canonical_url (convenience)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.url and not self.canonical_url:
+            self.canonical_url = self.url
+        elif self.canonical_url and not self.url:
+            self.url = self.canonical_url
 
 
 @dataclass

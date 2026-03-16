@@ -920,20 +920,16 @@ def cmd_assemble(args: argparse.Namespace) -> None:
 
 
 def cmd_push(args: argparse.Namespace) -> None:
-    """Push documents to configured storage.
+    """Push a document (or batch) to configured storage.
 
-    Supports single file, directory, or --all for batch publishing.
-    When given a .md file, generates .docx first, then uploads.
-    When given a .docx file, uploads directly.
+    Two modes:
+    - Single/directory: generates + publishes via engine (supports .compile.yaml assembly)
+    - --all + --storage onedrive-browser: batch generate + upload via Playwright
 
-    Uses onedrive-browser storage by default (Playwright, no API keys).
     First run with --headed opens a browser for Microsoft login.
     """
     from .engine import PublisherEngine
-    import subprocess
     import tempfile
-
-    from neutron_os import REPO_ROOT
 
     engine = PublisherEngine()
     force = getattr(args, "force", False)
@@ -942,60 +938,95 @@ def cmd_push(args: argparse.Namespace) -> None:
     headed = getattr(args, "headed", False)
     push_all = getattr(args, "all", False)
 
-    # Collect files to push
-    files_to_push: list[tuple[Path, Path]] = []  # (source_md, docx_path)
+    # ── Batch browser upload (--all --storage onedrive-browser) ───────────
+    if push_all or storage == "onedrive-browser":
+        _cmd_push_batch(args, engine, draft, storage, headed, force)
+        return
 
-    if push_all:
-        # Load config to find document folders
-        config_path = REPO_ROOT / ".publisher.yaml"
-        folders = []
-        if config_path.exists():
-            try:
-                import yaml
-                with open(config_path) as f:
-                    cfg = yaml.safe_load(f) or {}
-                folders = cfg.get("folders", [])
-            except Exception:
-                pass
+    # ── Single file / directory push (original behavior) ──────────────────
+    if not args.path:
+        print("Usage: neut pub push <path> [--all] [--storage onedrive-browser] [--headed]")
+        print("\nExamples:")
+        print("  neut pub push docs/requirements/prd_executive.md")
+        print("  neut pub push --all --storage onedrive-browser --headed")
+        return
 
-        if not folders:
-            # Default: scan docs/requirements for PRDs
-            folders = [{"path": "docs/requirements", "pattern": "prd_*.md"}]
+    target = Path(args.path).resolve()
+    if not target.exists():
+        print(f"✗ Path not found: {args.path}", file=sys.stderr)
+        sys.exit(1)
 
-        for folder_cfg in folders:
-            folder = REPO_ROOT / folder_cfg["path"]
-            pattern = folder_cfg.get("pattern", "*.md")
-            if folder.exists():
-                for md_file in sorted(folder.glob(pattern)):
-                    if md_file.name.startswith("_") or md_file.name == "README.md":
-                        continue
-                    files_to_push.append((md_file, _generate_docx(md_file)))
+    # Auto-detect .compile.yaml for multi-section assembly
+    assembled_tmp: Optional[Path] = None
+    source = target
 
-    elif args.path:
-        target = Path(args.path).resolve()
-        if not target.exists():
-            print(f"✗ Path not found: {args.path}", file=sys.stderr)
+    manifest = _find_compile_manifest(target)
+    if manifest:
+        print(f"  Assembling from {manifest.relative_to(manifest.parent.parent)}...")
+        try:
+            tmp = tempfile.NamedTemporaryFile(
+                suffix=".assembled.md", dir=manifest.parent, delete=False,
+            )
+            tmp.close()
+            assembled_tmp = Path(tmp.name)
+            source = _assemble_from_manifest(manifest, assembled_tmp)
+            print(f"  Assembly complete ({source.stat().st_size // 1024}KB)")
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"✗ Assembly failed: {exc}", file=sys.stderr)
             sys.exit(1)
 
-        if target.suffix == ".md":
-            files_to_push.append((target, _generate_docx(target)))
-        elif target.suffix == ".docx":
-            files_to_push.append((target, target))
-        elif target.is_dir():
-            for md_file in sorted(target.glob("*.md")):
-                if md_file.name.startswith("_"):
+    # Publish via engine
+    try:
+        result = engine.publish(
+            source, storage_override=storage, draft=draft, force=force,
+        )
+        if result and isinstance(result, dict):
+            print("\n" + "=" * 70)
+            print("✓ Published successfully")
+            print("=" * 70)
+            if result.get("version"):
+                print(f"Version:  {result['version']}")
+            if result.get("storage"):
+                print(f"Storage:  {result['storage']}")
+            if result.get("url"):
+                print(f"URL:      {result['url']}")
+            print("=" * 70 + "\n")
+    except Exception as e:
+        print(f"✗ Publish failed: {e}", file=sys.stderr)
+        raise
+    finally:
+        if assembled_tmp and assembled_tmp.exists():
+            assembled_tmp.unlink()
+
+
+def _cmd_push_batch(args, engine, draft, storage, headed, force):
+    """Batch generate + upload via Playwright browser."""
+    from neutron_os import REPO_ROOT
+
+    # Collect files from configured folders
+    config_path = REPO_ROOT / ".publisher.yaml"
+    folders = []
+    if config_path.exists():
+        try:
+            import yaml
+            with open(config_path) as f:
+                cfg = yaml.safe_load(f) or {}
+            folders = cfg.get("folders", [])
+        except Exception:
+            pass
+
+    if not folders:
+        folders = [{"path": "docs/requirements", "pattern": "prd_*.md"}]
+
+    files_to_push: list[tuple[Path, Path]] = []
+    for folder_cfg in folders:
+        folder = REPO_ROOT / folder_cfg["path"]
+        pattern = folder_cfg.get("pattern", "*.md")
+        if folder.exists():
+            for md_file in sorted(folder.glob(pattern)):
+                if md_file.name.startswith("_") or md_file.name == "README.md":
                     continue
                 files_to_push.append((md_file, _generate_docx(md_file)))
-        else:
-            print(f"✗ Unsupported file type: {target.suffix}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        print("Usage: neut pub push <file_or_directory> [--all] [--storage <provider>]")
-        print("\nExamples:")
-        print("  neut pub push docs/requirements/prd_neutron-os-executive.md")
-        print("  neut pub push --all                    # Push all configured docs")
-        print("  neut pub push --all --headed            # First time: show browser for login")
-        sys.exit(1)
 
     if not files_to_push:
         print("No documents found to push.")
@@ -1009,71 +1040,50 @@ def cmd_push(args: argparse.Namespace) -> None:
             print(f"    Generating {docx_path.name}...", end=" ", flush=True)
             docx_path = _generate_docx(source_md)
             print("✓")
-        elif docx_path.exists():
+        else:
             print(f"    {docx_path.name} (already generated)")
         docx_files.append(docx_path)
 
-    # Determine storage provider
-    use_browser = (storage == "onedrive-browser" or storage is None)
+    # Upload via browser
+    try:
+        from .providers.storage.onedrive_browser import OneDriveBrowserStorageProvider
+    except ImportError:
+        print("\n✗ Playwright not installed. Run:")
+        print("    pip install playwright && playwright install chromium")
+        sys.exit(1)
 
-    if use_browser:
-        # Use Playwright browser upload
+    onedrive_folder = "NeutronOS/prd"
+    if config_path.exists():
         try:
-            from .providers.storage.onedrive_browser import OneDriveBrowserStorageProvider
-        except ImportError:
-            print("\n✗ Playwright not installed. Run:")
-            print("    pip install playwright && playwright install chromium")
-            sys.exit(1)
+            import yaml
+            with open(config_path) as f:
+                cfg = yaml.safe_load(f) or {}
+            onedrive_folder = cfg.get("storage", {}).get("onedrive_folder", "NeutronOS") + "/prd"
+        except Exception:
+            pass
 
-        # Load OneDrive config
-        onedrive_folder = "NeutronOS/prd"
-        config_path = REPO_ROOT / ".publisher.yaml"
-        if config_path.exists():
-            try:
-                import yaml
-                with open(config_path) as f:
-                    cfg = yaml.safe_load(f) or {}
-                onedrive_folder = cfg.get("storage", {}).get("onedrive_folder", "NeutronOS") + "/prd"
-            except Exception:
-                pass
+    provider = OneDriveBrowserStorageProvider({
+        "folder": onedrive_folder,
+        "headless": not headed,
+    })
 
-        provider = OneDriveBrowserStorageProvider({
-            "folder": onedrive_folder,
-            "headless": not headed,
-        })
+    if not provider.has_session() and not headed:
+        print("\n  No saved session. Run with --headed for first-time login:")
+        print("    neut pub push --all --storage onedrive-browser --headed\n")
+        sys.exit(1)
 
-        if not provider.has_session() and not headed:
-            print("\n  No saved session. Run with --headed for first-time login:")
-            print("    neut pub push --all --headed\n")
-            sys.exit(1)
+    print(f"\n  Uploading {len(docx_files)} file(s) to OneDrive/{onedrive_folder}...\n")
 
-        print(f"\n  Uploading {len(docx_files)} file(s) to OneDrive/{onedrive_folder}...\n")
+    results = provider.upload_batch(docx_files, draft=draft, headed=headed)
+    success = 0
+    for docx, result in zip(docx_files, results):
+        icon = "✓" if result.success else "✗"
+        msg = result.url if result.success else result.error
+        print(f"    {icon} {docx.name}  {msg}")
+        if result.success:
+            success += 1
 
-        results = provider.upload_batch(docx_files, draft=draft, headed=headed)
-        success = 0
-        for docx, result in zip(docx_files, results):
-            icon = "✓" if result.success else "✗"
-            msg = result.url if result.success else result.error
-            print(f"    {icon} {docx.name}  {msg}")
-            if result.success:
-                success += 1
-
-        print(f"\n  {success}/{len(docx_files)} published successfully.\n")
-
-    else:
-        # Use engine's default storage (local, onedrive API, etc.)
-        for source_md, docx_path in files_to_push:
-            try:
-                result = engine.publish(
-                    source_md if source_md.suffix == ".md" else docx_path,
-                    storage_override=storage,
-                    draft=draft,
-                    force=force,
-                )
-                if result and isinstance(result, dict):
-                    print(f"  ✓ {source_md.name}: {result.get('url', 'published')}")
-            except Exception as e:
-                print(f"  ✗ {source_md.name}: {e}")
+    print(f"\n  {success}/{len(docx_files)} published successfully.\n")
 
 
 def _generate_docx(md_path: Path) -> Path:

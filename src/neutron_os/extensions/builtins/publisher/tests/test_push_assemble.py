@@ -211,6 +211,9 @@ def test_cmd_push_single_file_no_manifest(tmp_path):
     args.draft = False
     args.storage = "local"
     args.force = False
+    args.all = False
+    args.headed = False
+    args.command = "push"
 
     mock_engine = MagicMock()
     mock_engine.publish.return_value = {"version": "v1.0.0", "storage": "local", "url": str(tmp_path)}
@@ -238,6 +241,8 @@ def test_cmd_push_with_manifest_assembles_transparently(tmp_path, capsys):
     args.draft = False
     args.storage = "local"
     args.force = False
+    args.all = False
+    args.headed = False
 
     mock_engine = MagicMock()
     mock_engine.publish.return_value = {"version": "v1.0.0", "storage": "local", "url": "/tmp/x"}
@@ -273,6 +278,8 @@ def test_cmd_push_cleans_up_temp_on_publish_failure(tmp_path):
     args.draft = False
     args.storage = None
     args.force = False
+    args.all = False
+    args.headed = False
 
     assembled_files = []
 
