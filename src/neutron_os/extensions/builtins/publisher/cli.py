@@ -1044,39 +1044,50 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             print(f"    {docx_path.name} (already generated)")
         docx_files.append(docx_path)
 
-    # Upload via browser
+    # Resolve browser storage provider
     try:
         from .providers.storage.onedrive_browser import OneDriveBrowserStorageProvider
+        from .providers.storage.box_browser import BoxBrowserStorageProvider
     except ImportError:
         print("\n✗ Playwright not installed. Run:")
         print("    pip install playwright && playwright install chromium")
         sys.exit(1)
 
-    onedrive_folder = "NeutronOS/prd"
-    onedrive_url = ""
+    # Read config
+    target_folder = "NeutronOS"
+    site_url = ""
     if config_path.exists():
         try:
             import yaml
             with open(config_path) as f:
                 cfg = yaml.safe_load(f) or {}
             storage_cfg = cfg.get("storage", {})
-            onedrive_folder = storage_cfg.get("onedrive_folder", "NeutronOS") + "/prd"
-            onedrive_url = storage_cfg.get("onedrive_url", "")
+            target_folder = storage_cfg.get("onedrive_folder", storage_cfg.get("box_folder", "NeutronOS"))
+            site_url = storage_cfg.get("onedrive_url", "")
         except Exception:
             pass
 
-    provider = OneDriveBrowserStorageProvider({
-        "folder": onedrive_folder,
-        "site_url": onedrive_url,
-        "headless": not headed,
-    })
+    if storage == "box-browser":
+        provider = BoxBrowserStorageProvider({
+            "folder": target_folder,
+            "headless": not headed,
+        })
+        dest_label = f"Box/{target_folder}"
+    else:
+        provider = OneDriveBrowserStorageProvider({
+            "folder": target_folder + "/prd",
+            "site_url": site_url,
+            "headless": not headed,
+        })
+        dest_label = f"OneDrive/{target_folder}/prd"
 
     if not provider.has_session() and not headed:
-        print("\n  No saved session. Run with --headed for first-time login:")
-        print("    neut pub push --all --storage onedrive-browser --headed\n")
+        storage_name = "box-browser" if storage == "box-browser" else "onedrive-browser"
+        print(f"\n  No saved session. Run with --headed for first-time login:")
+        print(f"    neut pub push --all --storage {storage_name} --headed\n")
         sys.exit(1)
 
-    print(f"\n  Uploading {len(docx_files)} file(s) to OneDrive/{onedrive_folder}...\n")
+    print(f"\n  Uploading {len(docx_files)} file(s) to {dest_label}...\n")
 
     results = provider.upload_batch(docx_files, draft=draft, headed=headed)
     success = 0
