@@ -1092,7 +1092,12 @@ def _generate_docx(md_path: Path) -> Path:
 
     from neutron_os import REPO_ROOT
 
-    output_dir = REPO_ROOT / ".neut" / "generated" / "prd"
+    # Mirror source folder structure: docs/requirements/ → .neut/generated/requirements/
+    try:
+        rel = md_path.parent.relative_to(REPO_ROOT)
+        output_dir = REPO_ROOT / ".neut" / "generated" / rel
+    except ValueError:
+        output_dir = REPO_ROOT / ".neut" / "generated"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     docx_name = md_path.stem + ".docx"
