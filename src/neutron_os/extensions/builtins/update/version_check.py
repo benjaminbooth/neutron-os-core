@@ -87,7 +87,8 @@ class VersionChecker:
             available = self._check_git_remote(timeout)
             source = "git"
 
-        if available is None:
+        # Only check GitHub mirror if we're NOT in a git repo (end-user installs)
+        if available is None and not (self.repo_root / ".git").exists():
             available = self._check_github_mirror(timeout)
             source = "git"
 
