@@ -587,6 +587,18 @@ Each module has a detailed PRD with user stories, schemas, and mockups:
    - Retention audit logging for compliance
    - See also: [Agent State Management Spec](../specs/agent-state-management-spec.md)
 
+9. **[Connections PRD](prd_connections.md)**
+   - Unified `neut connect` for all external integrations
+   - Credential resolution chain (env → settings → keychain → file → browser)
+   - Extension builder contract: declare connections in TOML, call `get_credential()`
+   - See also: [Connections & Credentials Spec](../specs/neutron-os-connections-spec.md)
+
+10. **[Security & Access Control PRD](prd_security-access-control.md)**
+    - Prompt injection defense (chunk sanitization, response scanning)
+    - EC leakage detection and incident response
+    - OpenFGA authorization (ReBAC/RBAC/ABAC)
+    - See also: [Model Routing Spec §7-8-10](../specs/neutron-os-model-routing-spec.md)
+
 ### Optional Modules
 
 5. **[Medical Isotope Production PRD](prd_medical-isotope.md)**

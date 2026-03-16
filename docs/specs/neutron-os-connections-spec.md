@@ -622,7 +622,8 @@ requires.
 
 ## Related Documents
 
-- [Model Routing Spec](neutron-os-model-routing-spec.md) — LLM provider credentials
-- [Security & Access Control PRD](../requirements/prd_security-access-control.md) — RBAC
+- [Connections PRD](../requirements/prd_connections.md) — User-facing requirements for `neut connect`
+- [Security & Access Control PRD](../requirements/prd_security-access-control.md) — OpenFGA authorization (FR-008), ReBAC/RBAC/ABAC
+- [Model Routing Spec](neutron-os-model-routing-spec.md) — LLM provider credentials, routing tier authorization
 - [Agent State Management Spec](agent-state-management-spec.md) — Credential storage in state registry
 - [NeutronOS Master Tech Spec](neutron-os-master-tech-spec.md) — Extension system

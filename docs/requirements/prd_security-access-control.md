@@ -250,33 +250,83 @@ window_hours = 24                   # Rolling window for event correlation
 threshold = 3                       # Events in window before escalation
 ```
 
-### FR-008: Authentication & RBAC
+### FR-008: Authentication & Authorization (OpenFGA)
 
 **Principle:** Classification decides WHAT a query is; authorization decides WHO may send it. Both checks must pass independently.
 
-**Role model:**
+**Authorization framework:** [OpenFGA](https://openfga.dev/) — open-source implementation of Google Zanzibar. Supports all three authorization models NeutronOS needs:
+
+| Model | What it answers | NeutronOS example |
+|-------|----------------|-------------------|
+| **RBAC** (role-based) | Does this user have this role? | "Ben has role `export_controlled_access`" |
+| **ReBAC** (relationship-based) | Is this user related to this resource? | "Ben is a member of TRIGA team, which owns this wiki" |
+| **ABAC** (attribute-based) | Do this user's attributes satisfy a policy? | "User is on-campus AND has completed EC training" |
+
+**OpenFGA authorization model:**
+
+```dsl
+model
+  schema 1.1
+
+type user
+
+type role
+  relations
+    define member: [user]
+
+type connection
+  relations
+    define can_access: [user, role#member]
+    define admin: [user, role#member]
+
+type document
+  relations
+    define owner: [user]
+    define can_read: owner or can_access from parent_connection
+    define can_write: owner or admin from parent_connection
+    define parent_connection: [connection]
+
+type rag_corpus
+  relations
+    define can_query: [user, role#member]
+    define can_index: [user, role#member]
+```
+
+**Authorization check flow:**
+
+```
+classify(query) → tier = "export_controlled"
+  → select_provider() → "tacc-qwen"
+    → OpenFGA: check(user, "tacc-qwen", "can_access")
+      → allowed? → yes: proceed / no: fail with guidance
+```
+
+**Roles:**
 
 | Role | Capabilities |
 |------|-------------|
-| `public_access` | May use public tier only; classifier still runs but EC-classified queries fail with guidance |
-| `export_controlled_access` | May access VPN tier; classifier still runs to route correctly |
-| `admin` | May override sensitivity settings, configure per-user tier access, resolve quarantine |
-| `compliance_officer` | Read-only access to security events, incident reports, audit logs |
+| `public_access` | May use public tier only; EC-classified queries fail with guidance |
+| `export_controlled_access` | May access private endpoint; classifier routes correctly |
+| `admin` | Override sensitivity, configure per-user access, resolve quarantine |
+| `compliance_officer` | Read-only access to security events, audit logs |
 
 **Auth scenarios:**
 
 | Scenario | Routing behavior |
 |----------|-----------------|
-| User has `export_controlled_access` role | May access VPN tier; classifier still runs |
-| User lacks `export_controlled_access` role | Classifier may flag a query EC, but VPN tier is unavailable — fail with: "This query requires EC access. Contact your administrator." |
-| Unauthenticated (public internet) | Only `public` tier available regardless of classifier result |
-| Admin / facility operator | May override sensitivity setting; may configure per-user tier access |
+| User has `export_controlled_access` | May access VPN tier; classifier still runs |
+| User lacks `export_controlled_access` | VPN tier unavailable — fail: "This query requires EC access." |
+| Unauthenticated (public internet) | Only `public` tier regardless of classifier |
+| Admin | May override sensitivity; configure per-user tier access |
 
 **Implementation:**
-- Auth claims flow into session context — `_select_provider()` consults auth claims in addition to `routing_tier`
-- The VPN model can never be reached by an unauthorized session even if the classifier says EC
-- Physical network boundary (VPN) remains the strongest control; RBAC is defense-in-depth
-- Human-in-the-loop for all safety-adjacent actions (role grants, quarantine resolution, escalation acknowledgment)
+- OpenFGA runs as a sidecar (K3D/K8S) using PostgreSQL as storage (same DB NeutronOS requires)
+- Auth claims flow into session context — `_select_provider()` consults OpenFGA
+- Physical network boundary (VPN) remains strongest control; OpenFGA is defense-in-depth
+- Human-in-the-loop for all safety-adjacent actions
+- Connection-level authorization: each connection declares its authorization requirements (see [Connections Spec](../specs/neutron-os-connections-spec.md))
+
+**Relationship to Connections:** Every external integration is a Connection. OpenFGA gates which users can use which connections. This unifies LLM provider access, RAG corpus access, and external service access under one authorization model.
 
 ### FR-009: `neut doctor --security` (Visibility)
 
@@ -409,7 +459,7 @@ ORDER BY event_at DESC;
 
 4. **HMAC key rotation.** How frequently should the server secret for audit log HMAC be rotated? What is the migration path for existing records?
 
-5. **Auth provider choice.** Should NeutronOS implement its own auth or integrate with an existing provider (Keycloak, Auth0, facility LDAP)? Integration is preferred but adds deployment complexity.
+5. ~~**Auth provider choice.**~~ → Resolved: OpenFGA for authorization. Authentication is separate (facility SSO/LDAP for identity, OpenFGA for what that identity can do).
 
 6. **Paraphrase detection.** Keyword scanning cannot catch paraphrased EC content. Is there a pragmatic middle ground between keyword matching and full semantic analysis that adds value without ML model dependency in the security path?
 
@@ -419,6 +469,8 @@ ORDER BY event_at DESC;
 
 ## Related Documents
 
+- [Connections & Credentials Spec](../specs/neutron-os-connections-spec.md) — Connection abstraction, credential storage, OpenFGA integration plan
+- [Connections PRD](prd_connections.md) — User-facing requirements for `neut connect` and credential management
 - [Model Routing & Settings Spec](../specs/neutron-os-model-routing-spec.md) — §7 (auth intersection), §8 (prompt injection defense), §10 (EC leakage detection)
 - [Agent State Management PRD](prd_agent-state-management.md) — audit trail patterns, PostgreSQL state backend
 - [RAG Architecture Spec](../specs/neutron-os-rag-architecture-spec.md) — EC compliance requirements
