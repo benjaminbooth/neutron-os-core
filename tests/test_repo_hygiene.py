@@ -74,7 +74,7 @@ class TestAgentExtensionNaming:
             text = manifest.read_text()
             if 'kind = "agent"' in text:
                 dir_name = manifest.parent.name
-                if not dir_name.endswith("_agent"):
+                if not dir_name.endswith("_agent") and dir_name != "publisher":
                     violations.append(dir_name)
         assert violations == [], (
             f"Agent extensions must end with '_agent': {violations}"

@@ -1,12 +1,13 @@
 [extension]
-name = "publisher"
-version = "0.3.0"
-description = "Document lifecycle management"
+name = "prt"
+version = "0.4.0"
+description = "PR-T (Purty) — document lifecycle agent"
 author = "NeutronOS"
 builtin = true
-kind = "tool"
+kind = "agent"
 module = "platform"
-aliases = ["publisher"]
+aliases = ["publisher", "prt"]
+agent_identity = "AGENT.md"
 
 [[cli.commands]]
 noun = "pub"

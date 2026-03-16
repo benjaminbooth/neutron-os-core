@@ -1,8 +1,20 @@
 # NeutronOS Agent Platform — Needs Assessment & Capability Reference
 
-> **Implementation Status: 🟡 Partial** — Platform infrastructure (routing, RAG, settings, eval harness) is shipped. Built-in agents (Signal, Chat, M-O, Doctor) are shipped. Domain agent capabilities (regulatory intelligence, operational workflow, research, training) are planned but not started.
+> **Implementation Status: 🟡 Partial** — Platform infrastructure (routing, RAG, settings, eval harness) is shipped. Built-in agents (EVE, Chat, M-O, PR-T, Doctor) are shipped. Domain agent capabilities (regulatory intelligence, operational workflow, research, training) are planned but not started.
 
 *Agentic Runtime for Safer, More Cost-Efficient Nuclear Operations*
+
+### Why WALL-E?
+
+NeutronOS agents are named after robots from Pixar's WALL-E — a film about a world made uninhabitable by environmental neglect. The irony is intentional: NeutronOS exists to make nuclear energy safer and more efficient, helping build the cleanest large-scale energy source available — exactly the kind of technology that could prevent the future WALL-E depicts. Our agents work tirelessly to keep nuclear facilities running safely, just as WALL-E's robots maintain the Axiom:
+
+| Agent | WALL-E Character | NeutronOS Role |
+|-------|-----------------|----------------|
+| **EVE** | Probe droid — scans for signs of life | Event Evaluator — scans for actionable signals |
+| **M-O** | Cleaning robot — obsessive about contamination | Micro-Obliterator — resource steward, system hygiene |
+| **PR-T** | Beauty bot — makes things presentable | Publisher — document lifecycle, .md → polished .docx |
+| **Doctor** | Ship's diagnostic system | System diagnostics and security health |
+| **Neut** | The Axiom itself | Orchestrator — routes commands, coordinates agents |
 
 **Status:** Active
 **Owner:** Ben Booth
