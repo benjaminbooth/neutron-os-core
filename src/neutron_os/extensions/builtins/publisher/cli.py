@@ -1113,9 +1113,10 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
 
     print(f"\n  Uploading {len(just_files)} file(s) to {dest_label}...\n")
 
-    if hasattr(provider, "upload_batch") and "folders" in provider.upload_batch.__code__.co_varnames:
+    try:
         results = provider.upload_batch(just_files, draft=draft, headed=headed, folders=per_file_folders)
-    else:
+    except TypeError:
+        # Provider doesn't support per-file folders
         results = provider.upload_batch(just_files, draft=draft, headed=headed)
     success = 0
     for f, result in zip(just_files, results):

@@ -341,6 +341,20 @@ class OneDriveGraphStorageProvider(StorageProvider):
 
         try:
             self._ensure_folder(folder_path)
+        except urllib.error.HTTPError as e:
+            error_body = ""
+            try:
+                error_body = e.read().decode()[:500]
+            except Exception:
+                pass
+            return UploadResult(
+                success=False, url="",
+                error=f"Folder creation failed ({e.code}): {error_body}",
+            )
+        except Exception as e:
+            return UploadResult(success=False, url="", error=f"Folder creation failed: {e}")
+
+        try:
             file_bytes = local_path.read_bytes()
             upload_path = f"/me/drive/root:/{folder_path}/{remote_name}:/content"
 
@@ -373,9 +387,12 @@ class OneDriveGraphStorageProvider(StorageProvider):
                 error_body = e.read().decode()[:500]
             except Exception:
                 pass
-            return UploadResult(success=False, url="", error=f"Graph API error ({e.code}): {error_body}")
+            return UploadResult(
+                success=False, url="",
+                error=f"Upload failed ({e.code}): {error_body}",
+            )
         except Exception as e:
-            return UploadResult(success=False, url="", error=str(e))
+            return UploadResult(success=False, url="", error=f"Upload failed: {e}")
 
     def upload_batch(
         self,
@@ -404,6 +421,7 @@ class OneDriveGraphStorageProvider(StorageProvider):
             folders = [self.target_folder] * len(files)
 
         for i, (local_path, folder) in enumerate(zip(files, folders)):
+            logger.debug("Upload: %s → %s/%s", local_path, folder, local_path.name)
             print(f"    [{i+1}/{len(files)}] {folder}/{local_path.name}...", end=" ", flush=True)
             result = self.upload_to_folder(local_path, folder)
             results.append(result)
