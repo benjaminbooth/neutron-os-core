@@ -157,3 +157,5 @@ coverage.json
 runtime/knowledge/
 ben-learning/
 .neut/generated/
+.ruff_cache/
+*.pyc
