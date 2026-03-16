@@ -311,15 +311,15 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             if "sharepoint.com" in actual_url:
                 self._save_discovered_url(actual_url)
 
-            # Navigate into target folder, creating if needed
+            # Navigate into target folder using DOUBLE-CLICK (single click selects, doesn't navigate)
             for part in [fp for fp in target_folder.strip("/").split("/") if fp]:
-                try:
-                    page.click(
-                        f"[data-automationid='field-LinkFilename']:has-text('{part}')",
-                        timeout=3000,
-                    )
-                    page.wait_for_timeout(2000)
-                except Exception:
+                folder_el = page.query_selector(
+                    f"[data-automationid='field-LinkFilename']:has-text('{part}')"
+                )
+                if folder_el:
+                    folder_el.dblclick()
+                    page.wait_for_timeout(3000)
+                else:
                     # Folder doesn't exist — create it
                     try:
                         page.click("text=Create or upload", timeout=5000)
@@ -329,12 +329,13 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                         page.keyboard.type(part)
                         page.keyboard.press("Enter")
                         page.wait_for_timeout(3000)
-                        # Navigate into the new folder
-                        page.click(
-                            f"[data-automationid='field-LinkFilename']:has-text('{part}')",
-                            timeout=5000,
+                        # Double-click to enter the new folder
+                        new_folder = page.query_selector(
+                            f"[data-automationid='field-LinkFilename']:has-text('{part}')"
                         )
-                        page.wait_for_timeout(2000)
+                        if new_folder:
+                            new_folder.dblclick()
+                            page.wait_for_timeout(3000)
                     except Exception as folder_err:
                         logger.warning("Could not create folder '%s': %s", part, folder_err)
                         break
