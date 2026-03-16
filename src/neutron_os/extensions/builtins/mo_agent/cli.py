@@ -38,7 +38,9 @@ Examples:
 
     sub.add_parser("status", help="Show M-O status")
     sub.add_parser("ls", help="List all tracked entries")
-    sub.add_parser("clean", help="Sweep expired and orphaned entries")
+    clean_p = sub.add_parser("clean", help="Sweep expired and orphaned entries")
+    clean_p.add_argument("--repo", action="store_true", help="Also clean repo clutter (pycache, DS_Store, etc.)")
+    clean_p.add_argument("--dry-run", action="store_true", help="Show what would be cleaned")
 
     purge_p = sub.add_parser("purge", help="Delete all scratch entries")
     purge_p.add_argument(
@@ -210,11 +212,36 @@ def _cmd_clean(args) -> int:
 
     total = result["expired"] + result["orphaned"]
     if total == 0:
-        print("Nothing to clean.")
+        print("Nothing to clean (scratch).")
     else:
         print(f"Cleaned {total} entries ({result['expired']} expired, {result['orphaned']} orphaned)")
         if result["errors"]:
             print(f"  {result['errors']} errors during cleanup")
+
+    # Repo hygiene (--repo flag)
+    if getattr(args, "repo", False):
+        from neutron_os import REPO_ROOT
+        from .repo_hygiene import scan_repo_hygiene, clean_clutter
+
+        dry_run = getattr(args, "dry_run", False)
+        print()
+        findings = scan_repo_hygiene(REPO_ROOT)
+
+        if findings["clutter"]:
+            label = "Would clean" if dry_run else "Cleaning"
+            print(f"Repo clutter ({len(findings['clutter'])} items):")
+            for path, item_type, desc in findings["clutter"][:20]:
+                print(f"  {path} ({desc})")
+            if not dry_run:
+                cleaned = clean_clutter(REPO_ROOT, dry_run=False)
+                print(f"  Cleaned: {cleaned['dirs']} dirs, {cleaned['files']} files")
+        else:
+            print("Repo is clean.")
+
+        if findings["unexpected_root"]:
+            print(f"\nUnexpected root items: {', '.join(findings['unexpected_root'])}")
+            print("  New functionality → src/neutron_os/extensions/builtins/")
+            print("  One-off scripts → spikes/")
 
     return 0
 
