@@ -227,6 +227,7 @@ Digital twin capabilities are planned for post-MVP deployment. The architecture 
 | [ADR-007](../requirements/adr_007-streaming-first-architecture.md) | Streaming-first architecture | Accepted |
 | [ADR-008](../requirements/adr_008-wasm-extension-runtime.md) | WASM surrogate runtime | Proposed |
 | [ADR-009](../requirements/adr_009-promote-media-internalize-db.md) | Media Library + internalize DB | Accepted |
+| [ADR-010](../requirements/adr_010-cli-architecture.md) | CLI as agentic terminal (noun-verb, slash commands, terminal monitoring) | Accepted |
 
 ---
 

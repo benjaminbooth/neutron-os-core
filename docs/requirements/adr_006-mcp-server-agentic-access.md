@@ -1,222 +1,159 @@
-# ADR-006: MCP Server for Agentic Data Access
+# ADR-006: Agentic Access — MCP Server + CLI as Primary Interfaces
 
-**Status:** Proposed  
-**Date:** 2026-01-15  
-**Decision Makers:** Ben, Team  
-**Inspired By:** INL DeepLynx Nexus `deeplynx.mcp/` implementation
+**Status:** Accepted (updated 2026-03-16)
+**Date:** 2026-01-15 (original), 2026-03-16 (revised)
+**Decision Makers:** Ben Booth, Team
 
 ## Context
 
-AI agents and LLM-powered applications need programmatic access to Neutron OS data. Currently, data access requires:
-1. Direct SQL queries (requires schema knowledge)
-2. Custom API endpoints (requires development effort per use case)
-3. Manual data export (not suitable for automation)
+NeutronOS agents and LLM-powered applications need programmatic access to
+platform data and operations. Two access patterns have emerged:
 
-INL's DeepLynx Nexus has implemented an early MCP (Model Context Protocol) server that exposes tools for AI agents to query projects and records. This pattern is worth adopting.
+1. **MCP (Model Context Protocol)** — Anthropic's open standard for LLM ↔ tool
+   communication. Claude Code, Cursor, and other AI IDEs use MCP to discover
+   and invoke tools. NeutronOS exposes tools via an MCP server so any MCP-capable
+   client can query reactor data, run signal pipeline operations, and publish docs.
 
-The Model Context Protocol (MCP) is Anthropic's open standard for connecting AI assistants to external data sources and tools. It provides a standardized way for LLMs to:
-- Discover available tools
-- Execute queries with proper parameters
-- Receive structured responses
+2. **CLI as agentic interface** — The `neut` CLI is not just for humans. When an
+   LLM agent runs inside `neut chat`, it should bias toward invoking deterministic
+   CLI nouns+verbs (e.g., `neut signal ingest`, `neut pub push`) when a good match
+   exists for the user's prompt. This gives agents predictable, testable behavior
+   rather than generating ad-hoc code for every request.
+
+**Key insight:** MCP and CLI are complementary, not competing. MCP is for
+external clients (Claude Code, VS Code). The CLI is for the built-in chat agent
+and terminal workflows. Both expose the same underlying operations.
 
 ## Decision
 
-We will implement a **Python MCP server** exposing Neutron OS data and operations as tools for AI agents.
+### 1. MCP Server (external agentic access)
 
-### Tool Categories
+We implement a Python MCP server exposing NeutronOS operations as tools.
 
-| Category | Tools | Purpose |
-|----------|-------|---------|
-| **Query** | `query_reactor_timeseries`, `query_simulation_outputs`, `search_log_entries` | Read data from lakehouse |
-| **Semantic** | `semantic_search_meetings`, `find_similar_scenarios` | Vector search via pgvector |
-| **Metadata** | `list_projects`, `get_schema`, `list_tables` | Discovery and schema info |
-| **Predict** | `get_dt_prediction`, `compare_prediction_actual` | Digital twin outputs |
-| **Write** | `create_log_entry`, `log_meeting_action_item` | Controlled data creation |
+**Implementation status:** ✅ Shipped (`src/neutron_os/mcp_server/`)
 
-### Architecture
+**Tool categories:**
 
-```mermaid
-flowchart TB
-    subgraph CLIENTS["AI AGENTS / LLM APPLICATIONS"]
-        direction LR
-        C1["Claude<br/>Desktop"]
-        C2["Custom<br/>Agents"]
-        C3["VS Code<br/>Copilot"]
-        C4["Jupyter<br/>Kernel"]
-    end
-    
-    CLIENTS -->|"MCP Protocol<br/>(JSON-RPC)"| SERVER
-    
-    subgraph SERVER["NEUTRON OS MCP Server"]
-        subgraph TOOLS["TOOL REGISTRY"]
-            T1["@server.tool()<br/>query_reactor_timeseries()"]
-            T2["@server.tool()<br/>semantic_search_meetings()"]
-            T3["@server.tool()<br/>get_dt_prediction()"]
-        end
-        
-        TOOLS --> DATA
-        
-        subgraph DATA["DATA ACCESS LAYER"]
-            direction LR
-            D1[("DuckDB<br/>(Iceberg)")]
-            D2[("pgvector<br/>(Semantic)")]
-            D3["Digital Twin<br/>Prediction APIs"]
-        end
-    end
-    
-    style CLIENTS fill:#1565c0,color:#fff
-    style SERVER fill:#424242,color:#fff
-    style TOOLS fill:#2e7d32,color:#fff
-    style DATA fill:#e65100,color:#fff
-    linkStyle default stroke:#777777,stroke-width:3px
+| Category | Examples | Status |
+|----------|----------|--------|
+| Signal pipeline | `ingest_signals`, `get_briefing`, `search_signals` | ✅ Shipped |
+| Publisher | `generate_docx`, `publish_document`, `check_links` | ✅ Shipped |
+| RAG | `search_knowledge`, `index_document` | ✅ Shipped |
+| Status | `system_health`, `connection_status` | ✅ Shipped |
+| Query | `query_reactor_timeseries`, `search_log_entries` | 🔲 Planned (needs data platform) |
+| Digital twin | `get_dt_prediction`, `compare_prediction_actual` | 🔲 Planned (needs DT implementation) |
+
+### 2. CLI as agentic interface (internal chat agent)
+
+The `neut chat` agent biases toward deterministic CLI operations:
+
+```
+User: "catch me up on what happened this week"
+  → Agent recognizes: neut signal brief
+  → Runs CLI command (deterministic, testable)
+  → Presents results in chat context
+
+User: "publish the weekly summary to OneDrive"
+  → Agent recognizes: neut pub push --storage onedrive-browser
+  → Runs CLI command
+  → Reports success/failure
+
+User: "what's the keff convergence in my latest MCNP run?"
+  → No CLI match → LLM generates response from context/RAG
 ```
 
-### Implementation
+**CLI slash commands** are a human-centric subset of the full CLI:
 
-```python
-# services/mcp-server/neutron_os_mcp/server.py
+| Slash Command | Maps To | Context |
+|---------------|---------|---------|
+| `/brief` | `neut signal brief` | Catch up on signals |
+| `/status` | `neut status` | System health |
+| `/publish <file>` | `neut pub push <file>` | Publish a document |
+| `/connect` | `neut connect` | Manage connections |
+| `/update` | `neut update` | Self-update |
 
-from mcp.server import Server
-from mcp.types import Tool, TextContent
-import duckdb
+The full CLI (`neut signal ingest --source teams-browser --days 30`) remains
+available to both humans and agents. Slash commands are shortcuts for the
+most common operations during chat.
 
-server = Server("neutron-os")
+### 3. Terminal activity monitoring (future)
 
-@server.tool()
-async def query_reactor_timeseries(
-    reactor_id: str,
-    metric: str,
-    start_time: str,
-    end_time: str,
-    limit: int = 1000
-) -> list[TextContent]:
-    """
-    Query reactor time-series data from the lakehouse.
-    
-    Args:
-        reactor_id: Reactor identifier (e.g., 'TRIGA-001')
-        metric: Metric to query (e.g., 'power_kw', 'temp_fuel_c')
-        start_time: ISO timestamp start
-        end_time: ISO timestamp end
-        limit: Max rows to return
-    
-    Returns:
-        Markdown table of results
-    """
-    sql = f"""
-    SELECT timestamp, {metric}
-    FROM gold.reactor_metrics
-    WHERE reactor_id = ?
-      AND timestamp BETWEEN ? AND ?
-    ORDER BY timestamp
-    LIMIT ?
-    """
-    conn = duckdb.connect('/path/to/lakehouse')
-    result = conn.execute(sql, [reactor_id, start_time, end_time, limit]).fetchdf()
-    return [TextContent(type="text", text=result.to_markdown())]
+The chat agent will be able to monitor terminal activity and offer to
+"continue" in an LLM context. When the user runs a CLI command that
+produces output (e.g., `neut signal status`), the chat agent can pick up
+that context and discuss it — similar to how Claude Code observes terminal
+output and offers follow-up assistance.
 
-@server.tool()
-async def search_log_entries(
-    query: str,
-    facility: str | None = None,
-    entry_type: str | None = None,  # 'ops' or 'dt'
-    limit: int = 10
-) -> list[TextContent]:
-    """
-    Semantic search over unified log entries using pgvector embeddings.
-    
-    Args:
-        query: Natural language search query
-        facility: Optional facility filter
-        entry_type: Optional filter for 'ops' or 'dt' entries
-        limit: Max results
-    
-    Returns:
-        Relevant log entries with similarity scores
-    """
-    # Implementation uses pgvector for semantic search
-    ...
+This enables fluid transitions:
+```
+$ neut signal status           # User runs CLI command
+  Inbox: 3 unprocessed
+  Drafts: 1 ready for review
 
-@server.tool()
-async def get_dt_prediction(
-    digital_twin: str,
-    prediction_type: str,
-    horizon_seconds: int = 60
-) -> list[TextContent]:
-    """
-    Get current digital twin prediction for reactor state.
-    
-    Args:
-        digital_twin: Which DT to query ('triga', 'msr', 'mit_loop', 'offgas')
-        prediction_type: What to predict ('power', 'temperature', 'xe_concentration')
-        horizon_seconds: How far ahead to predict
-    
-    Returns:
-        Prediction with uncertainty bounds
-    """
-    ...
+$ neut chat                    # User enters chat
+  [Context: you just ran neut signal status and saw 3 unprocessed signals]
+
+> process those signals and draft a summary
+  → Agent runs: neut signal ingest && neut signal draft
+```
+
+## Architecture
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                    External Clients                             │
+│  Claude Code  │  VS Code  │  Cursor  │  Custom Agents          │
+└───────┬───────┴─────┬─────┴────┬─────┴──────┬──────────────────┘
+        │ MCP (stdio) │          │            │
+        ▼             ▼          ▼            ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    NeutronOS MCP Server                         │
+│              src/neutron_os/mcp_server/                         │
+└───────────────────────┬────────────────────────────────────────┘
+                        │ same operations
+┌───────────────────────▼────────────────────────────────────────┐
+│                    neut CLI                                      │
+│  neut signal  │  neut pub  │  neut chat  │  neut connect  │ ...│
+└───────────────────────┬────────────────────────────────────────┘
+                        │
+                        ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    Extension System                              │
+│  signal_agent  │  publisher  │  chat_agent  │  mo_agent  │ ... │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ## Alternatives Considered
 
 | Alternative | Reason Not Selected |
 |-------------|---------------------|
-| GraphQL API | LLMs generate SQL better than GraphQL; adds complexity |
-| REST endpoints only | No standardized tool discovery; harder for agents |
-| Direct database access | Security risk; no rate limiting; no audit |
-| DeepLynx adoption | Different data model; C# stack doesn't fit our team |
-
-## Comparison with DeepLynx MCP
-
-| Aspect | DeepLynx MCP | Neutron OS MCP |
-|--------|--------------|----------------|
-| Language | C# | Python |
-| Data Model | Graph (records/edges) | SQL (Iceberg tables) |
-| Tools | ProjectTools, RecordTools | Query, Semantic, Predict tools |
-| Auth | Inherited from DeepLynx | API keys + RLS |
+| GraphQL API only | LLMs work better with tool-call patterns than query languages |
+| REST endpoints only | No standardized tool discovery for agents |
+| MCP only (no CLI bias) | CLI commands are more predictable and testable than LLM-generated code |
+| Separate agent framework | Unnecessary — CLI commands ARE the agent actions |
 
 ## Consequences
 
 ### Positive
-- AI agents can query data without schema knowledge
-- Standardized interface for all LLM applications
-- Audit trail of agent queries
-- Rate limiting and access control at tool level
+- AI agents get structured, discoverable tool access (MCP)
+- Chat agent uses deterministic operations when possible (CLI bias)
+- Same operations available through both interfaces
+- Slash commands give humans quick access to common operations
+- Terminal continuity creates fluid CLI ↔ chat transitions
 
 ### Negative
-- New service to maintain
-- Must keep tools in sync with schema changes
-- Potential for expensive queries if not bounded
+- Two interfaces to maintain (MCP + CLI), though they share the same backend
+- CLI bias requires maintaining a mapping of prompts → CLI commands
+- Terminal monitoring adds complexity to the chat agent
 
 ### Mitigations
-- Auto-generate tool docs from schema
-- Enforce query limits in tool implementations
-- Log all tool invocations for audit
+- MCP tools and CLI commands are thin wrappers around the same extension functions
+- Prompt → CLI mapping uses the existing extension registry (no separate config)
+- Terminal monitoring is opt-in and degrades gracefully
 
-## Implementation Plan
+## Related Documents
 
-| Phase | Deliverable | Timeline |
-|-------|-------------|----------|
-| 1 | Query tools (read-only) | Week 1-2 |
-| 2 | Semantic search tools | Week 3 |
-| 3 | Digital twin prediction tools | Week 4 |
-| 4 | Write tools (with approval flow) | Week 5-6 |
-
-## Relationship to Search/AI Module
-
-The MCP Server is the **technical foundation** for the planned **Search/AI module** (see [Executive PRD](../prd/neutron-os-executive-prd.md)). The module will provide:
-
-| Capability | MCP Foundation | User-Facing Feature |
-|------------|----------------|---------------------|
-| **RAG** | `semantic_search_*` tools | Natural language queries over facility docs |
-| **Workflow Agents** | Write tools + approval flow | AI-assisted data entry, meeting summarization |
-| **Tuned LLMs** | Domain context via tools | Nuclear-specific terminology understanding |
-
-The Search/AI module is configured **off by default** but builds on MCP infrastructure that exists for all facilities.
-
-## References
-
-- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
-- [DeepLynx MCP Implementation](https://github.com/idaholab/DeepLynx/tree/main/deeplynx.mcp)
-- [mcp Python SDK](https://github.com/anthropics/mcp)
-- [Tech Spec §1.5: Application Modules](../specs/neutron-os-master-tech-spec.md)
+- [ADR-010: CLI Architecture](adr_010-cli-architecture.md) — Tech stack, terminal monitoring, slash commands
+- [Connections Spec](../specs/neutron-os-connections-spec.md) — Connection-level access for MCP tools
+- [Model Routing Spec](../specs/neutron-os-model-routing-spec.md) — Export control for agent queries
+- [MCP Protocol](https://modelcontextprotocol.io/) — Anthropic's open standard
