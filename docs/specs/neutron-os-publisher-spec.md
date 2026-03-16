@@ -2170,11 +2170,11 @@ _TYPE_SECTIONS: Dict[str, List[str]] = {
         "Results", "Discussion", "Conclusion", "References",
     ],
     "grant-proposal": [
-        "Executive Summary", "Problem Statement", "Approach",
+        "Executive Tech Spec", "Problem Statement", "Approach",
         "Team", "Budget Justification", "Timeline",
     ],
     "regulatory-submission": [
-        "Executive Summary", "Scope and Applicability", "Technical Basis",
+        "Executive Tech Spec", "Scope and Applicability", "Technical Basis",
         "Safety Analysis", "Compliance Matrix", "References",
     ],
 }
@@ -2732,7 +2732,7 @@ Neut: Seed from existing notes? (path or Enter to skip)
 User: notes/q2-review-notes.md
 
 Neut: ✓ docs/reports/q2-program-review.md created
-      Sections: Executive Summary · Background · Results · Discussion · Conclusions
+      Sections: Executive Tech Spec · Background · Results · Discussion · Conclusions
 ```
 
 Dispatches: `neut pub draft "Q2 Program Review" --type report --from-notes notes/q2-review-notes.md`
@@ -2860,7 +2860,7 @@ docs/proposals/aws-budget/02-budget-justification.md
 
 ```bash
 # 1. Scaffold any missing sections (one-time setup)
-neut pub draft "Executive Summary" --type proposal --from-notes notes/aws-kick-off.md
+neut pub draft "Executive Tech Spec" --type proposal --from-notes notes/aws-kick-off.md
 
 # 2. Check status across all sections
 neut pub status docs/proposals/aws-budget/

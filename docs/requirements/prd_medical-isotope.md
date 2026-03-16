@@ -10,7 +10,7 @@
 **Module Type:** Optional (configurable on/off per facility mission)
 
 **Table of Contents**
-- [Executive Summary](#executive-summary)
+- [Executive Tech Spec](#executive-summary)
 - [User Journey Map](#user-journey-map)
 - [Hospital Customer: Order to Delivery](#hospital-customer:-order-to-delivery)
 - [Production Manager: Weekly Batch](#production-manager:-weekly-batch)
@@ -52,7 +52,7 @@
 - [New User Stories](#new-user-stories)
 - [Digital Twin Integration](#digital-twin-integration)
 
-## Executive Summary
+## Executive Tech Spec
 
 The Medical Isotope Production module manages the end-to-end workflow
 for producing and delivering medical radioisotopes to healthcare

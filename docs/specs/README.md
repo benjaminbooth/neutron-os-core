@@ -9,7 +9,7 @@ This folder contains technical specifications, design documents, and research fo
 ```
 specs/
 ├── neutron-os-master-tech-spec.md    # Full technical architecture
-├── neutron-os-executive-summary.md   # 2-page technical overview
+├── neutron-os-master-tech-spec.md   # 2-page technical overview
 ├── design-prompts/                   # Implementation guides for AI/dev
 ├── diagrams/                         # Architecture diagrams
 ├── deeplynx-assessment.md            # External technology assessments
@@ -22,7 +22,7 @@ specs/
 | Document | Purpose | Audience |
 |----------|---------|----------|
 | [Master Tech Spec](neutron-os-master-tech-spec.md) | Complete architecture, schemas, APIs | Engineers |
-| [Executive Summary](neutron-os-executive-summary.md) | 2-page technical overview | Stakeholders, PMs |
+| [Executive Tech Spec](neutron-os-master-tech-spec.md) | 2-page technical overview | Stakeholders, PMs |
 
 ## Design Prompts
 

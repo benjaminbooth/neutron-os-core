@@ -230,6 +230,31 @@ Digital twin capabilities are planned for post-MVP deployment. The architecture 
 
 ---
 
+## Platform Positioning
+
+### Why Open Lakehouse (Not Databricks/Snowflake)
+
+| Factor | Managed Platform | Open Lakehouse |
+|--------|-----------------|----------------|
+| **Data sovereignty** | Vendor control plane has access | Full control over data residency |
+| **Nuclear compliance** | Export control complexity | On-premise, air-gappable |
+| **Cost trajectory** | DBU pricing scales with usage | Fixed TACC allocation; marginal cost ~$0 |
+| **Customization** | Limited to platform APIs | Full access for digital twin integration |
+| **Lock-in risk** | High switching costs | Portable Iceberg format |
+
+Detailed analysis: [Platform Comparison](../research/platform-comparison-databricks.md)
+
+### Relationship to INL DeepLynx
+
+DeepLynx and NeutronOS are **complementary peer platforms**, not competing:
+
+- **DeepLynx** optimizes for relationship traversal (graph-based engineering data)
+- **NeutronOS** optimizes for time-series analytics and agent-driven workflows
+
+Integration via shared identifiers and APIs. Detailed analysis: [DeepLynx Assessment](../research/deeplynx-assessment.md)
+
+---
+
 ## Research Documents
 
 | Document | Topic |

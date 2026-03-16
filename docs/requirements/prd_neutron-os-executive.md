@@ -684,7 +684,7 @@ graph TB
 For technical architecture, schemas, and implementation details, see:
 
 - **[Neutron OS Master Tech Spec](../specs/neutron-os-master-tech-spec.md)** — Full technical specification
-- **[Executive Technical Summary](../specs/neutron-os-executive-summary.md)** — 2-page technical overview
+- **[Executive Technical Summary](../specs/neutron-os-master-tech-spec.md)** — 2-page technical overview
 
 ---
 
