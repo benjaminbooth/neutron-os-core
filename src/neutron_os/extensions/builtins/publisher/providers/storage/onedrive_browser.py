@@ -303,51 +303,82 @@ class OneDriveBrowserStorageProvider(StorageProvider):
         # The SharePoint REST API returns 403 on some org tenants,
         # so we use the UI "Create or upload" button instead.
         try:
-            # First navigate to "My files"
-            my_files_link = page.query_selector("a:has-text('My files'), [data-automationid='my-files']")
-            if my_files_link:
-                my_files_link.click()
+            # Navigate to "My files" first
+            my_files = page.query_selector(
+                "a:has-text('My files'), "
+                "button:has-text('My files'), "
+                "span:has-text('My files')"
+            )
+            if my_files:
+                my_files.click()
                 page.wait_for_timeout(3000)
 
-            # Navigate into target folder (or create it)
-            self._navigate_to_folder(page, target_folder)
-            page.wait_for_timeout(2000)
+            # Navigate into target folder — click on it if it exists
+            folder_parts = [p for p in target_folder.strip("/").split("/") if p]
+            for part in folder_parts:
+                folder_link = page.query_selector(f"button:has-text('{part}'), a:has-text('{part}')")
+                if folder_link:
+                    folder_link.click()
+                    page.wait_for_timeout(2000)
+                else:
+                    # Folder doesn't exist — we'll upload to current location
+                    logger.warning("Folder '%s' not found, uploading to current directory", part)
+                    break
 
-            # Click "+ Create or upload" button (visible in UT OneDrive)
+            page.wait_for_timeout(1000)
+
+            # Strategy: use page.set_input_files on any input[type=file] element.
+            # OneDrive's React app always has one — it may be hidden but Playwright
+            # can interact with it directly without clicking UI buttons.
+            #
+            # If that doesn't exist, fall back to the "+ Create or upload" menu.
+
+            # Method 1: Direct input[type=file] (most reliable)
+            file_inputs = page.query_selector_all("input[type='file']")
+            if file_inputs:
+                # Use the first file input — Playwright can set files on hidden inputs
+                file_inputs[0].set_input_files(str(local_path))
+                page.wait_for_timeout(5000)
+
+                return UploadResult(
+                    success=True,
+                    url=page.url,
+                    storage_id=remote_name,
+                    metadata={
+                        "folder": target_folder,
+                        "name": remote_name,
+                        "method": "hidden_file_input",
+                    },
+                )
+
+            # Method 2: Click "+ Create or upload", then "Files upload"
             create_btn = page.query_selector(
                 "button:has-text('Create or upload'), "
-                "button:has-text('Upload'), "
-                "button:has-text('Add new'), "
-                "[data-automationid='uploadFileCommand']"
+                "button:has-text('Upload')"
             )
-
-            if not create_btn:
-                # Try the command bar upload button
-                create_btn = page.query_selector(
-                    "[data-automationid='newCommand'], "
-                    "button[aria-label='Upload'], "
-                    "button[aria-label='Create or upload']"
-                )
-
             if create_btn:
                 create_btn.click()
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(1500)
 
-                # Look for "Files upload" or "File upload" option in dropdown
-                upload_files = page.query_selector(
+                # Now the dropdown should be visible — screenshot to debug
+                page.screenshot(path=str(Path.home() / ".neut" / "onedrive-dropdown.png"))
+
+                # Look for file upload option in the dropdown menu
+                # Try multiple selectors for different OneDrive versions
+                upload_option = page.query_selector(
                     "button:has-text('Files upload'), "
                     "button:has-text('File upload'), "
-                    "button:has-text('Files'), "
-                    "[data-automationid='uploadFilesCommand']"
+                    "span:has-text('Files upload'), "
+                    "span:has-text('File upload'), "
+                    "[role='menuitem']:has-text('upload')"
                 )
 
-                if upload_files:
-                    # Use file chooser pattern
+                if upload_option:
                     with page.expect_file_chooser(timeout=10000) as fc_info:
-                        upload_files.click()
+                        upload_option.click()
                     file_chooser = fc_info.value
                     file_chooser.set_files(str(local_path))
-                    page.wait_for_timeout(5000)  # Wait for upload
+                    page.wait_for_timeout(5000)
 
                     return UploadResult(
                         success=True,
@@ -356,30 +387,18 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                         metadata={
                             "folder": target_folder,
                             "name": remote_name,
-                            "method": "ui_file_chooser",
+                            "method": "menu_file_chooser",
                         },
                     )
 
-            # If no button found, try hidden input[type=file]
-            file_input = page.query_selector("input[type='file']")
-            if file_input:
-                file_input.set_input_files(str(local_path))
-                page.wait_for_timeout(5000)
-                return UploadResult(
-                    success=True,
-                    url=page.url,
-                    storage_id=remote_name,
-                    metadata={"folder": target_folder, "name": remote_name, "method": "hidden_input"},
-                )
-
-            # Screenshot for debugging
+            # Failed — save screenshot
             try:
                 page.screenshot(path=str(Path.home() / ".neut" / "onedrive-debug.png"))
             except Exception:
                 pass
             return UploadResult(
                 success=False, url="",
-                error=f"Could not find upload button. Page: {page.url}. Screenshot: ~/.neut/onedrive-debug.png",
+                error=f"Upload failed. Page: {page.url}. Check ~/.neut/onedrive-debug.png",
             )
 
         except Exception as e:
