@@ -158,7 +158,7 @@ Enhanced document state tracking:
 ```json
 {
   "doc_id": "medical-isotope-prd",
-  "source_path": "docs/requirements/prd_medical-isotope.md",
+  "source_path": "docs/requirements/prd-medical-isotope.md",
   "status": "published",
   "publication_status": "published",
   "source_of_truth": "docx",
@@ -252,7 +252,7 @@ pytest tools/docflow/tests/test_resilience.py -v
 
 ```bash
 # Create local .md
-cat > docs/requirements/prd_experiment-manager.md << 'EOF'
+cat > docs/requirements/prd-experiment-manager.md << 'EOF'
 # Experiment Manager PRD
 ...
 EOF
@@ -290,7 +290,7 @@ python tools/docflow/scripts/docflow_scan.py
 
 ```bash
 # If .md was accidentally deleted
-git checkout docs/requirements/prd_medical-isotope.md
+git checkout docs/requirements/prd-medical-isotope.md
 
 # Or rebuild from source .docx
 python tools/docflow/scripts/first_ingest.py medical-isotope-prd \

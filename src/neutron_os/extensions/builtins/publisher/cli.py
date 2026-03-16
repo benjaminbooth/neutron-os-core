@@ -432,7 +432,7 @@ def cmd_scan(args: argparse.Namespace) -> None:
 
     engine = PublisherEngine()
 
-    # Default to docs/requirements and docs/specs if no folders specified
+    # Default to docs/requirements and docs/tech-specs if no folders specified
     if args.folders:
         folders = [Path(f).resolve() for f in args.folders]
     else:
@@ -792,7 +792,7 @@ def get_parser() -> argparse.ArgumentParser:
 
     # scan
     scan_parser = subparsers.add_parser("scan", help="Scan folders for docs vs manifests")
-    scan_parser.add_argument("folders", nargs="*", help="Folders to scan (default: docs/requirements docs/specs)")
+    scan_parser.add_argument("folders", nargs="*", help="Folders to scan (default: docs/requirements docs/tech-specs)")
 
     # onboard
     onboard_parser = subparsers.add_parser("onboard", help="Add document to manifest")

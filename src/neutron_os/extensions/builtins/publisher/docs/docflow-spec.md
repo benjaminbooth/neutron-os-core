@@ -360,7 +360,7 @@ The registry maps document identifiers to their published URLs. URL format is en
 
 class LinkEntry:
     doc_id: str             # e.g., "experiment-manager-prd"
-    source_path: str        # e.g., "docs/requirements/prd_experiment-manager.md"
+    source_path: str        # e.g., "docs/requirements/prd-experiment-manager.md"
     published_url: str      # From StorageProvider.get_canonical_url()
     draft_url: str | None   # If currently in review
     storage_id: str         # Provider-specific reference
@@ -603,7 +603,7 @@ Facilities select a coherent set of providers. Common profiles:
 
 9. CLI Commands
 
-DocFlow is accessed as a subcommand of the neut CLI: neut doc (alias: neut docflow). See docs/specs/neut-cli-spec.md for the full neut command hierarchy.
+DocFlow is accessed as a subcommand of the neut CLI: neut doc (alias: neut docflow). See docs/tech-specs/spec-neut-cli.md for the full neut command hierarchy.
 
 # --- Publishing ---
 neut doc publish docs/requirements/prd_foo.md              # Generate + publish

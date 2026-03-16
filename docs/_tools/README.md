@@ -8,7 +8,7 @@ Use `neut pub` for all document generation and publishing:
 
 ```bash
 # Generate a single .docx
-neut pub generate docs/requirements/prd_neutron-os-executive.md
+neut pub generate docs/requirements/prd-executive.md
 
 # Generate all changed docs
 neut pub publish --all --changed-only

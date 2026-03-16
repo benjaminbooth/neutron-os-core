@@ -200,7 +200,7 @@ def test_chat_agent_rag_context_returns_formatted_chunks():
     agent._rag_store = MagicMock()
     agent._rag_store.search.return_value = [
         SearchResult(
-            source_path="docs/specs/xenon.md",
+            source_path="docs/tech-specs/xenon.md",
             source_title="Xenon Poisoning",
             chunk_text="Xenon-135 is a strong neutron absorber produced during fission.",
             chunk_index=0,

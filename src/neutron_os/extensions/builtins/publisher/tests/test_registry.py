@@ -48,10 +48,10 @@ class TestLinkRegistry:
     def test_get_by_source_path(self, registry):
         registry.update(LinkEntry(
             doc_id="spec",
-            source_path="docs/specs/spec.md",
+            source_path="docs/tech-specs/spec.md",
             published_url="file:///spec.docx",
         ))
-        result = registry.get("docs/specs/spec.md")
+        result = registry.get("docs/tech-specs/spec.md")
         assert result is not None
         assert result.doc_id == "spec"
 
@@ -129,13 +129,13 @@ class TestLinkRegistry:
         """Check links identifies valid and missing source files."""
         # Create a fake repo root with one existing doc
         fake_root = tmp_path / "fakerepo"
-        (fake_root / "docs" / "specs").mkdir(parents=True)
-        (fake_root / "docs" / "specs" / "docflow-spec.md").write_text("# Spec")
+        (fake_root / "docs" / "tech-specs").mkdir(parents=True)
+        (fake_root / "docs" / "tech-specs" / "docflow-spec.md").write_text("# Spec")
 
         # Register a document that exists
         registry.update(LinkEntry(
             doc_id="docflow-spec",
-            source_path="docs/specs/docflow-spec.md",
+            source_path="docs/tech-specs/docflow-spec.md",
             published_url="file:///docflow-spec.docx",
         ))
         # Register a document that doesn't exist
@@ -146,5 +146,5 @@ class TestLinkRegistry:
         ))
 
         results = registry.check_links(fake_root / "docs")
-        assert "docs/specs/docflow-spec.md" in results["valid"]
+        assert "docs/tech-specs/docflow-spec.md" in results["valid"]
         assert "docs/ghost.md" in results["missing"]

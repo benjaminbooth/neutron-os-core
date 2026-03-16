@@ -178,5 +178,5 @@ externalDatabase:
 ## Related Documentation
 
 - [Intelligence Amplification Pillar](../docs/strategy/intelligence-amplification-pillar.md)
-- [Design Loop Architecture](../docs/specs/design-loop-architecture.md)
+- [Design Loop Architecture](../docs/tech-specs/spec-design-loop-architecture.md)
 - [Setup Infrastructure Code](../tools/setup/infra.py)

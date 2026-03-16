@@ -64,7 +64,7 @@ class TestLinkEntry:
     def test_roundtrip(self):
         original = LinkEntry(
             doc_id="spec",
-            source_path="docs/specs/spec.md",
+            source_path="docs/tech-specs/spec.md",
             published_url="file:///output/spec.docx",
             storage_id="local/spec.docx",
             last_published="2026-02-15T10:00:00Z",

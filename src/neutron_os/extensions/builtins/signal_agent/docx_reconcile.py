@@ -27,13 +27,13 @@ except ImportError:
 
 # Known mappings from Word doc names to .md sources
 DOC_MAPPINGS = {
-    "reactor-ops-log": "docs/requirements/prd_reactor-ops-log.md",
-    "ops-log": "docs/requirements/prd_reactor-ops-log.md",
-    "experiment-manager": "docs/requirements/prd_experiment-manager.md",
-    "master-prd": "docs/requirements/prd_neutron-os-executive.md",
-    "executive-prd": "docs/requirements/prd_neutron-os-executive.md",
-    "neutron-os-executive": "docs/requirements/prd_neutron-os-executive.md",
-    "data-architecture": "docs/specs/data-architecture-spec.md",
+    "reactor-ops-log": "docs/requirements/prd-reactor-ops-log.md",
+    "ops-log": "docs/requirements/prd-reactor-ops-log.md",
+    "experiment-manager": "docs/requirements/prd-experiment-manager.md",
+    "master-prd": "docs/requirements/prd-executive.md",
+    "executive-prd": "docs/requirements/prd-executive.md",
+    "neutron-os-executive": "docs/requirements/prd-executive.md",
+    "data-architecture": "docs/tech-specs/spec-data-architecture.md",
 }
 
 
@@ -134,8 +134,8 @@ def find_md_source(docx_name: str, root: Path) -> Optional[Path]:
             if full_path.exists():
                 return full_path
 
-    # Try fuzzy match on docs/requirements/ and docs/specs/
-    for search_dir in [root / "docs/requirements", root / "docs/specs"]:
+    # Try fuzzy match on docs/requirements/ and docs/tech-specs/
+    for search_dir in [root / "docs/requirements", root / "docs/tech-specs"]:
         if search_dir.exists():
             for md_file in search_dir.glob("*.md"):
                 if docx_stem in md_file.stem.lower() or md_file.stem.lower() in docx_stem:

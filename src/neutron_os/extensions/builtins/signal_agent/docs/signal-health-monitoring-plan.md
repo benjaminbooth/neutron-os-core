@@ -535,6 +535,6 @@ tools/mcp_server/server.py             # Add health MCP tools
 
 ## Related Documents
 
-- [Signal Sense & Synthesis Synthesis MVP Spec](../specs/signal-synthesis-mvp-spec.md)
+- [Signal Sense & Synthesis Synthesis MVP Spec](../tech-specs/signal-synthesis-mvp-spec.md)
 - [Agent State Management PRD](../prd/agent-state-management-prd.md) — Retention policies
-- [publisher Specification](../specs/publisher-spec.md) — Publication endpoints
+- [publisher Specification](../tech-specs/publisher-spec.md) — Publication endpoints

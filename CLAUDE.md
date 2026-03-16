@@ -16,9 +16,9 @@ data management, operations tracking, experiment scheduling, and analytics. It
 replaces fragmented workflows (paper logs, spreadsheets, phone calls) with
 integrated digital tools.
 
-- **Executive PRD:** `docs/requirements/prd_neutron-os-executive.md`
-- **Master Tech Spec:** `docs/specs/neutron-os-master-tech-spec.md`
-- **CLI Design:** `docs/requirements/prd_neut-cli.md` + `docs/specs/neut-cli-spec.md`
+- **Executive PRD:** `docs/requirements/prd-executive.md`
+- **Master Tech Spec:** `docs/tech-specs/spec-executive.md`
+- **CLI Design:** `docs/requirements/prd-neut-cli.md` + `docs/tech-specs/spec-neut-cli.md`
 
 ### Key Design Principles
 
@@ -187,7 +187,7 @@ neut <noun> <verb> [args] [--flags]
 ```
 
 Each noun is registered by an extension via `neut-extension.toml`.
-See `docs/requirements/prd_neut-cli.md` for full spec.
+See `docs/requirements/prd-neut-cli.md` for full spec.
 
 ---
 
@@ -210,7 +210,7 @@ Sources (voice memos, Teams, GitLab, Linear, freetext)
 - `src/neutron_os/extensions/builtins/signal_agent/correlator.py` — Entity resolution
 - `src/neutron_os/extensions/builtins/signal_agent/synthesizer.py` — Cross-source merging
 
-Full design: `docs/specs/neutron-os-agent-architecture.md`
+Full design: `docs/tech-specs/spec-agent-architecture.md`
 
 ---
 

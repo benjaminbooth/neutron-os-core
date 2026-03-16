@@ -104,8 +104,8 @@ class MediaItem:
     - Shared: People explicitly granted access by owner
 
     This aligns with:
-    - [Agent State Management PRD US-021](../docs/requirements/prd_agent-state-management.md)
-    - [Data Architecture Spec § 9](../docs/specs/data-architecture-spec.md)
+    - [Agent State Management PRD US-021](../docs/requirements/prd-agent-state-management.md)
+    - [Data Architecture Spec § 9](../docs/tech-specs/spec-data-architecture.md)
     """
 
     media_id: str

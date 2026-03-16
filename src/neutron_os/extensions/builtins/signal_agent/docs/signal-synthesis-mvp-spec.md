@@ -138,13 +138,13 @@ class Signal:
 ## Target PRDs
 
 ### 1. Reactor Ops Log PRD
-**File:** `docs/requirements/prd_reactor-ops-log.md`  
+**File:** `docs/requirements/prd-reactor-ops-log.md`  
 **Section to Update:** `## Requirements` → subsections for new requirements  
 **Stakeholders in Signals:** Jim (TJ), Nick Luciano  
 **Key Topics:** Console checks, shift handoffs, tamper-proof entries, NRC compliance
 
 ### 2. Experiment Manager PRD
-**File:** `docs/requirements/prd_experiment-manager.md`  
+**File:** `docs/requirements/prd-experiment-manager.md`  
 **Section to Update:** `## Requirements`  
 **Stakeholders in Signals:** Khiloni Shah, Nick Luciano  
 **Key Topics:** Sample tracking, lifecycle states, ROC approval, chain of custody
@@ -598,7 +598,7 @@ This MVP is Phase 0 of the full Sense & Synthesis Platform. The complete vision 
 - **Federated learning:** Privacy-preserving model improvement across organizations
 - **Management dashboard:** Users control their information ecosystem
 
-See: `docs/specs/sense-synthesis-capstone-spec.md` (to be created after Phase 0)
+See: `docs/tech-specs/sense-synthesis-capstone-spec.md` (to be created after Phase 0)
 
 ---
 

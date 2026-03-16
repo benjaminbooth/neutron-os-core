@@ -47,7 +47,7 @@ class TestEngineGenerate:
 
     def test_generate_preserves_structure(self, engine, tmp_path):
         """Generating from docs/ preserves directory structure."""
-        # Create docs/specs/ structure within tmp_path (engine's repo_root)
+        # Create docs/tech-specs/ structure within tmp_path (engine's repo_root)
         specs_dir = tmp_path / "docs" / "specs"
         specs_dir.mkdir(parents=True)
         source = specs_dir / "test-spec.md"

@@ -8,8 +8,8 @@ Extension-specific docs live in `src/neutron_os/extensions/builtins/{ext}/docs/`
 ```
 docs/
 ├── requirements/        # PRDs, ADRs, OKRs (platform-level)
-│   ├── prd_*.md         #   Product Requirements Documents
-│   ├── adr_*.md         #   Architecture Decision Records (immutable)
+│   ├── prd-*.md         #   Product Requirements Documents
+│   ├── adr-*.md         #   Architecture Decision Records (immutable)
 │   └── media/           #   Images referenced by PRDs
 ├── specs/               # Technical specifications (cross-cutting)
 ├── proposals/           # Grant portfolio (NEUP 2026, CINR, etc.)
@@ -36,8 +36,8 @@ docs/
 
 ## Conventions
 
-- PRD files: `prd_{name}.md` (lowercase-kebab for the name part)
-- ADR files: `adr_{NNN}-{short-description}.md` (immutable once merged)
+- PRD files: `prd-{name}.md` (lowercase-kebab for the name part)
+- ADR files: `adr-{NNN}-{short-description}.md` (immutable once merged)
 - All diagrams use Mermaid (never ASCII art)
 - Extension-specific PRDs start here, then move to extension `docs/` when
   coding begins
@@ -46,4 +46,4 @@ docs/
 
 Do not create new subdirectories in `docs/` without approval. Do not modify
 ADRs (they are immutable — create a new one that supersedes). When adding a
-PRD, use the `prd_` prefix and follow the template in `prd_template_one_page.md`.
+PRD, use the `prd-` prefix and follow the template in `prd-template-one-page.md`.

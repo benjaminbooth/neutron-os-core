@@ -121,7 +121,7 @@ class TestDocflowFullPipeline:
         )
 
         # Create source documents
-        docs_dir = tmp_path / "docs" / "specs"
+        docs_dir = tmp_path / "docs" / "tech-specs"
         docs_dir.mkdir(parents=True)
 
         (docs_dir / "spec-a.md").write_text(
@@ -152,7 +152,7 @@ class TestDocflowFullPipeline:
     def test_generate_creates_docx(self, workspace):
         """Generate a .docx from markdown — file exists and has content."""
         engine = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
 
         output = engine.generate(source)
 
@@ -165,7 +165,7 @@ class TestDocflowFullPipeline:
     def test_publish_creates_artifacts_and_state(self, workspace):
         """Full publish: generates docx, copies to storage, updates state + registry."""
         engine = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
 
         record = engine.publish(source)
 
@@ -200,7 +200,7 @@ class TestDocflowFullPipeline:
     def test_publish_then_status(self, workspace):
         """Publish a doc, then status shows it as published."""
         engine = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
 
         engine.publish(source)
         docs = engine.status()
@@ -213,20 +213,20 @@ class TestDocflowFullPipeline:
     def test_publish_then_check_links(self, workspace):
         """After publishing, check-links reports the source file as valid."""
         engine = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
 
         engine.publish(source)
         results = engine.check_links()
 
-        assert "docs/specs/spec-a.md" in results["valid"]
+        assert "docs/tech-specs/spec-a.md" in results["valid"]
         assert results["missing"] == []
 
     def test_multi_doc_publish_pipeline(self, workspace):
         """Publish two docs, verify both appear in status and registry."""
         engine = self._make_engine(workspace)
 
-        engine.publish(workspace / "docs" / "specs" / "spec-a.md")
-        engine.publish(workspace / "docs" / "specs" / "spec-b.md")
+        engine.publish(workspace / "docs" / "tech-specs" / "spec-a.md")
+        engine.publish(workspace / "docs" / "tech-specs" / "spec-b.md")
 
         docs = engine.status()
         assert len(docs) == 2
@@ -240,7 +240,7 @@ class TestDocflowFullPipeline:
     def test_version_increment_across_publishes(self, workspace):
         """Re-publishing the same doc increments the version."""
         engine = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
 
         r1 = engine.publish(source)
         assert r1.version == "v1"
@@ -257,7 +257,7 @@ class TestDocflowFullPipeline:
     def test_draft_publish_pipeline(self, workspace):
         """Draft publish sets status to draft with active_draft record."""
         engine = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
 
         record = engine.publish(source, draft=True)
 
@@ -271,7 +271,7 @@ class TestDocflowFullPipeline:
     def test_draft_then_promote_to_published(self, workspace):
         """First publish as draft, then publish for real — version increments."""
         engine = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
 
         r_draft = engine.publish(source, draft=True)
         assert r_draft.version == "v1"
@@ -286,7 +286,7 @@ class TestDocflowFullPipeline:
     def test_state_persists_across_engine_instances(self, workspace):
         """State written by one engine instance is readable by another."""
         engine1 = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
         engine1.publish(source)
 
         # Create a fresh engine (simulates re-running the CLI)
@@ -299,11 +299,11 @@ class TestDocflowFullPipeline:
     def test_check_links_detects_missing_source(self, workspace):
         """If a registered source file is deleted, check-links reports it missing."""
         engine = self._make_engine(workspace)
-        source = workspace / "docs" / "specs" / "spec-a.md"
+        source = workspace / "docs" / "tech-specs" / "spec-a.md"
         engine.publish(source)
 
         # Delete the source file
         source.unlink()
 
         results = engine.check_links()
-        assert "docs/specs/spec-a.md" in results["missing"]
+        assert "docs/tech-specs/spec-a.md" in results["missing"]

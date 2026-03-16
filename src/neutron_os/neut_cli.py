@@ -6,7 +6,7 @@ Routes subcommands to their respective handlers via the extension system.
 Core commands (config, ext, infra, doctor) are handled directly.
 All other nouns are dispatched to builtin or user extensions.
 
-The production neut CLI will be Rust (see docs/specs/neut-cli-spec.md).
+The production neut CLI will be Rust (see docs/tech-specs/spec-neut-cli.md).
 This Python entry point serves developer tooling during early development.
 
 Usage:

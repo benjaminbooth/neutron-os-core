@@ -764,7 +764,7 @@ def register_prd(
 
     Usage:
         neut docflow register --prd reactor-ops-log \\
-            --md docs/requirements/prd_reactor-ops-log.md \\
+            --md docs/requirements/prd-reactor-ops-log.md \\
             --uri "https://company.sharepoint.com/..." \\
             --format ms_word
     """

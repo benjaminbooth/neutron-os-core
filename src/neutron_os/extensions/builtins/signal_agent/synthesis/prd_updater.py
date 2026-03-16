@@ -115,10 +115,10 @@ class PRDUpdater:
     """
 
     PRD_PATHS = {
-        "ops_log": Path("docs/specs/ops_log_prd.md"),
-        "experiment_manager": Path("docs/specs/experiment_manager_prd.md"),
-        "operator_dashboard": Path("docs/specs/operator_dashboard_prd.md"),
-        "researcher_dashboard": Path("docs/specs/researcher_dashboard_prd.md"),
+        "ops_log": Path("docs/tech-specs/ops_log_prd.md"),
+        "experiment_manager": Path("docs/tech-specs/experiment_manager_prd.md"),
+        "operator_dashboard": Path("docs/tech-specs/operator_dashboard_prd.md"),
+        "researcher_dashboard": Path("docs/tech-specs/researcher_dashboard_prd.md"),
     }
 
     # Signal types that map to specific sections

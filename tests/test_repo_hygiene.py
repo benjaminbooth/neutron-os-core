@@ -121,13 +121,13 @@ class TestPRDIntegrity:
 
     # Minimum line counts for key PRDs (set well below actual to catch truncation)
     PRD_MINIMUMS = {
-        "prd_neutron-os-executive.md": 500,
-        "prd_reactor-ops-log.md": 200,
-        "prd_experiment-manager.md": 500,
-        "prd_data-platform.md": 300,
-        "prd_compliance-tracking.md": 300,
-        "prd_neut-cli.md": 300,
-        "prd_medical-isotope.md": 300,
+        "prd-executive.md": 500,
+        "prd-reactor-ops-log.md": 200,
+        "prd-experiment-manager.md": 500,
+        "prd-data-platform.md": 300,
+        "prd-compliance-tracking.md": 300,
+        "prd-neut-cli.md": 300,
+        "prd-medical-isotope.md": 300,
     }
 
     def test_prd_not_truncated(self):
@@ -148,7 +148,7 @@ class TestPRDIntegrity:
 
     def test_executive_prd_has_mermaid(self):
         """Executive PRD must retain its mermaid diagrams."""
-        f = REPO_ROOT / "docs" / "requirements" / "prd_neutron-os-executive.md"
+        f = REPO_ROOT / "docs" / "requirements" / "prd-executive.md"
         text = f.read_text()
         mermaid_count = text.count("```mermaid")
         assert mermaid_count >= 5, (

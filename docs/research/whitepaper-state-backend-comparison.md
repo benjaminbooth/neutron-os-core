@@ -399,8 +399,8 @@ pytest tests/infra/test_state_benchmark.py -v -s -k "SideBySide"
 
 ## References
 
-1. NeutronOS Agent State Management PRD — `docs/requirements/prd_agent-state-management.md`
-2. NeutronOS Agent State Management Spec — `docs/specs/agent-state-management-spec.md`
-3. NeutronOS Data Architecture Spec — `docs/specs/data-architecture-spec.md`
+1. NeutronOS Agent State Management PRD — `docs/requirements/prd-agent-state-management.md`
+2. NeutronOS Agent State Management Spec — `docs/tech-specs/spec-agent-state-management.md`
+3. NeutronOS Data Architecture Spec — `docs/tech-specs/spec-data-architecture.md`
 4. PostgreSQL Advisory Locks documentation — https://www.postgresql.org/docs/current/explicit-locking.html
 5. `fcntl.flock` POSIX specification — IEEE Std 1003.1

@@ -1,6 +1,6 @@
 # Experiment Manager PRD: Merge Scenario Implementation Plan
 
-**Target Document**: `docs/requirements/prd_experiment-manager.md`  
+**Target Document**: `docs/requirements/prd-experiment-manager.md`  
 **Current Status**: v2.0.0 (published, in external review)  
 **Merge Target**: v2.1.0 (incorporate Sense signals + reviewer feedback)  
 **Timeline**: Week of February 25, 2026  
@@ -383,7 +383,7 @@ import json
 from pathlib import Path
 
 # Load baseline
-baseline_md = Path('docs/requirements/prd_experiment-manager.md').read_text()
+baseline_md = Path('docs/requirements/prd-experiment-manager.md').read_text()
 
 # Load merge decisions
 with open('signals/merge-decisions.json') as f:
@@ -530,7 +530,7 @@ If < 2, either create dummy commit or manually set version.
 ## References
 
 - **Test Infrastructure**: `tests/integration/test_docflow_merge_scenario.py`
-- **Merge Guide**: `docs/merge-scenario-guide.md`
+- **Merge Guide**: `docs/spec-merge-scenario-guide.md`
 - **Signal Models**: `tools/pipelines/sense/models.py`
 - **Synthesizer**: `tools/pipelines/sense/synthesizer.py`
 - **Publish Script**: `tools/docflow/scripts/publish.py`

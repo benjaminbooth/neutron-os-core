@@ -35,7 +35,7 @@ def main():
     p._download_via_graph(url, docx)
 
     pandoc = shutil.which('pandoc')
-    md = Path('docs/requirements/prd_medical-isotope.md')
+    md = Path('docs/requirements/prd-medical-isotope.md')
     media = Path('docs/requirements/media/prd_medical-isotope')
     if not pandoc:
         print('pandoc not found; saved .docx at', docx)

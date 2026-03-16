@@ -615,7 +615,7 @@ docflow serve --port 8765 --model "kimi-k2.5" --db "postgresql://..."
   "result": {
     "doc_id": "SPC-093",
     "title": "New Processing Service",
-    "path": "/docs/specs/SPC-093.md",
+    "path": "/docs/tech-specs/SPC-093.md",
     "status": "created"
   }
 }

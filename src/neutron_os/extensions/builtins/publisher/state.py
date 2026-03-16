@@ -164,7 +164,7 @@ class LinkEntry:
     """Registry entry mapping a document to its published URL."""
 
     doc_id: str  # e.g., "experiment-manager-prd"
-    source_path: str  # e.g., "docs/requirements/prd_experiment-manager.md"
+    source_path: str  # e.g., "docs/requirements/prd-experiment-manager.md"
     published_url: str  # From StorageProvider.get_canonical_url()
     draft_url: str | None = None
     storage_id: str = ""  # Provider-specific reference
