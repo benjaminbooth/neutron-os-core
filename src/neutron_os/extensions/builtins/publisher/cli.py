@@ -1018,15 +1018,17 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
     if not folders:
         folders = [{"path": "docs/requirements", "pattern": "prd_*.md"}]
 
-    files_to_push: list[tuple[Path, Path]] = []
+    # (source_md, docx_path, onedrive_subfolder)
+    files_to_push: list[tuple[Path, Path, str]] = []
     for folder_cfg in folders:
         folder = REPO_ROOT / folder_cfg["path"]
         pattern = folder_cfg.get("pattern", "*.md")
+        subfolder = folder_cfg.get("onedrive_subfolder", "")
         if folder.exists():
             for md_file in sorted(folder.glob(pattern)):
                 if md_file.name.startswith("_") or md_file.name == "README.md":
                     continue
-                files_to_push.append((md_file, _generate_docx(md_file)))
+                files_to_push.append((md_file, _generate_docx(md_file), subfolder))
 
     if not files_to_push:
         print("No documents found to push.")
@@ -1034,15 +1036,15 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
 
     # Generate .docx files
     print(f"\n  Generating {len(files_to_push)} document(s)...\n")
-    docx_files: list[Path] = []
-    for source_md, docx_path in files_to_push:
+    docx_files: list[tuple[Path, str]] = []  # (docx_path, subfolder)
+    for source_md, docx_path, subfolder in files_to_push:
         if source_md.suffix == ".md" and not docx_path.exists():
             print(f"    Generating {docx_path.name}...", end=" ", flush=True)
             docx_path = _generate_docx(source_md)
             print("✓")
         else:
             print(f"    {docx_path.name} (already generated)")
-        docx_files.append(docx_path)
+        docx_files.append((docx_path, subfolder))
 
     # Resolve browser storage provider
     try:
@@ -1102,18 +1104,28 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         })
         dest_label = f"OneDrive/{target_folder} (Graph API)"
 
-    print(f"\n  Uploading {len(docx_files)} file(s) to {dest_label}...\n")
+    # Build per-file folder paths
+    just_files = [df[0] for df in docx_files]
+    per_file_folders = [
+        f"{target_folder}/{df[1]}" if df[1] else target_folder
+        for df in docx_files
+    ]
 
-    results = provider.upload_batch(docx_files, draft=draft, headed=headed)
+    print(f"\n  Uploading {len(just_files)} file(s) to {dest_label}...\n")
+
+    if hasattr(provider, "upload_batch") and "folders" in provider.upload_batch.__code__.co_varnames:
+        results = provider.upload_batch(just_files, draft=draft, headed=headed, folders=per_file_folders)
+    else:
+        results = provider.upload_batch(just_files, draft=draft, headed=headed)
     success = 0
-    for docx, result in zip(docx_files, results):
+    for f, result in zip(just_files, results):
         icon = "✓" if result.success else "✗"
         msg = result.url if result.success else result.error
-        print(f"    {icon} {docx.name}  {msg}")
+        print(f"    {icon} {f.name}  {msg}")
         if result.success:
             success += 1
 
-    print(f"\n  {success}/{len(docx_files)} published successfully.\n")
+    print(f"\n  {success}/{len(just_files)} published successfully.\n")
 
 
 def _generate_docx(md_path: Path) -> Path:

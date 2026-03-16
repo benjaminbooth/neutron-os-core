@@ -327,14 +327,71 @@ class OneDriveGraphStorageProvider(StorageProvider):
         except Exception as e:
             return UploadResult(success=False, url="", error=str(e))
 
+    def upload_to_folder(
+        self,
+        local_path: Path,
+        folder_path: str,
+        remote_name: str | None = None,
+    ) -> UploadResult:
+        """Upload a file to a specific folder path."""
+        if not local_path.exists():
+            return UploadResult(success=False, url="", error=f"File not found: {local_path}")
+
+        remote_name = remote_name or local_path.name
+
+        try:
+            self._ensure_folder(folder_path)
+            file_bytes = local_path.read_bytes()
+            upload_path = f"/me/drive/root:/{folder_path}/{remote_name}:/content"
+
+            token = self._get_token()
+            url = f"{self.GRAPH_BASE}{upload_path}"
+            req = urllib.request.Request(
+                url, data=file_bytes, method="PUT",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/octet-stream",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                result = json.loads(resp.read())
+
+            return UploadResult(
+                success=True,
+                url=result.get("webUrl", ""),
+                storage_id=result.get("id", ""),
+                metadata={
+                    "folder": folder_path,
+                    "name": remote_name,
+                    "method": "graph_api",
+                    "size": len(file_bytes),
+                },
+            )
+        except urllib.error.HTTPError as e:
+            error_body = ""
+            try:
+                error_body = e.read().decode()[:500]
+            except Exception:
+                pass
+            return UploadResult(success=False, url="", error=f"Graph API error ({e.code}): {error_body}")
+        except Exception as e:
+            return UploadResult(success=False, url="", error=str(e))
+
     def upload_batch(
         self,
         files: list[Path],
         *,
         draft: bool = False,
         headed: bool = False,
+        folders: list[str] | None = None,
     ) -> list[UploadResult]:
-        """Upload multiple files. Auth happens once, then batch uploads."""
+        """Upload multiple files. Auth happens once, then batch uploads.
+
+        Args:
+            files: List of local file paths
+            folders: Optional per-file folder paths (same length as files).
+                     If None, uses self.target_folder for all.
+        """
         results: list[UploadResult] = []
 
         # Authenticate upfront
@@ -343,15 +400,12 @@ class OneDriveGraphStorageProvider(StorageProvider):
         except Exception as e:
             return [UploadResult(success=False, url="", error=str(e)) for _ in files]
 
-        # Ensure folder exists once
-        try:
-            self._ensure_folder(self.target_folder)
-        except Exception as e:
-            return [UploadResult(success=False, url="", error=f"Folder creation failed: {e}") for _ in files]
+        if folders is None:
+            folders = [self.target_folder] * len(files)
 
-        for i, local_path in enumerate(files):
-            print(f"    [{i+1}/{len(files)}] Uploading {local_path.name}...", end=" ", flush=True)
-            result = self.upload(local_path)
+        for i, (local_path, folder) in enumerate(zip(files, folders)):
+            print(f"    [{i+1}/{len(files)}] {folder}/{local_path.name}...", end=" ", flush=True)
+            result = self.upload_to_folder(local_path, folder)
             results.append(result)
             if result.success:
                 print("✓", flush=True)
