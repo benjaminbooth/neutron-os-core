@@ -246,33 +246,25 @@ class OneDriveBrowserStorageProvider(StorageProvider):
         return results
 
     def _resolve_onedrive_url(self) -> str:
-        """Resolve the correct OneDrive/SharePoint URL based on user org."""
+        """Resolve the correct OneDrive URL.
+
+        If site_url is configured, use it directly.
+        Otherwise, navigate to office.com/launch/onedrive — Microsoft's
+        universal entry point that redirects to the user's org OneDrive
+        after SSO. No URL guessing needed.
+        """
         if self.site_url:
             return self.site_url
 
-        # Check if user has an org configured
-        try:
-            from neutron_os.extensions.builtins.settings.store import SettingsStore
-            store = SettingsStore()
-            org = store.get("user.org", "")
-            email = store.get("user.email", "")
+        # Check if we previously discovered the org URL
+        discovered = self._load_discovered_url()
+        if discovered:
+            return discovered
 
-            if org:
-                # Org OneDrive: https://{org_domain}-my.sharepoint.com/
-                org_domain = org.replace(".", "").replace("edu", "")
-                # Common patterns: utexas.edu → utexas-my.sharepoint.com
-                # But actual domain varies — try the email-based pattern
-                if email:
-                    # bbooth@utexas.edu → utexas-my.sharepoint.com/personal/bbooth_utexas_edu
-                    user_part = email.split("@")[0]
-                    domain_part = org.replace(".", "_")
-                    return f"https://{org.split('.')[0]}-my.sharepoint.com/personal/{user_part}_{domain_part}/_layouts/15/onedrive.aspx"
-                return f"https://{org.split('.')[0]}-my.sharepoint.com/"
-        except Exception:
-            pass
-
-        # Fallback: generic OneDrive (will redirect to org login if needed)
-        return "https://onedrive.live.com/"
+        # Universal entry point — works for any org, personal, or edu account.
+        # Microsoft handles the redirect to the correct OneDrive instance.
+        # The actual URL is captured and saved after the first successful redirect.
+        return "https://www.office.com/launch/onedrive"
 
     def _upload_to_onedrive(
         self,
@@ -302,7 +294,13 @@ class OneDriveBrowserStorageProvider(StorageProvider):
 
         page.wait_for_timeout(3000)
 
-        page.wait_for_timeout(3000)
+        # Capture the actual OneDrive URL after redirect (for future headless runs)
+        actual_url = page.url
+        if "sharepoint.com" in actual_url or "onedrive" in actual_url:
+            # Save the discovered URL so we skip the redirect next time
+            self._save_discovered_url(actual_url)
+
+        page.wait_for_timeout(2000)
 
         # Navigate to the target folder
         self._navigate_to_folder(page, target_folder)
@@ -555,6 +553,26 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             page.keyboard.press("Escape")
 
         return page.url
+
+    def _save_discovered_url(self, url: str) -> None:
+        """Save the discovered org OneDrive URL for future headless runs."""
+        try:
+            discovered_file = self.session_dir / "discovered_url.txt"
+            discovered_file.parent.mkdir(parents=True, exist_ok=True)
+            discovered_file.write_text(url)
+            logger.info("Discovered OneDrive URL saved: %s", url)
+        except Exception:
+            pass
+
+    def _load_discovered_url(self) -> str:
+        """Load a previously discovered OneDrive URL."""
+        try:
+            discovered_file = self.session_dir / "discovered_url.txt"
+            if discovered_file.exists():
+                return discovered_file.read_text().strip()
+        except Exception:
+            pass
+        return ""
 
     def clear_session(self) -> None:
         """Clear saved browser session."""
