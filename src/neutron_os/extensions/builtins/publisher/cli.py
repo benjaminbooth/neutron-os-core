@@ -1111,7 +1111,23 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         for df in docx_files
     ]
 
-    print(f"\n  Uploading {len(just_files)} file(s) to {dest_label}...\n")
+    # Show target folders and confirm
+    unique_folders = sorted(set(per_file_folders))
+    print(f"\n  Publishing {len(just_files)} document(s) to:")
+    for folder in unique_folders:
+        count = per_file_folders.count(folder)
+        print(f"    OneDrive/{folder}/  ({count} files)")
+    print()
+
+    try:
+        response = input("  Press Enter to confirm, or type a different folder: ").strip()
+        if response:
+            # User wants a different folder
+            per_file_folders = [response] * len(just_files)
+            print(f"  → Publishing to OneDrive/{response}/\n")
+    except (EOFError, KeyboardInterrupt):
+        print("\n  Cancelled.\n")
+        return
 
     try:
         results = provider.upload_batch(just_files, draft=draft, headed=headed, folders=per_file_folders)

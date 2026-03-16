@@ -311,19 +311,35 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             if "sharepoint.com" in actual_url:
                 self._save_discovered_url(actual_url)
 
-            # Navigate into target folder
+            # Navigate into target folder, creating if needed
             for part in [fp for fp in target_folder.strip("/").split("/") if fp]:
                 try:
                     page.click(
                         f"[data-automationid='field-LinkFilename']:has-text('{part}')",
-                        timeout=5000,
+                        timeout=3000,
                     )
                     page.wait_for_timeout(2000)
                 except Exception:
-                    logger.info("Folder '%s' not found, uploading to current location", part)
-                    break
+                    # Folder doesn't exist — create it
+                    try:
+                        page.click("text=Create or upload", timeout=5000)
+                        page.wait_for_timeout(1000)
+                        page.click("text=Folder", timeout=5000)
+                        page.wait_for_timeout(1000)
+                        page.keyboard.type(part)
+                        page.keyboard.press("Enter")
+                        page.wait_for_timeout(3000)
+                        # Navigate into the new folder
+                        page.click(
+                            f"[data-automationid='field-LinkFilename']:has-text('{part}')",
+                            timeout=5000,
+                        )
+                        page.wait_for_timeout(2000)
+                    except Exception as folder_err:
+                        logger.warning("Could not create folder '%s': %s", part, folder_err)
+                        break
 
-            # Click "+ Create or upload" → "Files upload" → file chooser
+            # Upload file via "Create or upload" → "Files upload" → file chooser
             page.click("text=Create or upload", timeout=5000)
             page.wait_for_timeout(1000)
 
