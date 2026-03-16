@@ -48,7 +48,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
                 if source.exists():
                     engine.publish(
                         source,
-                        endpoint_override=args.endpoint,
+                        storage_override=args.endpoint,
                         draft=args.draft,
                         force=force,
                     )
@@ -62,7 +62,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
             sys.exit(1)
         result = engine.publish(
             source,
-            endpoint_override=args.endpoint,
+            storage_override=args.endpoint,
             draft=args.draft,
             force=force,
         )
@@ -983,7 +983,7 @@ def cmd_push(args: argparse.Namespace) -> None:
     # Publish via engine
     try:
         result = engine.publish(
-            source, endpoint_override=storage, draft=draft, force=force,
+            source, storage_override=storage, draft=draft, force=force,
         )
         if result and isinstance(result, dict):
             print("\n" + "=" * 70)
