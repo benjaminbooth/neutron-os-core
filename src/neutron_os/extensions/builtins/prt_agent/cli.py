@@ -20,9 +20,12 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 def cmd_publish(args: argparse.Namespace) -> None:
@@ -1203,18 +1206,75 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
     print(f"\n  {success}/{len(just_files)} published successfully.\n")
 
 
+def _add_table_borders(docx_path: Path) -> None:
+    """Post-process: add borders to all tables in a .docx file.
+
+    Pandoc generates tables without borders by default. This adds
+    single-line borders to all table edges and internal gridlines,
+    and sets tables to full page width.
+    """
+    try:
+        from docx import Document
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+
+        doc = Document(str(docx_path))
+        modified = False
+
+        for table in doc.tables:
+            tbl = table._tbl
+            tblPr = tbl.tblPr
+            if tblPr is None:
+                tblPr = OxmlElement("w:tblPr")
+                tbl.insert(0, tblPr)
+
+            # Remove existing borders
+            for existing in tblPr.findall(qn("w:tblBorders")):
+                tblPr.remove(existing)
+
+            # Add borders
+            borders = OxmlElement("w:tblBorders")
+            for border_name in ["top", "left", "bottom", "right", "insideH", "insideV"]:
+                border = OxmlElement(f"w:{border_name}")
+                border.set(qn("w:val"), "single")
+                border.set(qn("w:sz"), "4")
+                border.set(qn("w:space"), "0")
+                border.set(qn("w:color"), "999999")
+                borders.append(border)
+            tblPr.append(borders)
+
+            # Set table to full page width
+            for existing in tblPr.findall(qn("w:tblW")):
+                tblPr.remove(existing)
+            tblW = OxmlElement("w:tblW")
+            tblW.set(qn("w:w"), "5000")
+            tblW.set(qn("w:type"), "pct")
+            tblPr.append(tblW)
+
+            modified = True
+
+        if modified:
+            doc.save(str(docx_path))
+
+    except ImportError:
+        pass  # python-docx not installed
+    except Exception as e:
+        logger.warning("Table border post-processing failed: %s", e)
+
+
 def _source_to_subfolder(source: Path, repo_root: Path) -> str:
     """Derive OneDrive subfolder by mirroring the source path relative to docs/.
 
     docs/requirements/prd-executive.md → requirements
     docs/tech-specs/spec-model-routing.md → tech-specs
     """
+    resolved = source.resolve()
     try:
-        rel = source.parent.relative_to(repo_root / "docs")
+        rel = resolved.parent.relative_to(repo_root / "docs")
         return str(rel)
     except ValueError:
         try:
-            rel = source.parent.relative_to(repo_root)
+            rel = resolved.parent.relative_to(repo_root)
             return str(rel)
         except ValueError:
             return ""
@@ -1246,14 +1306,28 @@ def _generate_docx(md_path: Path) -> Path:
     except Exception:
         pass
 
-    # Build pandoc command with quality improvements
+    # Pre-process: render mermaid diagrams to PNG images
+    md_content = md_path.read_text(encoding="utf-8")
+    processed_path = md_path  # Default: use original
+
+    if "```mermaid" in md_content:
+        try:
+            from .mermaid_renderer import render_mermaid_blocks
+            processed_content = render_mermaid_blocks(md_content, output_dir)
+            processed_path = output_dir / f"{md_path.stem}.processed.md"
+            processed_path.write_text(processed_content, encoding="utf-8")
+        except Exception as e:
+            logger.warning("Mermaid pre-processing failed: %s", e)
+
+    # Build pandoc command
     cmd = [
-        "pandoc", str(md_path),
+        "pandoc", str(processed_path),
         "-o", str(output_path),
         "--from", "markdown",
         "--to", "docx",
         "--toc", "--toc-depth=3",
         "--metadata", f"title={title}",
+        "--resource-path", str(output_dir),  # So pandoc can find rendered images
     ]
 
     # Use reference doc for table styles (borders, widths) if available
@@ -1261,13 +1335,15 @@ def _generate_docx(md_path: Path) -> Path:
     if ref_doc.exists():
         cmd.extend(["--reference-doc", str(ref_doc)])
 
-    # Mermaid diagram filter (renders to images via mermaid.ink)
-    lua_filter = REPO_ROOT / ".neut" / "publisher" / "mermaid-filter.lua"
-    if lua_filter.exists():
-        cmd.extend(["--lua-filter", str(lua_filter)])
-
     try:
         subprocess.run(cmd, check=True, capture_output=True)
+
+        # Clean up processed temp file
+        if processed_path != md_path and processed_path.exists():
+            processed_path.unlink()
+
+        # Post-process: add table borders (pandoc's default has none)
+        _add_table_borders(output_path)
     except subprocess.CalledProcessError as e:
         print(f"\n    Warning: pandoc failed for {md_path.name}: {e.stderr.decode()[:200]}")
     except FileNotFoundError:
