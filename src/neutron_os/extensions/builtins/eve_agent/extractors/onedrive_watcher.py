@@ -149,9 +149,7 @@ def poll_onedrive_folder(
             except Exception:
                 pass
 
-        page.on("response", capture_files)
-
-        # Navigate through the folder structure to trigger API calls
+        # Navigate into the target folder FIRST (before capturing)
         folder_parts = [fp for fp in folder_path.strip("/").split("/") if fp]
         for part in folder_parts:
             el = page.query_selector(f"[data-automationid='field-LinkFilename']:has-text('{part}')")
@@ -159,13 +157,20 @@ def poll_onedrive_folder(
                 el.dblclick()
                 page.wait_for_timeout(3000)
 
-        # Also scan subfolders
+        # NOW start capturing — only files inside the target folder
+        page.on("response", capture_files)
+
+        # Reload to trigger a fresh API call for this folder's contents
+        page.reload(wait_until="domcontentloaded")
+        page.wait_for_timeout(5000)
+
+        # Also scan subfolders by navigating into each
         subfolder_els = page.query_selector_all("[data-automationid='field-LinkFilename']")
         subfolder_names = []
         for el in subfolder_els:
             try:
                 text = el.inner_text()
-                if text and text != "Name":
+                if text and text != "Name" and not text.endswith(".docx"):
                     subfolder_names.append(text)
             except Exception:
                 pass
@@ -175,7 +180,6 @@ def poll_onedrive_folder(
             if el:
                 el.dblclick()
                 page.wait_for_timeout(3000)
-                # Go back to parent
                 page.go_back()
                 page.wait_for_timeout(2000)
 
@@ -186,8 +190,38 @@ def poll_onedrive_folder(
         context.close()
         browser.close()
 
-    # Compare with previous state
+    # Compare against publication registry (PR-T's baseline)
+    # This is the authoritative source — what PR-T published vs. what's on OneDrive now
+    try:
+        from neutron_os.infra.publication_registry import PublicationRegistry
+        registry = PublicationRegistry()
+        published_names = registry.published_names()
+    except Exception:
+        published_names = set()
+        registry = None
+
     for name, current in current_files.items():
+        if registry:
+            pub_record = registry.get_by_name(name)
+            if pub_record:
+                # This file was published by PR-T — check if it diverged
+                if current.modified != pub_record.endpoint_modified and pub_record.endpoint_modified:
+                    changes.append(ChangeEvent(
+                        event_type="modified",
+                        file_name=name,
+                        modified=current.modified,
+                        editor=current.editor,
+                        old_modified=pub_record.endpoint_modified,
+                        details={
+                            "published_at": pub_record.published_at,
+                            "published_by": pub_record.published_by,
+                            "source": pub_record.source_path,
+                            "baseline": "publication_registry",
+                        },
+                    ))
+                continue  # Don't also check watch state for registry-tracked files
+
+        # For files NOT in registry, fall back to watch state comparison
         previous = watch_state.files.get(name)
         if previous is None:
             changes.append(ChangeEvent(
@@ -195,6 +229,7 @@ def poll_onedrive_folder(
                 file_name=name,
                 modified=current.modified,
                 editor=current.editor,
+                details={"baseline": "watch_state"},
             ))
         elif current.modified != previous.modified:
             changes.append(ChangeEvent(
@@ -203,16 +238,32 @@ def poll_onedrive_folder(
                 modified=current.modified,
                 editor=current.editor,
                 old_modified=previous.modified,
+                details={"baseline": "watch_state"},
             ))
 
+    # Check for deletions of published files
+    if registry:
+        for pub in registry.all():
+            if pub.published_name and pub.published_name not in current_files:
+                changes.append(ChangeEvent(
+                    event_type="deleted",
+                    file_name=pub.published_name,
+                    details={
+                        "source": pub.source_path,
+                        "baseline": "publication_registry",
+                    },
+                ))
+
+    # Also check watch state for non-registry deletions
     for name in watch_state.files:
-        if name not in current_files:
+        if name not in current_files and name not in published_names:
             changes.append(ChangeEvent(
                 event_type="deleted",
                 file_name=name,
+                details={"baseline": "watch_state"},
             ))
 
-    # Update state
+    # Update watch state
     watch_state.files = current_files
     watch_state.last_check = datetime.now(timezone.utc).isoformat()
     watch_state.save()

@@ -1164,13 +1164,41 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
     except TypeError:
         # Provider doesn't support per-file folders
         results = provider.upload_batch(just_files, draft=draft, headed=headed)
+    # Record publications in registry
+    from neutron_os.infra.publication_registry import PublicationRegistry
+    registry = PublicationRegistry()
+
     success = 0
-    for f, result in zip(just_files, results):
+    for i, (f, result) in enumerate(zip(just_files, results)):
         icon = "✓" if result.success else "✗"
         msg = result.url if result.success else result.error
         print(f"    {icon} {f.name}  {msg}")
         if result.success:
             success += 1
+            # Record in registry so EVE knows the baseline
+            source_md = docx_files[i][0]  # (docx_path, subfolder) — get source from files_to_push
+            doc_id = f.stem  # e.g., "prd-executive"
+            folder = per_file_folders[i] if i < len(per_file_folders) else ""
+            try:
+                # Find the original source .md
+                source_path = ""
+                for src, _, _ in files_to_push:
+                    if src.stem == f.stem or _generate_docx(src).name == f.name:
+                        source_path = str(src.relative_to(REPO_ROOT))
+                        break
+
+                registry.record_publication(
+                    doc_id=doc_id,
+                    source_path=source_path or f"docs/{f.stem}.md",
+                    published_name=f.name,
+                    endpoint=storage or "onedrive",
+                    endpoint_folder=folder,
+                    endpoint_modified=result.metadata.get("modified", "") if hasattr(result, "metadata") else "",
+                    endpoint_item_id=result.storage_id or "",
+                    endpoint_url=result.url or "",
+                )
+            except Exception as e:
+                logger.debug("Failed to record publication: %s", e)
 
     print(f"\n  {success}/{len(just_files)} published successfully.\n")
 
