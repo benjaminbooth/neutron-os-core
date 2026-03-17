@@ -508,12 +508,12 @@ See `tools/publisher/providers/base.py` for all five provider ABCs.
 
 ## 5. Extractor Contract
 
-Extractors inherit from `tools.extensions.builtins.signal_agent.extractors.base.BaseExtractor`:
+Extractors inherit from `tools.extensions.builtins.eve_agent.extractors.base.BaseExtractor`:
 
 ```python
 from pathlib import Path
-from neutron_os.extensions.builtins.signal_agent.extractors.base import BaseExtractor
-from neutron_os.extensions.builtins.signal_agent.models import Extraction, Signal
+from neutron_os.extensions.builtins.eve_agent.extractors.base import BaseExtractor
+from neutron_os.extensions.builtins.eve_agent.models import Extraction, Signal
 
 class ReactorLogExtractor(BaseExtractor):
     @property

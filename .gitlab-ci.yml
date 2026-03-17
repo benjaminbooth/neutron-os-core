@@ -53,9 +53,9 @@ variables:
   - .gitlab-ci.yml
 
 .changes-migrations: &changes-migrations
-  - src/neutron_os/extensions/builtins/signal_agent/migrations/**/*
-  - src/neutron_os/extensions/builtins/signal_agent/db_models.py
-  - src/neutron_os/extensions/builtins/signal_agent/pgvector_store.py
+  - src/neutron_os/extensions/builtins/eve_agent/migrations/**/*
+  - src/neutron_os/extensions/builtins/eve_agent/db_models.py
+  - src/neutron_os/extensions/builtins/eve_agent/pgvector_store.py
 
 .changes-mirror: &changes-mirror
   - src/**/*
@@ -321,12 +321,12 @@ test:migrations:
       " || { [ $? -eq 99 ] && exit 0 || exit 1; }
     # Test 1: Fresh migration applies cleanly
     - echo "Testing fresh migration..."
-    - python -c "from neutron_os.extensions.builtins.signal_agent.migrations import run_migrations, ensure_pgvector_extension; ensure_pgvector_extension(); run_migrations('upgrade', 'head')"
+    - python -c "from neutron_os.extensions.builtins.eve_agent.migrations import run_migrations, ensure_pgvector_extension; ensure_pgvector_extension(); run_migrations('upgrade', 'head')"
     # Test 2: Migration status is up-to-date
     - echo "Checking migration status..."
     - |
       python -c "
-      from neutron_os.extensions.builtins.signal_agent.migrations import check_migrations
+      from neutron_os.extensions.builtins.eve_agent.migrations import check_migrations
       status = check_migrations()
       assert status['up_to_date'], f'Migrations not up to date: {status}'
       print('✓ All migrations applied')
@@ -335,7 +335,7 @@ test:migrations:
     - echo "Verifying schema..."
     - |
       python -c "
-      from neutron_os.extensions.builtins.signal_agent.migrations import verify_schema
+      from neutron_os.extensions.builtins.eve_agent.migrations import verify_schema
       result = verify_schema()
       assert result['valid'], f'Schema invalid: {result}'
       assert result['has_pgvector'], 'pgvector extension missing'
@@ -344,15 +344,15 @@ test:migrations:
       "
     # Test 4: Downgrade and upgrade cycle
     - echo "Testing downgrade/upgrade cycle..."
-    - python -c "from neutron_os.extensions.builtins.signal_agent.migrations import run_migrations; run_migrations('downgrade', 'base')"
-    - python -c "from neutron_os.extensions.builtins.signal_agent.migrations import run_migrations; run_migrations('upgrade', 'head')"
+    - python -c "from neutron_os.extensions.builtins.eve_agent.migrations import run_migrations; run_migrations('downgrade', 'base')"
+    - python -c "from neutron_os.extensions.builtins.eve_agent.migrations import run_migrations; run_migrations('upgrade', 'head')"
     - echo "✓ Downgrade/upgrade cycle successful"
     # Test 5: SQLAlchemy models match schema
     - echo "Verifying SQLAlchemy models..."
     - |
       python -c "
       from sqlalchemy import create_engine, inspect
-      from neutron_os.extensions.builtins.signal_agent.db_models import Base, Signal, Media, Participant, Person
+      from neutron_os.extensions.builtins.eve_agent.db_models import Base, Signal, Media, Participant, Person
       import os
 
       engine = create_engine(os.environ['NEUT_DB_URL'])

@@ -164,7 +164,7 @@ class TestDevelopmentSetup:
 
         if venv_python.exists():
             result = subprocess.run(
-                [str(venv_python), "-m", "neutron_os.extensions.builtins.signal_agent.cli", "status"],
+                [str(venv_python), "-m", "neutron_os.extensions.builtins.eve_agent.cli", "status"],
                 capture_output=True,
                 text=True,
                 cwd=str(REPO_ROOT),

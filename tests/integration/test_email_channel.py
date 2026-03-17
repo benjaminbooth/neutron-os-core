@@ -30,7 +30,7 @@ class TestOutlookEmail:
         pytest.skip(
             "Outlook email extractor not yet implemented. "
             "Needs: MS Graph API + Mail.Read scope + new extractor in "
-            "src/neutron_os/extensions/builtins/signal_agent/extractors/email.py. "
+            "src/neutron_os/extensions/builtins/eve_agent/extractors/email.py. "
             "Enable in facility.toml: [sense.sources] email_forwarding = true"
         )
 

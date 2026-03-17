@@ -60,7 +60,7 @@ class TestToolExecution:
         """Write a note to a temp inbox."""
         # Patch INBOX_RAW at the source module (deferred import in execute_tool)
         monkeypatch.setattr(
-            "neutron_os.extensions.builtins.signal_agent.cli.INBOX_RAW",
+            "neutron_os.extensions.builtins.eve_agent.cli.INBOX_RAW",
             tmp_path,
         )
         result = execute_tool("write_inbox_note", {"text": "Test note content"})

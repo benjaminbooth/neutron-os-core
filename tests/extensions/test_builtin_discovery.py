@@ -193,9 +193,9 @@ class TestBuiltinValidation:
             version="0.1.0",
             description="test",
             author="test",
-            root=_builtin_extensions_dir() / "signal_agent",
+            root=_builtin_extensions_dir() / "eve_agent",
             builtin=True,
-            cli_commands=[CLICommandDef(noun="signal", module="neutron_os.extensions.builtins.signal_agent.cli")],
+            cli_commands=[CLICommandDef(noun="signal", module="neutron_os.extensions.builtins.eve_agent.cli")],
         )
         issues = validate_extension(ext)
         assert issues == []
@@ -206,7 +206,7 @@ class TestBuiltinValidation:
             version="0.1.0",
             description="test",
             author="test",
-            root=_builtin_extensions_dir() / "signal_agent",
+            root=_builtin_extensions_dir() / "eve_agent",
             builtin=True,
             cli_commands=[CLICommandDef(noun="x", module="neutron_os.nonexistent.module")],
         )

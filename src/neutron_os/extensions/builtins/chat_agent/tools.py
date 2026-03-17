@@ -330,7 +330,7 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
         }
 
     elif name == "sense_status":
-        from neutron_os.extensions.builtins.signal_agent.cli import INBOX_RAW, INBOX_PROCESSED, DRAFTS_DIR
+        from neutron_os.extensions.builtins.eve_agent.cli import INBOX_RAW, INBOX_PROCESSED, DRAFTS_DIR
         counts: dict[str, int] = {}
         if INBOX_RAW.exists():
             for child in INBOX_RAW.iterdir():
@@ -387,7 +387,7 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
         return {"message": "Ingestion triggered.", "source": params.get("source", "all")}
 
     elif name == "write_inbox_note":
-        from neutron_os.extensions.builtins.signal_agent.cli import INBOX_RAW
+        from neutron_os.extensions.builtins.eve_agent.cli import INBOX_RAW
         from datetime import datetime, timezone
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
         INBOX_RAW.mkdir(parents=True, exist_ok=True)

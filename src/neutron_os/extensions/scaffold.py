@@ -339,7 +339,7 @@ from pathlib import Path
 class ReactorLogExtractor:
     """Sense extractor for reactor operation logs.
 
-    Implements the same contract as tools.extensions.builtins.signal_agent.extractors.base.BaseExtractor
+    Implements the same contract as tools.extensions.builtins.eve_agent.extractors.base.BaseExtractor
     without importing it (keeps extension dependency-free).
     """
 

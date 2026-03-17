@@ -83,7 +83,7 @@ def _recover_brief_since(args: Namespace, error: Exception) -> Namespace | None:
     # Try the combined value
     combined = f"{since} {topic}"
     try:
-        from neutron_os.extensions.builtins.signal_agent.briefing import _parse_since
+        from neutron_os.extensions.builtins.eve_agent.briefing import _parse_since
         _parse_since(combined)  # Validate it parses
     except (ValueError, ImportError):
         return None

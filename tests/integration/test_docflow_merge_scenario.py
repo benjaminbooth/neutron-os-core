@@ -20,9 +20,9 @@ from pathlib import Path
 
 import pytest
 
-from neutron_os.extensions.builtins.signal_agent.models import Signal, Extraction, Changelog
-from neutron_os.extensions.builtins.signal_agent.synthesizer import Synthesizer
-from neutron_os.extensions.builtins.signal_agent.extractors.docflow_review import (
+from neutron_os.extensions.builtins.eve_agent.models import Signal, Extraction, Changelog
+from neutron_os.extensions.builtins.eve_agent.synthesizer import Synthesizer
+from neutron_os.extensions.builtins.eve_agent.extractors.docflow_review import (
     ExternalChange,
     ChangeType,
     DivergenceReport,

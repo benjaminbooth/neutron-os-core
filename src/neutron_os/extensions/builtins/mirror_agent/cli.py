@@ -28,7 +28,7 @@ PUBLIC_PATHS = [
 EXCLUDE_PATHS = [
     "src/neutron_os/extensions/builtins/web_api",
     "src/neutron_os/extensions/builtins/cost_estimation",
-    "src/neutron_os/extensions/builtins/signal_agent/infra",
+    "src/neutron_os/extensions/builtins/eve_agent/infra",
     "src/neutron_os/infra/subscribers",
     # Meta-documentation reviewed manually when updated; intentionally public.
     "CONTRIBUTING.md",

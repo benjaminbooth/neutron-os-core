@@ -38,7 +38,7 @@ Neutron_OS/
     infra/                     #   Shared infra (gateway, orchestrator, auth)
     extensions/                #   Extension system
       builtins/                #   Domain-agnostic builtin extensions
-        signal_agent/           #     Signal ingestion agent
+        eve_agent/           #     Signal ingestion agent
         chat_agent/            #     Interactive LLM assistant agent
         mo_agent/              #     M-O resource steward agent
         doctor_agent/          #     AI diagnostics agent
@@ -110,7 +110,7 @@ separate repo, installed to `.neut/extensions/`).
 ### Extension Kinds
 
 - `agent` — Has LLM autonomy. **Directory name MUST end with `_agent`.**
-  Examples: `signal_agent`, `chat_agent`, `mo_agent`, `doctor_agent`
+  Examples: `eve_agent`, `chat_agent`, `mo_agent`, `doctor_agent`
 - `tool` — Capability invoked by agents or CLI (publisher, db, demo)
 - `utility` — Platform plumbing (status, test, update)
 
@@ -199,16 +199,16 @@ extracting structured information, and maintaining program state.
 ```
 Sources (voice memos, Teams, GitLab, Linear, freetext)
   → Inbox (runtime/inbox/raw/)
-  → Extractors (src/neutron_os/extensions/builtins/signal_agent/extractors/)
+  → Extractors (src/neutron_os/extensions/builtins/eve_agent/extractors/)
   → Correlator → Synthesizer → Review gate → Publisher
 ```
 
 ### Key Files
 
 - `src/neutron_os/infra/gateway.py` — Model-agnostic LLM routing
-- `src/neutron_os/extensions/builtins/signal_agent/extractors/` — Source-specific extraction
-- `src/neutron_os/extensions/builtins/signal_agent/correlator.py` — Entity resolution
-- `src/neutron_os/extensions/builtins/signal_agent/synthesizer.py` — Cross-source merging
+- `src/neutron_os/extensions/builtins/eve_agent/extractors/` — Source-specific extraction
+- `src/neutron_os/extensions/builtins/eve_agent/correlator.py` — Entity resolution
+- `src/neutron_os/extensions/builtins/eve_agent/synthesizer.py` — Cross-source merging
 
 Full design: `docs/tech-specs/spec-agent-architecture.md`
 
@@ -268,7 +268,7 @@ pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short
 pytest -m "not integration"
 
 # Single extension
-pytest src/neutron_os/extensions/builtins/signal_agent/tests/ -v
+pytest src/neutron_os/extensions/builtins/eve_agent/tests/ -v
 
 # Export control classifier red-team suite
 pytest tests/routing/test_classifier_accuracy.py -v

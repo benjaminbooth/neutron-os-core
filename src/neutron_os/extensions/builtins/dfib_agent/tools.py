@@ -29,7 +29,7 @@ _LOG_PATH = _RUNTIME_DIR / "logs" / "cli_events.jsonl"
 # --- Safety constants ---
 
 ALLOWED_EDIT_PREFIXES = [
-    "src/neutron_os/extensions/builtins/signal_agent/",
+    "src/neutron_os/extensions/builtins/eve_agent/",
     "src/neutron_os/extensions/builtins/chat_agent/",
     "tests/",
 ]

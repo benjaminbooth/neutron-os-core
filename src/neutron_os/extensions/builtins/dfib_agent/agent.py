@@ -68,7 +68,7 @@ and environment context. Your job:
 
 ## Constraints
 
-- You can only edit files in: src/neutron_os/extensions/builtins/signal_agent/, src/neutron_os/extensions/builtins/chat_agent/, tests/
+- You can only edit files in: src/neutron_os/extensions/builtins/eve_agent/, src/neutron_os/extensions/builtins/chat_agent/, tests/
 - You CANNOT edit: src/neutron_os/extensions/builtins/dfib_agent/, src/neutron_os/platform/orchestrator/, src/neutron_os/neut_cli.py
 - Max 3 files edited per session, max 50 lines changed per edit
 - You get {max_rounds} tool-use rounds total. Be efficient.

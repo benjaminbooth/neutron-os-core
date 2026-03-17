@@ -127,7 +127,7 @@ class RepoExportOrchestrator:
         # Try to resolve raw author names via the sense correlator
         resolve_author = None
         try:
-            from neutron_os.extensions.builtins.signal_agent.correlator import Correlator
+            from neutron_os.extensions.builtins.eve_agent.correlator import Correlator
             correlator = Correlator()
             def resolve_author(name: str) -> str:
                 person = correlator.match_person(name)

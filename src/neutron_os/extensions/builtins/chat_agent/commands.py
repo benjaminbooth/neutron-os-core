@@ -311,7 +311,7 @@ def _get_cli_commands() -> dict[str, str]:
 
     # Import CLI modules and get their COMMANDS
     try:
-        from neutron_os.extensions.builtins.signal_agent.cli import COMMANDS as sense_commands
+        from neutron_os.extensions.builtins.eve_agent.cli import COMMANDS as sense_commands
         for name, help_text in sense_commands.items():
             cli_commands[f"/sense {name}"] = help_text
     except ImportError:
