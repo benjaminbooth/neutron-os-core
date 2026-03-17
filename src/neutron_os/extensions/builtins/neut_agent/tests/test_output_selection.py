@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.document import Document
 
-from neutron_os.extensions.builtins.chat_agent.fullscreen import (
+from neutron_os.extensions.builtins.neut_agent.fullscreen import (
     _ScrollableBufferControl,
     _OutputLexer,
     _apply_selection_overlay,

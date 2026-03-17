@@ -39,7 +39,7 @@ Neutron_OS/
     extensions/                #   Extension system
       builtins/                #   Domain-agnostic builtin extensions
         eve_agent/           #     Signal ingestion agent
-        chat_agent/            #     Interactive LLM assistant agent
+        neut_agent/            #     Interactive LLM assistant agent
         mo_agent/              #     M-O resource steward agent
         doctor_agent/          #     AI diagnostics agent
         publisher/               #     Document lifecycle tool
@@ -110,7 +110,7 @@ separate repo, installed to `.neut/extensions/`).
 ### Extension Kinds
 
 - `agent` — Has LLM autonomy. **Directory name MUST end with `_agent`.**
-  Examples: `eve_agent`, `chat_agent`, `mo_agent`, `doctor_agent`
+  Examples: `eve_agent`, `neut_agent`, `mo_agent`, `doctor_agent`
 - `tool` — Capability invoked by agents or CLI (publisher, db, demo)
 - `utility` — Platform plumbing (status, test, update)
 

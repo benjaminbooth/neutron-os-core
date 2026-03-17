@@ -1,7 +1,7 @@
 """Generic chat entry point — any terminal command can hand off into chat.
 
 Usage:
-    from neutron_os.extensions.builtins.chat_agent.entry import enter_chat
+    from neutron_os.extensions.builtins.neut_agent.entry import enter_chat
 
     enter_chat(
         context_markdown="# Briefing\\n...",

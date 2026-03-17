@@ -98,7 +98,7 @@ class TestColdStartMessage:
 
     def test_no_provider_message_shows_quick_start(self):
         """When no provider is configured, show actionable quick-start steps."""
-        from neutron_os.extensions.builtins.chat_agent.cli import _print_model_status
+        from neutron_os.extensions.builtins.neut_agent.cli import _print_model_status
 
         mock_gateway = mock.MagicMock()
         mock_gateway.active_provider = None

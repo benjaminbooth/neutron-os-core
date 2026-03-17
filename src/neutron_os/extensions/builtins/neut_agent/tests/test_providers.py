@@ -4,10 +4,10 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from neutron_os.setup.renderer import set_color_enabled
-from neutron_os.extensions.builtins.chat_agent.providers.base import RenderProvider, InputProvider
-from neutron_os.extensions.builtins.chat_agent.providers.ansi_render import AnsiRenderProvider
-from neutron_os.extensions.builtins.chat_agent.providers.basic_input import BasicInputProvider
-from neutron_os.extensions.builtins.chat_agent.provider_factory import (
+from neutron_os.extensions.builtins.neut_agent.providers.base import RenderProvider, InputProvider
+from neutron_os.extensions.builtins.neut_agent.providers.ansi_render import AnsiRenderProvider
+from neutron_os.extensions.builtins.neut_agent.providers.basic_input import BasicInputProvider
+from neutron_os.extensions.builtins.neut_agent.provider_factory import (
     create_render_provider,
     create_input_provider,
 )
@@ -67,24 +67,24 @@ class TestProviderFactory:
         assert isinstance(p, BasicInputProvider)
 
     def test_auto_detect_render_without_rich(self):
-        with patch("neutron_os.extensions.builtins.chat_agent.provider_factory._rich_available", return_value=False):
+        with patch("neutron_os.extensions.builtins.neut_agent.provider_factory._rich_available", return_value=False):
             p = create_render_provider()
             assert isinstance(p, AnsiRenderProvider)
 
     def test_auto_detect_input_without_ptk(self):
-        with patch("neutron_os.extensions.builtins.chat_agent.provider_factory._ptk_available", return_value=False):
+        with patch("neutron_os.extensions.builtins.neut_agent.provider_factory._ptk_available", return_value=False):
             p = create_input_provider()
             assert isinstance(p, BasicInputProvider)
 
     def test_force_rich_falls_back_on_import_error(self):
         # When rich is explicitly requested but import fails
         with patch(
-            "neutron_os.extensions.builtins.chat_agent.provider_factory._rich_available",
+            "neutron_os.extensions.builtins.neut_agent.provider_factory._rich_available",
             return_value=True,
         ):
             # Mock the import to fail
             with patch(
-                "neutron_os.extensions.builtins.chat_agent.providers.rich_render.RichRenderProvider",
+                "neutron_os.extensions.builtins.neut_agent.providers.rich_render.RichRenderProvider",
                 side_effect=ImportError("no rich"),
             ):
                 p = create_render_provider(force="rich")

@@ -2,7 +2,7 @@
 
 import pytest
 
-from neutron_os.extensions.builtins.chat_agent.providers.markdown_utils import (
+from neutron_os.extensions.builtins.neut_agent.providers.markdown_utils import (
     terminal_width,
     is_diff,
     extract_code_blocks,
@@ -72,13 +72,13 @@ class TestRichRenderProvider:
     @pytest.fixture
     def rich_provider(self):
         try:
-            from neutron_os.extensions.builtins.chat_agent.providers.rich_render import RichRenderProvider
+            from neutron_os.extensions.builtins.neut_agent.providers.rich_render import RichRenderProvider
             return RichRenderProvider()
         except ImportError:
             pytest.skip("rich not installed")
 
     def test_is_render_provider(self, rich_provider):
-        from neutron_os.extensions.builtins.chat_agent.providers.base import RenderProvider
+        from neutron_os.extensions.builtins.neut_agent.providers.base import RenderProvider
         assert isinstance(rich_provider, RenderProvider)
 
     def test_stream_text(self, rich_provider):

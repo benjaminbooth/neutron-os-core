@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock
 
-from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
 from neutron_os.infra.orchestrator.bus import EventBus
 from neutron_os.infra.orchestrator.session import Session
 from neutron_os.infra.gateway import (

@@ -43,7 +43,7 @@ class TestExtensionTestsColocated:
     """Extension-specific tests should live in the extension's tests/ dir."""
 
     EXTENSION_NAMES = [
-        "eve_agent", "chat_agent", "mo_agent", "dfib_agent",
+        "eve_agent", "neut_agent", "mo_agent", "dfib_agent",
         "publisher", "db", "demo", "status", "test", "update",
         "repo", "cost_estimation",
     ]

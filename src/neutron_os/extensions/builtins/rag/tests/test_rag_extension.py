@@ -172,9 +172,9 @@ def test_settings_rag_database_url_default():
 # Chat agent — RAG context wiring
 # ---------------------------------------------------------------------------
 
-def test_chat_agent_rag_context_no_url(monkeypatch):
+def test_neut_agent_rag_context_no_url(monkeypatch):
     """ChatAgent._rag_context returns '' when no database_url configured."""
-    from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+    from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
 
     monkeypatch.setenv("DATABASE_URL", "")
     agent = ChatAgent.__new__(ChatAgent)
@@ -190,9 +190,9 @@ def test_chat_agent_rag_context_no_url(monkeypatch):
     assert result == ""
 
 
-def test_chat_agent_rag_context_returns_formatted_chunks():
+def test_neut_agent_rag_context_returns_formatted_chunks():
     """ChatAgent._rag_context formats results correctly when store is available."""
-    from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+    from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
     from neutron_os.rag.store import SearchResult
 
     agent = ChatAgent.__new__(ChatAgent)

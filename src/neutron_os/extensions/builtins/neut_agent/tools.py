@@ -188,7 +188,7 @@ def _scan_extensions() -> dict[str, ToolDef]:
         if not mod_path.exists():
             continue
 
-        mod_name = f"neutron_os.extensions.builtins.chat_agent.tools_ext.{info.name}"
+        mod_name = f"neutron_os.extensions.builtins.neut_agent.tools_ext.{info.name}"
 
         try:
             mtime = mod_path.stat().st_mtime
@@ -287,9 +287,9 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
     if name in ext_tools:
         mod_name = None
         for info in pkgutil.iter_modules([str(_EXT_DIR)]):
-            mod = sys.modules.get(f"neutron_os.extensions.builtins.chat_agent.tools_ext.{info.name}")
+            mod = sys.modules.get(f"neutron_os.extensions.builtins.neut_agent.tools_ext.{info.name}")
             if mod and any(t.name == name for t in getattr(mod, "TOOLS", [])):
-                mod_name = f"neutron_os.extensions.builtins.chat_agent.tools_ext.{info.name}"
+                mod_name = f"neutron_os.extensions.builtins.neut_agent.tools_ext.{info.name}"
                 break
 
         if mod_name and mod_name in sys.modules:

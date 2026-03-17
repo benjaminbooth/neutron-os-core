@@ -3,7 +3,7 @@
 import pytest
 
 from neutron_os.setup.renderer import set_color_enabled
-from neutron_os.extensions.builtins.chat_agent.renderer import (
+from neutron_os.extensions.builtins.neut_agent.renderer import (
     format_markdown_line,
     stream_text,
     render_message,

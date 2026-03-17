@@ -82,7 +82,7 @@ class TestVpnAutoDetect:
 
     def test_startup_checks_all_vpn_providers(self):
         """_print_model_status checks all VPN providers, not just the first."""
-        from neutron_os.extensions.builtins.chat_agent.cli import _print_model_status
+        from neutron_os.extensions.builtins.neut_agent.cli import _print_model_status
 
         mock_provider1 = mock.MagicMock()
         mock_provider1.name = "anthropic"

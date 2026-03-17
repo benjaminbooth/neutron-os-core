@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from neutron_os.extensions.builtins.chat_agent.entry import _format_briefing_context, enter_chat
+from neutron_os.extensions.builtins.neut_agent.entry import _format_briefing_context, enter_chat
 from neutron_os.infra.orchestrator.session import Session
 
 
@@ -102,13 +102,13 @@ class TestFormatBriefingContext:
 class TestEnterChat:
     """Test enter_chat() by mocking its dependencies at module level."""
 
-    @patch("neutron_os.extensions.builtins.chat_agent.entry._is_tty", return_value=False)
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.run_repl")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_input_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_render_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.Gateway")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.EventBus")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.SessionStore")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry._is_tty", return_value=False)
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.run_repl")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_input_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_render_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.Gateway")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.EventBus")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.SessionStore")
     def test_session_created_with_context(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -130,13 +130,13 @@ class TestEnterChat:
         assert ctx["context_data"] == {"signal_count": 5}
         assert ctx["source"] == "neut_sense_brief"
 
-    @patch("neutron_os.extensions.builtins.chat_agent.entry._is_tty", return_value=False)
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.run_repl")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_input_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_render_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.Gateway")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.EventBus")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.SessionStore")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry._is_tty", return_value=False)
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.run_repl")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_input_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_render_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.Gateway")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.EventBus")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.SessionStore")
     def test_title_set_on_session(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -147,13 +147,13 @@ class TestEnterChat:
 
         assert session.title == "Briefing: blockers"
 
-    @patch("neutron_os.extensions.builtins.chat_agent.entry._is_tty", return_value=False)
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.run_repl")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_input_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_render_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.Gateway")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.EventBus")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.SessionStore")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry._is_tty", return_value=False)
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.run_repl")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_input_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_render_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.Gateway")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.EventBus")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.SessionStore")
     def test_repl_fallback_when_no_tty(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -163,13 +163,13 @@ class TestEnterChat:
 
         mock_repl.assert_called_once()
 
-    @patch("neutron_os.extensions.builtins.chat_agent.entry._is_tty", return_value=False)
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.run_repl")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_input_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_render_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.Gateway")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.EventBus")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.SessionStore")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry._is_tty", return_value=False)
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.run_repl")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_input_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_render_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.Gateway")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.EventBus")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.SessionStore")
     def test_session_saved_after_repl(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -181,13 +181,13 @@ class TestEnterChat:
 
         mock_store.save.assert_called_once_with(session)
 
-    @patch("neutron_os.extensions.builtins.chat_agent.entry._is_tty", return_value=False)
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.run_repl", side_effect=RuntimeError("boom"))
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_input_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_render_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.Gateway")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.EventBus")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.SessionStore")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry._is_tty", return_value=False)
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.run_repl", side_effect=RuntimeError("boom"))
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_input_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_render_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.Gateway")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.EventBus")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.SessionStore")
     def test_session_saved_even_on_repl_crash(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -200,13 +200,13 @@ class TestEnterChat:
 
         mock_store.save.assert_called_once_with(session)
 
-    @patch("neutron_os.extensions.builtins.chat_agent.entry._is_tty", return_value=False)
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.run_repl")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_input_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.create_render_provider")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.Gateway")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.EventBus")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.SessionStore")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry._is_tty", return_value=False)
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.run_repl")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_input_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.create_render_provider")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.Gateway")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.EventBus")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.SessionStore")
     def test_empty_optionals_excluded_from_context(
         self, MockStore, MockBus, MockGw, mock_rp, mock_ip, mock_repl, mock_tty,
     ):
@@ -219,11 +219,11 @@ class TestEnterChat:
         assert "context_data" not in ctx
         assert "source" not in ctx
 
-    @patch("neutron_os.extensions.builtins.chat_agent.entry._is_tty", return_value=True)
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.FullScreenChat")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.Gateway")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.EventBus")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.SessionStore")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry._is_tty", return_value=True)
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.FullScreenChat")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.Gateway")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.EventBus")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.SessionStore")
     def test_fullscreen_used_when_tty(
         self, MockStore, MockBus, MockGw, MockTui, mock_tty,
     ):
@@ -237,11 +237,11 @@ class TestEnterChat:
         MockTui.return_value.run.assert_called_once()
         mock_store.save.assert_called_once()
 
-    @patch("neutron_os.extensions.builtins.chat_agent.entry._is_tty", return_value=True)
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.FullScreenChat")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.Gateway")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.EventBus")
-    @patch("neutron_os.extensions.builtins.chat_agent.entry.SessionStore")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry._is_tty", return_value=True)
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.FullScreenChat")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.Gateway")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.EventBus")
+    @patch("neutron_os.extensions.builtins.neut_agent.entry.SessionStore")
     def test_suggestions_injected_for_fullscreen(
         self, MockStore, MockBus, MockGw, MockTui, mock_tty,
     ):
@@ -286,7 +286,7 @@ class TestEnticementTtyGuard:
 
 class TestSystemPromptInjection:
     def test_context_markdown_in_system_prompt(self):
-        from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+        from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
 
         session = Session(context={"context_markdown": "# My Briefing\nSome content"})
         agent = ChatAgent(session=session)
@@ -297,7 +297,7 @@ class TestSystemPromptInjection:
         assert "reference" in prompt.lower()
 
     def test_no_context_markdown_no_injection(self):
-        from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+        from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
 
         session = Session(context={})
         agent = ChatAgent(session=session)
@@ -306,7 +306,7 @@ class TestSystemPromptInjection:
         assert "Context from terminal command" not in prompt
 
     def test_context_markdown_truncated_at_6000_chars(self):
-        from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+        from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
 
         long_md = "x" * 10000
         session = Session(context={"context_markdown": long_md})
@@ -319,7 +319,7 @@ class TestSystemPromptInjection:
         assert "x" * 6001 not in prompt
 
     def test_context_coexists_with_file_content(self):
-        from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+        from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
 
         session = Session(context={
             "file_content": "file stuff here",

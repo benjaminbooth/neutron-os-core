@@ -363,7 +363,7 @@ Each `.py` file in the `tools_ext/` directory exports:
 - `execute(name: str, params: dict) -> dict`: handler function
 
 ```python
-from neutron_os.extensions.builtins.chat_agent.tools import ToolDef
+from neutron_os.extensions.builtins.neut_agent.tools import ToolDef
 from neutron_os.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [

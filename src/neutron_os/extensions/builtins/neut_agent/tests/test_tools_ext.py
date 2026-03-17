@@ -2,7 +2,7 @@
 
 import sys
 
-from neutron_os.extensions.builtins.chat_agent.tools import get_all_tools, _scan_extensions, _ext_cache
+from neutron_os.extensions.builtins.neut_agent.tools import get_all_tools, _scan_extensions, _ext_cache
 
 
 class TestExtensionDiscovery:
@@ -31,7 +31,7 @@ class TestExtensionDiscovery:
         pkg_dir.mkdir()
         (pkg_dir / "__init__.py").touch()
         (pkg_dir / "my_tool.py").write_text(
-            'from neutron_os.extensions.builtins.chat_agent.tools import ToolDef\n'
+            'from neutron_os.extensions.builtins.neut_agent.tools import ToolDef\n'
             'from neutron_os.infra.orchestrator.actions import ActionCategory\n'
             '\n'
             'TOOLS = [ToolDef(name="my_tool", description="Test tool", '
@@ -40,11 +40,11 @@ class TestExtensionDiscovery:
             'def execute(name, params):\n'
             '    return {"result": "ok"}\n'
         )
-        monkeypatch.setattr("neutron_os.extensions.builtins.chat_agent.tools._EXT_DIR", pkg_dir)
+        monkeypatch.setattr("neutron_os.extensions.builtins.neut_agent.tools._EXT_DIR", pkg_dir)
         _ext_cache.clear()
 
         # Clean up any stale module references
-        mod_name = "neutron_os.extensions.builtins.chat_agent.tools_ext.my_tool"
+        mod_name = "neutron_os.extensions.builtins.neut_agent.tools_ext.my_tool"
         sys.modules.pop(mod_name, None)
 
         try:
@@ -59,7 +59,7 @@ class TestExtensionDiscovery:
         ext_dir.mkdir()
         (ext_dir / "__init__.py").touch()
         (ext_dir / "broken.py").write_text("raise ImportError('bad')")
-        monkeypatch.setattr("neutron_os.extensions.builtins.chat_agent.tools._EXT_DIR", ext_dir)
+        monkeypatch.setattr("neutron_os.extensions.builtins.neut_agent.tools._EXT_DIR", ext_dir)
         _ext_cache.clear()
 
         tools = get_all_tools()
@@ -69,7 +69,7 @@ class TestExtensionDiscovery:
 
     def test_no_ext_dir(self, tmp_path, monkeypatch):
         """Missing tools_ext/ directory doesn't crash."""
-        monkeypatch.setattr("neutron_os.extensions.builtins.chat_agent.tools._EXT_DIR", tmp_path / "nonexistent")
+        monkeypatch.setattr("neutron_os.extensions.builtins.neut_agent.tools._EXT_DIR", tmp_path / "nonexistent")
         _ext_cache.clear()
 
         ext = _scan_extensions()
@@ -80,18 +80,18 @@ class TestReadFileTool:
     """Test the read_file extension tool."""
 
     def test_read_existing_file(self):
-        from neutron_os.extensions.builtins.chat_agent.tools import execute_tool
+        from neutron_os.extensions.builtins.neut_agent.tools import execute_tool
         result = execute_tool("read_file", {"path": "pyproject.toml"})
         assert "content" in result
         assert "neutron-os" in result["content"]
 
     def test_read_nonexistent_file(self):
-        from neutron_os.extensions.builtins.chat_agent.tools import execute_tool
+        from neutron_os.extensions.builtins.neut_agent.tools import execute_tool
         result = execute_tool("read_file", {"path": "nonexistent_file_xyz.txt"})
         assert "error" in result
 
     def test_path_traversal_blocked(self):
-        from neutron_os.extensions.builtins.chat_agent.tools import execute_tool
+        from neutron_os.extensions.builtins.neut_agent.tools import execute_tool
         result = execute_tool("read_file", {"path": "../../../etc/passwd"})
         assert "error" in result
         assert "outside" in result["error"].lower()
@@ -101,17 +101,17 @@ class TestListFilesTool:
     """Test the list_files extension tool."""
 
     def test_list_root(self):
-        from neutron_os.extensions.builtins.chat_agent.tools import execute_tool
+        from neutron_os.extensions.builtins.neut_agent.tools import execute_tool
         result = execute_tool("list_files", {"path": "."})
         assert "files" in result
         assert "directories" in result
 
     def test_list_specific_dir(self):
-        from neutron_os.extensions.builtins.chat_agent.tools import execute_tool
+        from neutron_os.extensions.builtins.neut_agent.tools import execute_tool
         result = execute_tool("list_files", {"path": "src"})
         assert "files" in result or "directories" in result
 
     def test_list_nonexistent_dir(self):
-        from neutron_os.extensions.builtins.chat_agent.tools import execute_tool
+        from neutron_os.extensions.builtins.neut_agent.tools import execute_tool
         result = execute_tool("list_files", {"path": "nonexistent_dir_xyz"})
         assert "error" in result

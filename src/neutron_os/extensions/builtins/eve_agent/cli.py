@@ -1122,7 +1122,7 @@ def cmd_brief(args: argparse.Namespace) -> None:
             from neutron_os.setup.renderer import prompt_yn
 
             if prompt_yn("Enter chat?", default=True):
-                from neutron_os.extensions.builtins.chat_agent.entry import (
+                from neutron_os.extensions.builtins.neut_agent.entry import (
                     enter_chat,
                     _format_briefing_context,
                 )

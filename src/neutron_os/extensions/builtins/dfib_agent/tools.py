@@ -30,7 +30,7 @@ _LOG_PATH = _RUNTIME_DIR / "logs" / "cli_events.jsonl"
 
 ALLOWED_EDIT_PREFIXES = [
     "src/neutron_os/extensions/builtins/eve_agent/",
-    "src/neutron_os/extensions/builtins/chat_agent/",
+    "src/neutron_os/extensions/builtins/neut_agent/",
     "tests/",
 ]
 

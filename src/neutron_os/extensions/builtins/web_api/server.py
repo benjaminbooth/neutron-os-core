@@ -67,7 +67,7 @@ def _get_agent():
         if _agent is not None:
             return _agent
 
-        from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+        from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
         from neutron_os.infra.gateway import Gateway
         from neutron_os.infra.orchestrator.bus import EventBus
         from neutron_os.infra.orchestrator.session import Session

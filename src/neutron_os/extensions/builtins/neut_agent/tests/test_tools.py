@@ -1,7 +1,7 @@
 """Tests for chat tool registry and execution."""
 
 
-from neutron_os.extensions.builtins.chat_agent.tools import (
+from neutron_os.extensions.builtins.neut_agent.tools import (
     TOOL_REGISTRY,
     get_tool_definitions,
     execute_tool,

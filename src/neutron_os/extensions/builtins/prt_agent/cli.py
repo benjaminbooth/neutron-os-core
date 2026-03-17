@@ -611,7 +611,7 @@ def cmd_review(args: argparse.Namespace) -> None:
 
     # --chat: hand off to conversational review in neut chat
     if getattr(args, "chat", False):
-        from neutron_os.extensions.builtins.chat_agent.entry import enter_chat
+        from neutron_os.extensions.builtins.neut_agent.entry import enter_chat
 
         content = draft_path.read_text(encoding="utf-8")
         enter_chat(

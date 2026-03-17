@@ -9,10 +9,10 @@ module = "platform"
 
 [[cli.commands]]
 noun = "chat"
-module = "neutron_os.extensions.builtins.chat_agent.cli"
+module = "neutron_os.extensions.builtins.neut_agent.cli"
 description = "Interactive agent with tool calling"
 
 [[cli.commands]]
 noun = "code"
-module = "neutron_os.extensions.builtins.chat_agent.cli"
+module = "neutron_os.extensions.builtins.neut_agent.cli"
 description = "Interactive agent with tool calling (alias for chat)"

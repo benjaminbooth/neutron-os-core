@@ -12,7 +12,7 @@ extensions with LLM autonomy from passive tools and utilities.
 | Directory | Kind | Description |
 |-----------|------|-------------|
 | `eve_agent/` | agent | Signal ingestion, extraction, synthesis |
-| `chat_agent/` | agent | Interactive LLM assistant |
+| `neut_agent/` | agent | Interactive LLM assistant |
 | `mo_agent/` | agent | M-O resource steward |
 | `dfib_agent/` | agent | AI-powered diagnostics and self-healing |
 | `publisher/` | tool | Document lifecycle (md → docx → publish) |
