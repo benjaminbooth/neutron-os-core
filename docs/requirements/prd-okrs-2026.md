@@ -232,6 +232,54 @@ When a Houston cancer clinic needs isotopes:
 
 ---
 
+## Implementation Priority List
+
+> Updated 2026-03-18. Order reflects dependency chain and stakeholder value.
+
+### v0.4.2: Connections (in progress — feat/connections branch)
+
+- [x] Connection registry + credential resolution (env → settings → file)
+- [x] `neut connect` CLI with tab completion, health checks, JSON
+- [x] Declare `[[connections]]` in all builtin extension manifests
+- [x] Integrate connections into `neut status`
+- [x] Capabilities (read/write), usage tracking, throttle detection
+- [x] Adaptive rate limiter (learns from API response headers)
+- [x] Managed service lifecycle (launchd/systemd/Windows)
+- [x] D-FIB self-healing for connection failures
+- [x] Embedding provider fallback (OpenAI → Ollama → skip)
+- [ ] Test `neut connect ollama` end-to-end
+- [ ] Migrate extractors to `get_credential()`
+- [ ] Cut v0.4.2 release
+
+### v0.5.0: Security + Routing Profiles
+
+- Per-agent routing profiles (chat, extraction, diagnosis, embedding, classification)
+- OS Keychain credential provider (macOS/Linux/Windows)
+- Credential metadata (saved_at, expires_at, last_verified)
+- `neut connect --migrate` (.env → Keychain)
+- M-O credential expiry watch
+- EVE secret leak scanning
+
+### v0.5.x: Identity (Ory Kratos)
+
+- Deploy Kratos as managed service
+- `neut login` / `neut logout` / `neut whoami`
+- Local registration + TOTP MFA
+- Session management
+- Identity in agent context + audit logs
+
+### v0.6.0: OAuth + SSO + Authorization (OpenFGA)
+
+- Google, Microsoft, GitHub, GitLab OAuth via Kratos
+- LDAP/AD, OIDC, SAML via Kratos
+- Deploy OpenFGA as managed service
+- Kratos → OpenFGA webhook bridge
+- Connection-level + document-level access control
+
+### Then: Original Roadmap Resumes
+
+---
+
 ## Quarterly Roadmap Summary
 
 ### Q2 2026: Foundation
