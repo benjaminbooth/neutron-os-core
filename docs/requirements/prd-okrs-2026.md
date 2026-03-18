@@ -63,7 +63,7 @@
 | Key Result | Target | Timeline | Status |
 |------------|--------|----------|--------|
 | Model Corral schema deployed | PostgreSQL + S3 | Q2 | 🔲 |
-| `neut corral` CLI working | search/add/pull/validate | Q2 | 🔲 |
+| `neut model` CLI working | search/add/pull/validate | Q2 | 🔲 |
 | TRIGA models migrated | 10+ models in registry | Q2 | 🔲 |
 | Web catalog UI | Browse + upload wizard | Q3 | 🔲 |
 | Git sync operational | Bidirectional with lab repos | Q3 | 🔲 |
@@ -210,7 +210,7 @@ When a Houston cancer clinic needs isotopes:
 **Theme:** Data platform + Model Corral + DT run tracking
 
 - Deploy Iceberg + dbt Bronze/Silver layers
-- Ship Model Corral with `neut corral` CLI
+- Ship Model Corral with `neut model` CLI
 - Implement DT run tracking schema
 - Automate Shadow runs for TRIGA
 - Document isotope workflow as-is

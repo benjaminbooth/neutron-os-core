@@ -207,4 +207,4 @@ NeutronOS is developed at UT Austin's Department of Mechanical Engineering, Nucl
 
 ---
 
-*For technical architecture, see the [Executive Tech Spec](../tech-specs/spec-executive.md). For the CLI, run `neut --help`.*
+*For technical architecture, see the [Executive Tech Spec](../tech-specs/spec-executive.md). For terminology, see the [Glossary](../glossary.md). For the CLI, run `neut --help`.*

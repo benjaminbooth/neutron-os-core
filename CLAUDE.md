@@ -157,12 +157,16 @@ to the appropriate doc and link from others.
 
 ## Terminology Standards
 
+For the full glossary (especially the digital twin model ecosystem), see `docs/glossary.md`.
+
 | Use This | Not This | Why |
 |----------|----------|-----|
 | Provider | Plugin | "Plugin" implies runtime loading; Providers are static |
 | Extension | Plugin | Everything is an extension in NeutronOS |
 | Extension Point | Plugin hook | Consistency with extension terminology |
 | DataTransformer | Transformer | Avoids collision with ML transformer terminology |
+| `neut model` | `neut corral` | CLI nouns are generic English, not brand names |
+| Model (physics) | Model (ML/LLM) | "Model" in NeutronOS means physics input deck or ROM. LLMs are always "LLM" |
 
 ---
 

@@ -145,9 +145,46 @@ Full slash command design in [CLI Specification §Slash Commands](../tech-specs/
 
 ## Planned Commands
 
-These commands are designed but not yet implemented. Each will ship as an extension.
+These commands are designed but not yet implemented. Each will ship as an extension. CLI examples are drawn from their constituent PRDs — see each for the full command set.
+
+### Model Registry (`neut model`)
+
+Physics model registry (Model Corral) with version control, validation, and lineage tracking.
+
+```bash
+neut model search "TRIGA transient MCNP"
+neut model list --reactor=triga --facility=netl
+neut model init ./my-model --reactor=triga --code=mcnp
+neut model validate ./my-model
+neut model add ./my-model --message="Initial thermal model"
+neut model diff triga-netl-mcnp-v3 triga-netl-mcnp-v2
+neut model lineage triga-netl-rom2-v3
+neut model audit --since=2026-01-01
+```
+
+See [Model Corral PRD](prd-model-corral.md).
+
+### Digital Twin Hosting (`neut twin`)
+
+ROM execution, shadow runs, drift detection, and prediction validation.
+
+```bash
+neut twin run --model=triga-netl-vera-shadow-v4 --type=shadow
+neut twin shadow --facility=netl --date=2026-03-16
+neut twin infer --model=triga-netl-rom2 --input=state.json
+neut twin rom-train --source=triga-netl-vera-shadow-v4 --tier=ROM-2
+neut twin rom-deploy --model=triga-netl-rom2-v3 --target=wasm
+neut twin rom-validate --model=triga-netl-rom2-v3 --dataset=benchmark-2026
+neut twin compare --run=run-2026-03-17-001 --against=measured
+neut twin drift --model=triga-netl-rom2 --since=2026-01-01
+neut twin report --facility=netl --month=2026-03
+```
+
+See [Digital Twin Hosting PRD](prd-digital-twin-hosting.md).
 
 ### Reactor Operations (`neut log`)
+
+Console checks, shift handoffs, compliance exports.
 
 ```bash
 neut log query --last 1h
@@ -158,35 +195,9 @@ neut log export --format nrc --range 2026-01-01:2026-01-31 -o january.pdf
 
 See [Reactor Ops Log PRD](prd-reactor-ops-log.md).
 
-### Simulation Orchestration (`neut sim`)
-
-```bash
-neut sim run scenario.yaml --reactor netl-triga
-neut sim list
-neut sim status run-12345
-```
-
-### Surrogate Model Management (`neut model`)
-
-```bash
-neut model list --type surrogate
-neut model deploy triga-thermal-v2.wasm --capabilities wasi:clocks
-neut model validate triga-thermal-v2.wasm --test-suite thermal-benchmarks
-```
-
-See [Model Corral PRD](prd-model-corral.md).
-
-### Digital Twin (`neut twin`)
-
-```bash
-neut twin state netl-triga
-neut twin sync netl-triga
-neut twin predict netl-triga --horizon 100ms
-```
-
-See [Digital Twin Hosting PRD](prd-digital-twin-hosting.md).
-
 ### Data Platform (`neut data`)
+
+Lakehouse queries, pipeline orchestration, backfills.
 
 ```bash
 neut data query "SELECT * FROM gold.reactor_hourly_metrics LIMIT 10"
@@ -196,22 +207,68 @@ neut data backfill bronze.reactor_timeseries_raw --start 2026-01-01
 
 See [Data Platform PRD](prd-data-platform.md).
 
+### Connections (`neut connect`)
+
+Unified credential and endpoint management for external integrations.
+
+```bash
+neut connect teams --method browser
+neut connect --check
+neut connect --json
+```
+
+See [Connections PRD](prd-connections.md).
+
+### Agent Lifecycle (`neut agents`)
+
+Register, start, stop, and monitor background agent processes.
+
+```bash
+neut agents register-launchd          # macOS
+neut agents start eve
+neut agents stop mo
+neut agents status
+neut agents logs eve --since 1h
+```
+
+See [Agents PRD](prd-agents.md).
+
+### State Management (`neut state`)
+
+Inventory, backup, restore, and retention across all state locations.
+
+```bash
+neut state inventory --verbose
+neut state backup --encrypt --output backup.tar.gz
+neut state restore backup.tar.gz
+neut state retention --status
+neut state cleanup --dry-run
+```
+
+See [Agent State Management PRD](prd-agent-state-management.md).
+
+### Media Library (`neut media`)
+
+Cross-cutting media management — recordings, photos, documents.
+
+```bash
+neut media ingest photo.jpg --tag pool-clarity --link ops:2026-02-26-shift-A
+neut media search "beam port schedule" --type audio
+neut media tag <id> pool-clarity reactor-bay
+neut media link <id> experiment:UT-TRIGA-043
+```
+
+See [Media Library PRD](prd-media-library.md).
+
 ### Infrastructure (`neut infra`)
+
+Service health, logs, deployment orchestration.
 
 ```bash
 neut infra health
 neut infra logs neutron-gateway --since 1h
 neut infra deploy --env staging
 ```
-
-### Media Library (`neut media`)
-
-```bash
-neut media ingest photo.jpg --tag pool-clarity --link ops:2026-02-26-shift-A
-neut media search "beam port schedule" --type audio
-```
-
-See [Media Library PRD](prd-media-library.md).
 
 ---
 

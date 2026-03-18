@@ -92,7 +92,7 @@ neut <noun> <verb> [args] [--flags]
 | **RAG** | `neut rag` | [RAG Architecture](spec-rag-architecture.md) | ✅ Shipped | Three-tier corpus (community/org/personal), pgvector, EC-compliant |
 | **Database** | `neut db` | — | ✅ Shipped | PostgreSQL lifecycle (up/down/migrate/status) |
 | **Demo** | `neut demo` | — | ✅ Shipped | 9-act guided walkthrough ("Jay's Story") |
-| **Model Corral** | `neut corral` | [Model Corral Spec](spec-model-corral.md) | 📋 Spec'd | Physics model registry: MCNP/VERA/SAM decks, ROMs, validation datasets |
+| **Model Corral** | `neut model` | [Model Corral Spec](spec-model-corral.md) | 📋 Spec'd | Physics model registry: MCNP/VERA/SAM decks, ROMs, validation datasets |
 | **Digital Twin** | `neut twin` | [DT Hosting Spec](spec-digital-twin-architecture.md) | 📋 Spec'd | Run ROMs, Shadow simulations, validation, comparison |
 
 ### Utilities
@@ -214,7 +214,7 @@ Model Corral is NeutronOS's registry for physics simulation models and trained R
 | **ROM extension** | Training provenance, tier assignment | 📋 Spec'd |
 | **Git sync** | Optional bidirectional Git integration | 📋 Spec'd |
 | **Validation framework** | Schema, file, syntax checking | 📋 Spec'd |
-| **CLI** | `neut corral` (search, add, pull, validate) | 📋 Spec'd |
+| **CLI** | `neut model` (search, add, pull, validate) | 📋 Spec'd |
 | **Web UI** | Catalog browser, upload wizard, lineage graph | 📋 Spec'd |
 
 **Model types:** High-fidelity input decks (MCNP, VERA, SAM, Griffin), trained ROMs (WASM, ONNX), validation datasets, CoreForge configurations.

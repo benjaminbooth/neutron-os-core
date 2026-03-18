@@ -53,7 +53,7 @@ Model Corral provides:
 5. **Tiered Access** — Deployment-based access control (public → facility-only)
 6. **ROM Lineage** — Explicit linkage from ROMs to training data and physics models
 7. **Git-Aware Versioning** — When Git is available, NeutronOS versions align with Git commits/tags
-8. **Dual Access** — Full-featured CLI (`neut corral`) and web interface with equivalent capabilities
+8. **Dual Access** — Full-featured CLI (`neut model`) and web interface with equivalent capabilities
 9. **NeutronOS Integration** — RAG indexing, dbt tables, agent tools
 
 > **First Deliverable:** Before building advanced features, Phase 1 will **ingest, catalogue, and make available all known model inputs** across the program (TRIGA, MSR, MIT Loop, bubble loop, etc.). Immediate value through consolidation; tooling follows.
@@ -75,7 +75,7 @@ Model Corral uses NeutronOS as the **primary system of record**, with Git as an 
 │   ─────────────────────────────────────────────                              │
 │                                                                              │
 │   ┌───────────────────────────────┐     ┌───────────────────────────────┐   │
-│   │       neut corral (CLI)       │     │      Web Interface (React)    │   │
+│   │       neut model (CLI)       │     │      Web Interface (React)    │   │
 │   │                               │     │                               │   │
 │   │ • add, search, pull, validate │     │ • Browse, search, download    │   │
 │   │ • Scriptable, CI/CD friendly  │     │ • Drag-drop upload            │   │
@@ -559,7 +559,7 @@ NeutronOS Model Registry (PostgreSQL + Object Storage)
 
 ```mermaid
 flowchart TD
-    A[neut corral add] --> B{Access Tier?}
+    A[neut model add] --> B{Access Tier?}
     
     B -->|Public| C[Store in NeutronOS<br/>Cloud]
     B -->|Facility| D[Store in NeutronOS<br/>On-Prem]
@@ -591,51 +591,53 @@ flowchart TD
 
 Model Corral provides two equivalent access methods:
 
-| Capability | CLI (`neut corral`) | Web Interface |
+| Capability | CLI (`neut model`) | Web Interface |
 |------------|---------------------|---------------|
-| Search models | `neut corral search` | Search bar, faceted filters |
-| Browse catalog | `neut corral list` | Card/table view, pagination |
-| View details | `neut corral show` | Model detail page |
-| Add models | `neut corral add` | Drag-drop upload wizard |
-| Download | `neut corral pull` | Download button, ZIP export |
-| Compare versions | `neut corral diff` | Visual side-by-side diff |
-| View lineage | `neut corral lineage` | Interactive graph visualization |
-| Validate | `neut corral validate` | Real-time validation feedback |
-| Git sync | `neut corral sync` | Settings panel, sync status |
+| Search models | `neut model search` | Search bar, faceted filters |
+| Browse catalog | `neut model list` | Card/table view, pagination |
+| View details | `neut model show` | Model detail page |
+| Add models | `neut model add` | Drag-drop upload wizard |
+| Download | `neut model pull` | Download button, ZIP export |
+| Compare versions | `neut model diff` | Visual side-by-side diff |
+| View lineage | `neut model lineage` | Interactive graph visualization |
+| Validate | `neut model validate` | Real-time validation feedback |
+| Git sync | `neut model sync` | Settings panel, sync status |
+
+> **Note:** "Model Corral" is the brand name for this module. The CLI noun is `model` — consistent with the NeutronOS convention of using generic nouns (`log`, `twin`, `data`) rather than brand names.
 
 **Design Principle:** Every operation available in CLI is also available in web UI. The CLI is the primary interface for automation, CI/CD, and power users. The web interface enables discovery-oriented browsing, visual comparisons, and accessibility for non-CLI users.
 
-### CLI Commands (`neut corral`)
+### CLI Commands (`neut model`)
 
 ```bash
 # Discovery
-neut corral search "TRIGA transient MCNP"
-neut corral list --reactor=triga --facility=netl
-neut corral show triga-netl-mcnp-transient-v3
+neut model search "TRIGA transient MCNP"
+neut model list --reactor=triga --facility=netl
+neut model show triga-netl-mcnp-transient-v3
 
 # Contribution
-neut corral init ./my-model --reactor=msr --code=sam
-neut corral validate ./my-model
-neut corral add ./my-model --message="Initial MSR thermal model"
+neut model init ./my-model --reactor=msr --code=sam
+neut model validate ./my-model
+neut model add ./my-model --message="Initial MSR thermal model"
 
 # Download
-neut corral pull triga-netl-mcnp-transient-v3 ./workspace/
-neut corral export triga-netl-mcnp-transient-v3 --format=zip
+neut model pull triga-netl-mcnp-transient-v3 ./workspace/
+neut model export triga-netl-mcnp-transient-v3 --format=zip
 
 # Version comparison
-neut corral diff triga-netl-mcnp-transient-v3 triga-netl-mcnp-transient-v2
-neut corral lineage triga-netl-rom2-v3  # Show ROM → physics model chain
+neut model diff triga-netl-mcnp-transient-v3 triga-netl-mcnp-transient-v2
+neut model lineage triga-netl-rom2-v3  # Show ROM → physics model chain
 
 # ROM operations
-neut corral rom-link ./my-rom --training-source=triga-netl-vera-shadow-v4
-neut corral rom-validate ./my-rom --against=datasets/triga-2025-benchmark
+neut model rom-link ./my-rom --training-source=triga-netl-vera-shadow-v4
+neut model rom-validate ./my-rom --against=datasets/triga-2025-benchmark
 
 # Git integration
-neut corral sync --push   # Push to Git remote (if enabled)
-neut corral sync --pull   # Pull from Git remote (mirror mode)
+neut model sync --push   # Push to Git remote (if enabled)
+neut model sync --pull   # Pull from Git remote (mirror mode)
 
 # Administration
-neut corral audit --since=2026-01-01
+neut model audit --since=2026-01-01
 ```
 
 ### Web Interface
@@ -664,14 +666,14 @@ The Model Corral web interface is a React application integrated into the Neutro
 
 ```toml
 [extension]
-name = "corral"
+name = "model-corral"
 kind = "tool"
 version = "0.1.0"
 description = "Model registry for physics codes and ROMs"
 
 [[cli.commands]]
-noun = "corral"
-module = "neutron_os.extensions.builtins.corral.cli"
+noun = "model"
+module = "neutron_os.extensions.builtins.model_corral.cli"
 
 [[connections]]
 name = "github-models"
@@ -724,7 +726,7 @@ New dbt models for Model Corral:
 ```python
 CORRAL_TOOLS = [
     {
-        "name": "corral_search",
+        "name": "model_search",
         "description": "Search for models by reactor, code, or physics domain",
         "parameters": {
             "query": "string - natural language search query",
@@ -734,7 +736,7 @@ CORRAL_TOOLS = [
         "category": ActionCategory.READ
     },
     {
-        "name": "corral_get_model",
+        "name": "model_get_model",
         "description": "Retrieve model metadata and file paths",
         "parameters": {
             "model_id": "string - model identifier"
@@ -742,7 +744,7 @@ CORRAL_TOOLS = [
         "category": ActionCategory.READ
     },
     {
-        "name": "corral_validate",
+        "name": "model_validate",
         "description": "Validate a model directory against schema",
         "parameters": {
             "path": "string - path to model directory"
@@ -750,7 +752,7 @@ CORRAL_TOOLS = [
         "category": ActionCategory.READ
     },
     {
-        "name": "corral_compare_versions",
+        "name": "model_compare_versions",
         "description": "Compare two model versions",
         "parameters": {
             "model_id_a": "string",
@@ -781,19 +783,19 @@ Cole's CoreForge is a geometry-to-input-deck generation tool. Model Corral integ
 
 ### How It Works
 
-1. **Without CoreForge:** User creates model manually, runs `neut corral init`, fills in `model.yaml`
-2. **With CoreForge:** CoreForge generates input deck + `model.yaml` stub → user runs `neut corral add`
+1. **Without CoreForge:** User creates model manually, runs `neut model init`, fills in `model.yaml`
+2. **With CoreForge:** CoreForge generates input deck + `model.yaml` stub → user runs `neut model add`
 3. **Hybrid:** User creates model manually but references CoreForge config for geometry provenance
 
 ### CLI Support
 
 ```bash
 # Import from CoreForge output directory (if CoreForge is used)
-neut corral add ./coreforge-output/ --from-coreforge
+neut model add ./coreforge-output/ --from-coreforge
 
 # Manual creation (CoreForge not involved)
-neut corral init ./my-model --reactor=triga --code=mcnp
-neut corral add ./my-model
+neut model init ./my-model --reactor=triga --code=mcnp
+neut model add ./my-model
 ```
 
 The `--from-coreforge` flag tells Model Corral to look for CoreForge-specific metadata files, but the command works without them.
@@ -801,7 +803,7 @@ The `--from-coreforge` flag tells Model Corral to look for CoreForge-specific me
 ### Future Consideration
 
 If CoreForge adoption grows, Model Corral could add:
-- Direct CoreForge invocation (`neut corral generate --coreforge ...`)
+- Direct CoreForge invocation (`neut model generate --coreforge ...`)
 - CoreForge config validation
 - Geometry preview rendering
 
@@ -868,7 +870,7 @@ To accelerate the Phase 1 inventory, EVE (NeutronOS AI assistant) will include a
 
 ```bash
 # Point EVE at any directory
-neut corral scan ./legacy-models/
+neut model scan ./legacy-models/
 
 # EVE analyzes files and reports:
 #   Found 47 potential model inputs:
@@ -890,14 +892,14 @@ neut corral scan ./legacy-models/
 Leveraging Cole's CoreForge work, EVE suggests revisions that gradually ratchet toward canonical input formats:
 
 ```
-neut corral lint ./my-mcnp-deck.i
+neut model lint ./my-mcnp-deck.i
 
 # Output:
 #   ⚠️  Non-standard material card ordering (CoreForge recommends: isotopic → density → temp)
 #   ⚠️  Missing standard header block (author, date, reactor, purpose)
 #   ✓  Geometry structure follows canonical pattern
 #   
-#   Run `neut corral fmt ./my-mcnp-deck.i` to auto-fix where possible
+#   Run `neut model fmt ./my-mcnp-deck.i` to auto-fix where possible
 ```
 
 **Standardization Philosophy:**
@@ -946,8 +948,8 @@ These aren't rigid schemas — they're documented patterns that make models easi
 - [ ] **Build EVE directory scanner** — ML-powered recognition of MCNP, VERA, SAM, OpenMC inputs
 - [ ] **Inventory and ingest all existing models** — TRIGA (NETL), MSR, MIT Loop, bubble loop, etc.
 - [ ] Define `model.yaml` JSON Schema
-- [ ] Implement CLI scaffolding (`neut corral init/validate/add/list/scan/lint`)
-- [ ] Implement `neut corral lint` with CoreForge-aligned recommendations
+- [ ] Implement CLI scaffolding (`neut model init/validate/add/list/scan/lint`)
+- [ ] Implement `neut model lint` with CoreForge-aligned recommendations
 - [ ] Create Bronze dbt model for registry sync
 - [ ] Establish repository structure
 - [ ] Populate initial catalog with all known inputs (even if metadata is incomplete)
@@ -957,12 +959,12 @@ These aren't rigid schemas — they're documented patterns that make models easi
 - [ ] Implement search with RAG integration
 - [ ] Build Silver/Gold dbt models
 - [ ] Add physics code validators (MCNP, MPACT)
-- [ ] Launch CLI `neut corral search/show/pull`
+- [ ] Launch CLI `neut model search/show/pull`
 
 ### Phase 3: ROM Integration (Q3 2026)
 
 - [ ] Extend schema for ROM metadata
-- [ ] Implement `neut corral rom-link`
+- [ ] Implement `neut model rom-link`
 - [ ] Build lineage tracking tables
 - [ ] Integrate with Digital Twin Hosting PRD
 

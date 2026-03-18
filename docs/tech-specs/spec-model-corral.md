@@ -477,7 +477,7 @@ Submit to NeutronOS
 ### 10.2 Validation Workflow
 
 ```
-neut corral validate ./my-model
+neut model validate ./my-model
         │
         ▼
 ┌───────────────────┐
@@ -552,7 +552,7 @@ Model documentation indexed into `rag-models` corpus:
 ### 12.1 Command Structure
 
 ```
-neut corral <verb> [args] [--flags]
+neut model <verb> [args] [--flags]
 
 Verbs:
   search    Search for models
@@ -573,12 +573,12 @@ Verbs:
 
 | Command | Description |
 |---------|-------------|
-| `neut corral search "TRIGA transient"` | Full-text search |
-| `neut corral list --reactor=triga --code=mcnp` | Filtered listing |
-| `neut corral show triga-netl-mcnp-v3` | Model details |
-| `neut corral pull triga-netl-mcnp-v3 ./` | Download model |
-| `neut corral validate ./my-model` | Validate before submit |
-| `neut corral add ./my-model` | Submit to registry |
+| `neut model search "TRIGA transient"` | Full-text search |
+| `neut model list --reactor=triga --code=mcnp` | Filtered listing |
+| `neut model show triga-netl-mcnp-v3` | Model details |
+| `neut model pull triga-netl-mcnp-v3 ./` | Download model |
+| `neut model validate ./my-model` | Validate before submit |
+| `neut model add ./my-model` | Submit to registry |
 
 ---
 
