@@ -193,7 +193,7 @@ def main():
     docs_root = repo_root / "docs" / "prd"
     markdown_path = docs_root / f"{args.doc_id}.md"
     source_dir = docs_root / "_source"
-    state_path = repo_root / ".publisher-state.json"
+    state_path = repo_root / ".neut" / "publisher" / "publisher-state.json"
 
     print(f"🚀 Publish Workflow: {args.doc_id}")
     print()

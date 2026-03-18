@@ -1,6 +1,6 @@
 """Link registry — maps documents to their published URLs.
 
-Persists to .publisher-registry.json in repo root. The registry builds
+Persists to .neut/publisher/publisher-registry.json. The registry builds
 a link_map for GenerationProvider.rewrite_links() to use when
 rewriting cross-document references.
 

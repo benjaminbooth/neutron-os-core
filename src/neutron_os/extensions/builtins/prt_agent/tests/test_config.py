@@ -181,15 +181,16 @@ class TestStateDir:
     """Test state file placement inside vs outside git repos."""
 
     def test_state_dir_in_git_repo(self, tmp_path):
-        """In a git repo, state files go at repo root."""
+        """In a git repo, state files go under .neut/publisher/."""
         (tmp_path / ".git").mkdir()
         result = _state_dir(tmp_path)
-        assert result == tmp_path
+        assert result == tmp_path / ".neut" / "publisher"
+        assert result.exists()
 
     def test_state_dir_outside_git(self, tmp_path):
-        """Outside a git repo, state files go under .neut/."""
+        """Outside a git repo, state files go under .neut/publisher/."""
         result = _state_dir(tmp_path)
-        assert result == tmp_path / ".neut"
+        assert result == tmp_path / ".neut" / "publisher"
         assert result.exists()
 
     def test_has_git_true(self, tmp_path):

@@ -1,6 +1,6 @@
 """Document state persistence — tracks lifecycle status for all documents.
 
-Persists to .publisher-state.json in repo root. Each document's state includes
+Persists to .neut/publisher/publisher-state.json. Each document's state includes
 its lifecycle position, publication records, and pending feedback.
 
 Uses LockedJsonFile for safe concurrent access across agents.

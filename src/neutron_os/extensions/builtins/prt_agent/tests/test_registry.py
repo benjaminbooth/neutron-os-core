@@ -8,7 +8,7 @@ from neutron_os.extensions.builtins.prt_agent.registry import LinkRegistry
 
 @pytest.fixture
 def registry(tmp_path):
-    return LinkRegistry(tmp_path / ".publisher-registry.json")
+    return LinkRegistry(tmp_path / "publisher-registry.json")
 
 
 class TestLinkRegistry:
@@ -31,7 +31,7 @@ class TestLinkRegistry:
 
     def test_persistence(self, tmp_path):
         """Registry persists to disk and can be reloaded."""
-        path = tmp_path / ".publisher-registry.json"
+        path = tmp_path / "publisher-registry.json"
 
         reg1 = LinkRegistry(path)
         reg1.update(LinkEntry(

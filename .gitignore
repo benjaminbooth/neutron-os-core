@@ -141,10 +141,7 @@ speaker_profiles.json
 
 # DocFlow state files (inside .neut/)
 # .neut/ is already gitignored above; workflow.yaml.example is force-tracked
-.publisher-registry.json
-.publisher-registry.json.lock
-.publisher-state.json
-.publisher-state.json.lock
+# Legacy root-level publisher files (now under .neut/publisher/)
 .publisher.yaml
 .publisher.json
 

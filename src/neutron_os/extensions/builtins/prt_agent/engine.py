@@ -46,8 +46,8 @@ class PublisherEngine:
 
         # State and registry paths — use .neut/ subdir when outside a git repo
         state_root = _state_dir(config.repo_root)
-        self.registry = LinkRegistry(state_root / ".publisher-registry.json")
-        self.state_store = StateStore(state_root / ".publisher-state.json")
+        self.registry = LinkRegistry(state_root / "publisher-registry.json")
+        self.state_store = StateStore(state_root / "publisher-state.json")
 
     def _create_generation_provider(self) -> GenerationProvider:
         """Create the configured generation provider."""

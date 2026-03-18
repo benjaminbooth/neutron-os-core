@@ -64,10 +64,10 @@ class TestEngineWithoutGit:
 
         no_git_engine.publish(source, storage_override="local")
 
-        neut_dir = tmp_path / ".neut"
-        assert neut_dir.exists()
-        assert (neut_dir / ".publisher-state.json").exists()
-        assert (neut_dir / ".publisher-registry.json").exists()
+        pub_dir = tmp_path / ".neut" / "publisher"
+        assert pub_dir.exists()
+        assert (pub_dir / "publisher-state.json").exists()
+        assert (pub_dir / "publisher-registry.json").exists()
 
     def test_generate_works_without_git(self, no_git_engine, tmp_path):
         """Local generation works without git."""

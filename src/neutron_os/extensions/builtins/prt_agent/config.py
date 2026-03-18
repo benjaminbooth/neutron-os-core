@@ -51,16 +51,13 @@ def _has_git(root: Path) -> bool:
 
 
 def _state_dir(root: Path) -> Path:
-    """Return the directory for state files.
+    """Return the directory for publisher state files.
 
-    Inside a git repo: state files live at repo root (existing behavior).
-    Outside a git repo: state files live under .neut/ subdirectory.
+    Always uses .neut/publisher/ to avoid polluting the project root.
     """
-    if _has_git(root):
-        return root
-    neut_dir = root / ".neut"
-    neut_dir.mkdir(parents=True, exist_ok=True)
-    return neut_dir
+    state_dir = root / ".neut" / "publisher"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    return state_dir
 
 
 PROJECT_ROOT = _find_project_root()

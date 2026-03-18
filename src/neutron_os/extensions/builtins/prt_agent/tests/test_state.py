@@ -7,7 +7,7 @@ from neutron_os.extensions.builtins.prt_agent.state import StateStore
 
 @pytest.fixture
 def store(tmp_path):
-    return StateStore(tmp_path / ".publisher-state.json")
+    return StateStore(tmp_path / "publisher-state.json")
 
 
 class TestStateStore:
@@ -39,7 +39,7 @@ class TestStateStore:
         assert store.get_by_path("nonexistent.md") is None
 
     def test_persistence(self, tmp_path):
-        path = tmp_path / ".publisher-state.json"
+        path = tmp_path / "publisher-state.json"
 
         s1 = StateStore(path)
         s1.update(DocumentState(doc_id="doc1", source_path="docs/doc1.md", status="published"))
@@ -78,7 +78,7 @@ class TestStateStore:
 
     def test_complex_state_persistence(self, tmp_path):
         """State with publication records persists correctly."""
-        path = tmp_path / ".publisher-state.json"
+        path = tmp_path / "publisher-state.json"
         store = StateStore(path)
 
         pub = PublicationRecord(
