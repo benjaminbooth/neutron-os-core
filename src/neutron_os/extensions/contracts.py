@@ -60,11 +60,65 @@ class Skill:
 
 @dataclass
 class ConnectionDef:
-    """An external connection declared by an extension."""
+    """An external connection declared by an extension via [[connections]] in TOML.
+
+    Connections are the unit of external integration in NeutronOS. The platform
+    handles credential resolution, health checking, installation prompts,
+    service lifecycle, tab completion, and status display. Extension builders
+    declare connections; the platform does the rest.
+
+    Attributes:
+        name: Unique identifier (e.g., "github", "ollama"). Used in
+            ``get_credential(name)``, ``neut connect <name>``, tab completion.
+        display_name: Human-readable label for UI (e.g., "GitHub", "Ollama").
+        kind: Integration pattern — determines setup flow and health check behavior.
+            "api" (REST/GraphQL), "browser" (Playwright sessions), "mcp" (Model
+            Context Protocol servers), "a2a" (agent-to-agent federation), "cli"
+            (local binary on PATH).
+        category: Logical grouping for display ordering in ``neut connect`` and
+            ``neut status``. Common values: "llm", "code", "data", "storage",
+            "tools", "communication".
+        endpoint: Service address. URL for APIs, host:port for TCP, binary name
+            for CLI tools (e.g., "ollama", "pandoc").
+        transport: Wire protocol (reserved for future use). E.g., "https", "grpc",
+            "stdio", "playwright".
+        credential_type: What kind of credential this connection uses.
+            "api_key" (default), "none" (CLI tools), "browser_session",
+            "oauth_token", "mtls".
+        credential_env_var: Environment variable name for the credential
+            (e.g., "GITHUB_TOKEN"). First source in the resolution chain.
+        credential_file: Path relative to ``~/.neut/credentials/`` for file-based
+            credential storage (e.g., "teams/state.json").
+        required: If True, ``neut status`` warns when this connection is missing.
+        health_check: How to verify the connection is working.
+            "http_get" (GET health_endpoint, check 200), "tcp_connect" (TCP to
+            endpoint, 1s timeout), "cli_version" (run binary --version), "custom"
+            (registered Python callable).
+        health_endpoint: Target for health check if different from endpoint
+            (e.g., "https://api.github.com" when endpoint is the base URL).
+        auto_refresh: Reserved. Whether credentials can be refreshed automatically
+            (e.g., OAuth token refresh).
+        docs_url: URL where users can get credentials or install instructions.
+            Shown in ``neut connect <name>`` setup flow.
+        post_setup_module: Dotted Python module path for one-time setup hook.
+            Called interactively by ``neut connect <name>`` after installation.
+        post_setup_function: Function name in post_setup_module. Signature:
+            ``() -> int`` (0 = success, 1 = failure). May prompt the user.
+        ensure_module: Dotted Python module path for auto-start hook.
+            Called silently by ``ensure_available(name)`` before first use.
+        ensure_function: Function name in ensure_module. Signature:
+            ``() -> bool`` (True = available). Must never prompt or print.
+        install_commands: Platform-specific install commands. Keys are platform
+            names ("macos", "linux", "windows", "default"). Values are shell
+            commands (e.g., "brew install ollama").
+        capabilities: What operations this connection supports. List of strings
+            from: "read", "write", "admin", "stream". Shown in status output
+            and used by agents to determine what actions are available.
+    """
 
     name: str
     display_name: str = ""
-    kind: str = "api"  # "api" | "browser" | "mcp" | "a2a" | "cli"
+    kind: str = "api"
     category: str = ""
     endpoint: str = ""
     transport: str = ""
@@ -76,12 +130,12 @@ class ConnectionDef:
     health_endpoint: str = ""
     auto_refresh: bool = False
     docs_url: str = ""
-    # Extensible lifecycle hooks
-    post_setup_module: str = ""  # dotted module path for one-time setup
-    post_setup_function: str = ""  # function name for one-time setup
-    ensure_module: str = ""  # dotted module path for auto-start
-    ensure_function: str = ""  # function name: () -> bool (silent, no prompts)
-    install_commands: dict[str, str] = field(default_factory=dict)  # platform → command
+    post_setup_module: str = ""
+    post_setup_function: str = ""
+    ensure_module: str = ""
+    ensure_function: str = ""
+    install_commands: dict[str, str] = field(default_factory=dict)
+    capabilities: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -252,6 +306,7 @@ def parse_manifest(manifest_path: Path) -> Extension:
                     ensure_module=conn_data.get("ensure_module", ""),
                     ensure_function=conn_data.get("ensure_function", ""),
                     install_commands=conn_data.get("install_commands", {}),
+                    capabilities=conn_data.get("capabilities", []),
                 )
             )
 

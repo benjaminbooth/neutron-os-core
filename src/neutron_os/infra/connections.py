@@ -48,6 +48,39 @@ class ConnectionHealth:
     status: str  # HealthStatus value
     latency_ms: float = 0.0
     message: str = ""
+    throttled: bool = False
+    rate_limit_remaining: int = -1  # -1 = unknown
+    capabilities: list[str] = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        if self.capabilities is None:
+            self.capabilities = []
+
+
+@dataclass
+class ConnectionUsage:
+    """Usage stats for a connection since last reset."""
+    requests: int = 0
+    errors: int = 0
+    throttled_count: int = 0
+    last_used: str = ""  # ISO timestamp
+    last_error: str = ""
+    total_latency_ms: float = 0.0
+
+    @property
+    def avg_latency_ms(self) -> float:
+        return self.total_latency_ms / self.requests if self.requests else 0.0
+
+    def record(self, latency_ms: float, error: str = "", throttled: bool = False) -> None:
+        from datetime import datetime, timezone
+        self.requests += 1
+        self.total_latency_ms += latency_ms
+        self.last_used = datetime.now(timezone.utc).isoformat()
+        if error:
+            self.errors += 1
+            self.last_error = error
+        if throttled:
+            self.throttled_count += 1
 
 
 @dataclass
@@ -85,6 +118,9 @@ class Connection:
     extension: str = ""
     docs_url: str = ""
 
+    # Capabilities
+    capabilities: list[str] = None  # type: ignore[assignment]  # ["read", "write", "admin", "stream"]
+
     # Extensible lifecycle hooks
     post_setup_module: str = ""
     post_setup_function: str = ""
@@ -93,6 +129,8 @@ class Connection:
     install_commands: dict[str, str] = None  # type: ignore[assignment]
 
     def __post_init__(self):
+        if self.capabilities is None:
+            self.capabilities = []
         if self.install_commands is None:
             self.install_commands = {}
 
@@ -123,6 +161,7 @@ class Connection:
             docs_url=cdef.docs_url,
             post_setup_module=cdef.post_setup_module,
             post_setup_function=cdef.post_setup_function,
+            capabilities=list(cdef.capabilities) if cdef.capabilities else [],
             ensure_module=cdef.ensure_module,
             ensure_function=cdef.ensure_function,
             install_commands=dict(cdef.install_commands) if cdef.install_commands else {},
@@ -522,6 +561,40 @@ def reset_registry() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Usage tracking (per-connection stats)
+# ---------------------------------------------------------------------------
+
+_usage_stats: dict[str, ConnectionUsage] = {}
+
+
+def get_usage(name: str) -> ConnectionUsage:
+    """Get usage stats for a connection (creates if first access)."""
+    if name not in _usage_stats:
+        _usage_stats[name] = ConnectionUsage()
+    return _usage_stats[name]
+
+
+def record_usage(
+    name: str,
+    latency_ms: float,
+    error: str = "",
+    throttled: bool = False,
+) -> None:
+    """Record a usage event for a connection."""
+    get_usage(name).record(latency_ms, error=error, throttled=throttled)
+
+
+def all_usage() -> dict[str, ConnectionUsage]:
+    """Get usage stats for all connections that have been used."""
+    return dict(_usage_stats)
+
+
+def reset_usage() -> None:
+    """Reset all usage stats."""
+    _usage_stats.clear()
+
+
+# ---------------------------------------------------------------------------
 # Extensible setup hooks
 # ---------------------------------------------------------------------------
 
@@ -626,25 +699,30 @@ def format_status_section(*, registry: Optional[ConnectionRegistry] = None) -> s
 
 
 def _connection_status_info(conn: Connection, registry: ConnectionRegistry) -> dict:
-    """Get status info for a single connection."""
+    """Get status info for a single connection including capabilities and usage."""
+    caps = conn.capabilities or []
+    caps_str = ",".join(caps) if caps else ""
+    usage = _usage_stats.get(conn.name)
+
+    base = {
+        "name": conn.name,
+        "display_name": conn.display_name,
+        "kind": conn.kind,
+        "category": conn.category,
+        "capabilities": caps,
+    }
+
     if conn.kind == "cli":
         tool = get_cli_tool(conn.name, registry=registry)
         if tool:
-            return {
-                "name": conn.name,
-                "display_name": conn.display_name,
-                "status": "healthy",
-                "message": f"v{tool.version}" if tool.version else "installed",
-                "kind": conn.kind,
-                "category": conn.category,
-            }
+            msg = f"v{tool.version}" if tool.version else "installed"
+            if caps_str:
+                msg += f" [{caps_str}]"
+            return {**base, "status": "healthy", "message": msg}
         return {
-            "name": conn.name,
-            "display_name": conn.display_name,
+            **base,
             "status": "missing",
             "message": f"Not found — {conn.docs_url}" if conn.docs_url else "Not found",
-            "kind": conn.kind,
-            "category": conn.category,
         }
 
     has_cred = has_credential(conn.name, registry=registry)
@@ -652,15 +730,16 @@ def _connection_status_info(conn: Connection, registry: ConnectionRegistry) -> d
         status, message = "healthy", "No credentials needed"
     elif has_cred:
         status, message = "configured", "Credential set"
+        if caps_str:
+            message += f" [{caps_str}]"
     else:
         tag = "required" if conn.required else "optional"
         status, message = "missing", f"Not configured ({tag})"
 
-    return {
-        "name": conn.name,
-        "display_name": conn.display_name,
-        "status": status,
-        "message": message,
-        "kind": conn.kind,
-        "category": conn.category,
-    }
+    # Append throttle/usage info if tracked
+    if usage and usage.throttled_count > 0:
+        message += f" \u26a0 throttled {usage.throttled_count}x"
+    if usage and usage.requests > 0:
+        message += f" ({usage.requests} calls, {usage.avg_latency_ms:.0f}ms avg)"
+
+    return {**base, "status": status, "message": message}

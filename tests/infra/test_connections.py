@@ -541,6 +541,60 @@ class TestEnsureAvailable:
         assert ensure_available("nonexistent", registry=registry) is False
 
 
+class TestConnectionUsage:
+    """Usage tracking for connections."""
+
+    def test_record_and_retrieve(self):
+        from neutron_os.infra.connections import (
+            ConnectionUsage, record_usage, get_usage, reset_usage,
+        )
+
+        reset_usage()
+        record_usage("test_svc", 50.0)
+        record_usage("test_svc", 100.0)
+        record_usage("test_svc", 30.0, throttled=True)
+
+        usage = get_usage("test_svc")
+        assert usage.requests == 3
+        assert usage.throttled_count == 1
+        assert usage.avg_latency_ms == pytest.approx(60.0)
+        assert usage.last_used != ""
+        reset_usage()
+
+    def test_record_error(self):
+        from neutron_os.infra.connections import record_usage, get_usage, reset_usage
+
+        reset_usage()
+        record_usage("err_svc", 10.0, error="timeout")
+
+        usage = get_usage("err_svc")
+        assert usage.errors == 1
+        assert usage.last_error == "timeout"
+        reset_usage()
+
+    def test_capabilities_in_status(self):
+        from neutron_os.infra.connections import (
+            Connection, ConnectionRegistry, _connection_status_info,
+        )
+
+        registry = ConnectionRegistry()
+        registry.register(Connection(
+            name="cap_svc",
+            display_name="Cap Test",
+            kind="api",
+            credential_env_var="CAP_TEST_TOKEN_X",
+            category="test",
+            capabilities=["read", "write"],
+        ))
+
+        with mock.patch.dict(os.environ, {"CAP_TEST_TOKEN_X": "secret"}):
+            info = _connection_status_info(
+                registry.get("cap_svc"), registry,
+            )
+            assert "read,write" in info["message"]
+            assert info["capabilities"] == ["read", "write"]
+
+
 class TestCredentialStorage:
     """store_credential() writes files with 0600 permissions."""
 

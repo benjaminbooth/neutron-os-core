@@ -23,6 +23,7 @@ display_name = "Anthropic Claude"
 kind = "api"
 credential_env_var = "ANTHROPIC_API_KEY"
 category = "llm"
+capabilities = ["read", "write"]
 required = true
 docs_url = "https://console.anthropic.com/settings/keys"
 

@@ -18,5 +18,6 @@ endpoint = "localhost:5432"
 credential_env_var = "NEUT_DB_URL"
 health_check = "tcp_connect"
 category = "data"
+capabilities = ["read", "write"]
 ensure_module = "neutron_os.extensions.builtins.rag.connections"
 ensure_function = "ensure_postgresql_running"

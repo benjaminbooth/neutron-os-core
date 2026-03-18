@@ -122,6 +122,17 @@ module = "providers.pptx_generation"
 name = "reactor_log"
 module = "extractors.reactor_log"
 file_patterns = ["*.rlog", "*.csv"]
+
+# External connections — uncomment and customize
+# [[connections]]
+# name = "my_api"
+# display_name = "My API"
+# kind = "api"
+# credential_env_var = "MY_API_TOKEN"
+# category = "data"
+# health_check = "http_get"
+# health_endpoint = "https://api.example.com/health"
+# docs_url = "https://example.com/docs/api-keys"
 '''
 
 

@@ -39,6 +39,7 @@ credential_env_var = "GITHUB_TOKEN"
 health_check = "http_get"
 health_endpoint = "https://api.github.com"
 category = "code"
+capabilities = ["read", "write"]
 docs_url = "https://github.com/settings/tokens"
 
 [[connections]]
@@ -47,6 +48,7 @@ display_name = "GitLab (TACC)"
 kind = "api"
 credential_env_var = "GITLAB_TOKEN"
 category = "code"
+capabilities = ["read", "write"]
 docs_url = "https://rsicc-gitlab.tacc.utexas.edu/-/user_settings/personal_access_tokens"
 
 [[connections]]
@@ -55,4 +57,5 @@ display_name = "OpenAI (Embeddings)"
 kind = "api"
 credential_env_var = "OPENAI_API_KEY"
 category = "llm"
+capabilities = ["read"]
 docs_url = "https://platform.openai.com/api-keys"
