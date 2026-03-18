@@ -50,8 +50,8 @@ NeutronOS is a **modular digital platform for nuclear facilities**. It replaces 
 
 | Module | Purpose | Details |
 |--------|---------|---------|
-| Model Corral | Physics model registry, ROM versioning, validation datasets | *(PRD in progress)* |
-| Digital Twin Hosting | ROM execution, shadow runs, prediction validation | *(PRD in progress)* |
+| [Model Corral](prd-model-corral.md) | Physics model registry, ROM versioning, validation datasets | [Tech spec](../tech-specs/spec-model-corral.md) |
+| [Digital Twin Hosting](prd-digital-twin-hosting.md) | ROM execution, shadow runs, prediction validation | [Tech spec](../tech-specs/spec-digital-twin-architecture.md) |
 
 ### Intelligence Platform
 
