@@ -44,3 +44,17 @@ docs_url = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps"
 [[connections.auth_methods]]
 method = "manual"
 description = "Manual file drop (no auth)"
+
+[[connections]]
+name = "mmdc"
+display_name = "Mermaid CLI (diagrams)"
+kind = "cli"
+endpoint = "mmdc"
+credential_type = "none"
+health_check = "cli_version"
+category = "tools"
+docs_url = "https://github.com/mermaid-js/mermaid-cli"
+
+[connections.install_commands]
+macos = "npm install -g @mermaid-js/mermaid-cli"
+linux = "npm install -g @mermaid-js/mermaid-cli"

@@ -1,7 +1,11 @@
 """Render Mermaid diagrams in markdown to PNG images before pandoc conversion.
 
 Pre-processes a .md file: finds ```mermaid``` code blocks, renders them
-via mermaid.ink API, replaces with image references.
+locally via mmdc (mermaid-cli) or falls back to mermaid.ink API.
+
+Provider order:
+1. Local mmdc (mermaid-cli) — no network, no rate limits, best quality
+2. mermaid.ink API — fallback if mmdc not installed
 
 Usage:
     from neutron_os.extensions.builtins.prt_agent.mermaid_renderer import render_mermaid_blocks
@@ -16,6 +20,9 @@ import hashlib
 import json
 import logging
 import re
+import shutil
+import subprocess
+import tempfile
 import urllib.error
 import urllib.request
 import zlib
@@ -28,7 +35,7 @@ _CACHE_DIR_NAME = "mermaid_cache"
 
 
 def _render_diagram(code: str, output_dir: Path, index: int) -> Path | None:
-    """Render a single mermaid diagram to PNG via mermaid.ink."""
+    """Render a single mermaid diagram to PNG. Prefers local mmdc over mermaid.ink."""
     # Use content hash for caching
     code_hash = hashlib.md5(code.encode()).hexdigest()[:8]
     cache_dir = output_dir / _CACHE_DIR_NAME
@@ -38,14 +45,18 @@ def _render_diagram(code: str, output_dir: Path, index: int) -> Path | None:
     if cached.exists() and cached.stat().st_size > 100:
         return cached
 
-    # Encode: JSON → zlib compress → base64url (no padding)
-    # Use wider rendering for complex diagrams (gantt, large flowcharts)
+    # Clean up common syntax issues
+    code = _sanitize_mermaid(code)
+
+    # Try local mmdc first (no network, no rate limits)
+    result = _render_with_mmdc(code, cached)
+    if result:
+        return result
+
+    # Fall back to mermaid.ink API
     width = 1200
     if "gantt" in code.lower() or code.count("subgraph") > 2 or code.count("-->") > 15:
         width = 1800
-
-    # Clean up common syntax issues that cause mermaid.ink 400 errors
-    code = _sanitize_mermaid(code)
 
     payload = json.dumps({
         "code": code,
@@ -84,6 +95,44 @@ def _render_diagram(code: str, output_dir: Path, index: int) -> Path | None:
     except Exception as e:
         first_line = code.split("\n")[0][:60]
         logger.warning("Mermaid render failed for diagram %d (%s...): %s", index, first_line, e)
+        return None
+
+
+def _render_with_mmdc(code: str, output_path: Path) -> Path | None:
+    """Render a Mermaid diagram using local mmdc (mermaid-cli).
+
+    Returns the output path on success, None if mmdc is not installed
+    or rendering fails.
+    """
+    mmdc = shutil.which("mmdc")
+    if not mmdc:
+        return None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".mmd", delete=False, encoding="utf-8",
+        ) as f:
+            f.write(code)
+            input_path = Path(f.name)
+
+        result = subprocess.run(
+            [mmdc, "-i", str(input_path), "-o", str(output_path),
+             "-b", "white", "-s", "2"],
+            capture_output=True, text=True, timeout=30,
+        )
+
+        input_path.unlink(missing_ok=True)
+
+        if result.returncode == 0 and output_path.exists() and output_path.stat().st_size > 100:
+            logger.info("Rendered diagram via mmdc → %s", output_path.name)
+            return output_path
+
+        if result.stderr:
+            logger.debug("mmdc stderr: %s", result.stderr[:200])
+        return None
+
+    except Exception as e:
+        logger.debug("mmdc render failed: %s", e)
         return None
 
 
