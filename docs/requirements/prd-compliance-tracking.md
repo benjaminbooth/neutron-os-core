@@ -200,7 +200,6 @@ stateDiagram-v2
         can cover multiple
         Routine Experiments
     end note
-    linkStyle default stroke:#777777,stroke-width:3px
 ```
 
 ---
@@ -460,7 +459,7 @@ flowchart TD
     end
     
     subgraph Degraded["⚠️ Degraded Mode"]
-        D1[Batch processing (hourly)]
+        D1["Batch processing (hourly)"]
         D2[Email alerts only]
         D3[Static reports]
     end
