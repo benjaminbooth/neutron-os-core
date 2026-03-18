@@ -188,6 +188,133 @@ def _setup_cli_tool(conn: Connection, registry: ConnectionRegistry) -> int:
     return 0
 
 
+def _setup_with_auth_method_choice(conn: Connection, registry: ConnectionRegistry) -> int:
+    """Present auth method options and execute the chosen one."""
+    print("  Choose auth method:\n")
+    for i, method in enumerate(conn.auth_methods, 1):
+        desc = method.get("description", method.get("method", "Unknown"))
+        print(f"    {i}. {desc}")
+    print()
+
+    try:
+        choice = input("  > ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print("\n  Skipped")
+        return 0
+
+    try:
+        idx = int(choice) - 1
+        if idx < 0 or idx >= len(conn.auth_methods):
+            print("  Invalid choice")
+            return 1
+    except ValueError:
+        print("  Invalid choice")
+        return 1
+
+    selected = conn.auth_methods[idx]
+    method_type = selected.get("method", "")
+
+    if method_type == "browser":
+        return _setup_browser_auth(conn, selected)
+    elif method_type in ("graph_api", "api_key"):
+        # Show credential prompt with method-specific env var
+        env_var = selected.get("credential_env_var", conn.credential_env_var)
+        docs = selected.get("docs_url", conn.docs_url)
+        if docs:
+            print(f"\n  Get your key: {docs}\n")
+        try:
+            value = input("  Paste key (Enter to skip): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Skipped")
+            return 0
+        if not value:
+            if env_var:
+                print(f"  Or set: export {env_var}=<key>")
+            print()
+            return 0
+        store_credential(conn.name, value)
+        print("  \u2713 Saved")
+        print()
+        return 0
+    elif method_type == "manual":
+        print("\n  Place files manually in the expected location.")
+        if conn.credential_file:
+            print(f"  Path: ~/.neut/credentials/{conn.credential_file}")
+        print()
+        return 0
+    else:
+        print(f"\n  Unknown auth method: {method_type}")
+        return 1
+
+
+def _setup_browser_auth(conn: Connection, method: dict) -> int:
+    """Launch browser for authentication (Playwright)."""
+    from pathlib import Path
+
+    print("\n  Launching browser for login...")
+    print("  Complete login + MFA in the browser window.\n")
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print("  Playwright not installed. Installing...")
+        import subprocess
+        try:
+            subprocess.run(
+                ["pip", "install", "playwright"],
+                capture_output=True, check=True, timeout=60,
+            )
+            subprocess.run(
+                ["playwright", "install", "chromium"],
+                capture_output=True, check=True, timeout=120,
+            )
+            from playwright.sync_api import sync_playwright
+        except Exception as e:
+            print(f"  \u2717 Could not install Playwright: {e}")
+            print("  Run manually: pip install playwright && playwright install chromium")
+            return 1
+
+    # Launch browser to the connection's endpoint
+    endpoint = method.get("endpoint", conn.endpoint)
+    cred_dir = Path.home() / ".neut" / "credentials" / conn.name
+    cred_dir.mkdir(parents=True, exist_ok=True)
+    state_path = cred_dir / "state.json"
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=False)
+            context = browser.new_context()
+
+            if state_path.exists():
+                # Resume from saved session
+                context = browser.new_context(storage_state=str(state_path))
+
+            page = context.new_page()
+            page.goto(endpoint)
+
+            print("  Waiting for you to complete login...")
+            print("  (Close the browser window when done)\n")
+
+            try:
+                page.wait_for_timeout(300_000)  # 5 min max
+            except Exception:
+                pass  # Browser closed by user
+
+            # Save session state
+            context.storage_state(path=str(state_path))
+            state_path.chmod(0o600)
+            browser.close()
+
+        print(f"  \u2713 Session saved to ~/.neut/credentials/{conn.name}/state.json")
+        print()
+        return 0
+
+    except Exception as e:
+        print(f"  \u2717 Browser auth failed: {e}")
+        print()
+        return 1
+
+
 def _setup_api_credential(conn: Connection, registry: ConnectionRegistry) -> int:
     """Set up an API credential — check, prompt, save, verify."""
     current = get_credential(conn.name, registry=registry)
@@ -205,6 +332,10 @@ def _setup_api_credential(conn: Connection, registry: ConnectionRegistry) -> int
                 print(f"  \u26a0 Health check: {health.message}")
         print()
         return 0
+
+    # Multiple auth methods? Let user choose
+    if conn.auth_methods and len(conn.auth_methods) > 1:
+        return _setup_with_auth_method_choice(conn, registry)
 
     # No credential — prompt for one
     if conn.docs_url:

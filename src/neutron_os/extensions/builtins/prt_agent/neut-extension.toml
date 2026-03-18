@@ -20,18 +20,27 @@ module = "neutron_os.extensions.builtins.prt_agent.cli"
 description = "Document publishing lifecycle (alias for pub)"
 
 [[connections]]
-name = "ms_graph"
-display_name = "Microsoft 365 (Graph API)"
+name = "onedrive"
+display_name = "Microsoft OneDrive"
 kind = "api"
-credential_env_var = "MS_GRAPH_CLIENT_ID"
-category = "storage"
-docs_url = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps"
-
-[[connections]]
-name = "onedrive_browser"
-display_name = "OneDrive (Browser)"
-kind = "browser"
 endpoint = "https://onedrive.live.com"
-credential_type = "browser_session"
+credential_env_var = "MS_GRAPH_CLIENT_ID"
 credential_file = "onedrive/state.json"
 category = "storage"
+capabilities = ["read", "write"]
+docs_url = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps"
+
+[[connections.auth_methods]]
+method = "browser"
+description = "Browser login (recommended — no API keys needed)"
+endpoint = "https://onedrive.live.com"
+
+[[connections.auth_methods]]
+method = "graph_api"
+credential_env_var = "MS_GRAPH_CLIENT_ID"
+description = "MS Graph API (requires Azure developer credentials)"
+docs_url = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps"
+
+[[connections.auth_methods]]
+method = "manual"
+description = "Manual file drop (no auth)"

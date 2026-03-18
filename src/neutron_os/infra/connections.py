@@ -122,8 +122,11 @@ class Connection:
     capabilities: list[str] = None  # type: ignore[assignment]  # ["read", "write", "admin", "stream"]
 
     # VPN guidance (shown on connection failure)
-    vpn_name: str = ""  # e.g., "UT VPN"
-    vpn_connect_guide: str = ""  # e.g., "Open Cisco AnyConnect → connect to vpn.utexas.edu"
+    vpn_name: str = ""
+    vpn_connect_guide: str = ""
+
+    # Auth method negotiation (Phase 2)
+    auth_methods: list[dict[str, str]] = None  # type: ignore[assignment]
 
     # Extensible lifecycle hooks
     post_setup_module: str = ""
@@ -135,6 +138,8 @@ class Connection:
     def __post_init__(self):
         if self.capabilities is None:
             self.capabilities = []
+        if self.auth_methods is None:
+            self.auth_methods = []
         if self.install_commands is None:
             self.install_commands = {}
 
@@ -168,6 +173,7 @@ class Connection:
             capabilities=list(cdef.capabilities) if cdef.capabilities else [],
             vpn_name=cdef.vpn_name,
             vpn_connect_guide=cdef.vpn_connect_guide,
+            auth_methods=list(cdef.auth_methods) if cdef.auth_methods else [],
             ensure_module=cdef.ensure_module,
             ensure_function=cdef.ensure_function,
             install_commands=dict(cdef.install_commands) if cdef.install_commands else {},

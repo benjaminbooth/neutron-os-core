@@ -138,6 +138,7 @@ class ConnectionDef:
     capabilities: list[str] = field(default_factory=list)
     vpn_name: str = ""
     vpn_connect_guide: str = ""
+    auth_methods: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -311,6 +312,7 @@ def parse_manifest(manifest_path: Path) -> Extension:
                     capabilities=conn_data.get("capabilities", []),
                     vpn_name=conn_data.get("vpn_name", ""),
                     vpn_connect_guide=conn_data.get("vpn_connect_guide", ""),
+                    auth_methods=conn_data.get("auth_methods", []),
                 )
             )
 
