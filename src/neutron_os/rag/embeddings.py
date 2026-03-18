@@ -50,6 +50,9 @@ def embed_texts(
         "Content-Type": "application/json",
     }
 
+    from neutron_os.infra.rate_limiter import get_limiter
+
+    limiter = get_limiter("openai")
     all_embeddings: list[list[float]] = []
 
     for start in range(0, len(texts), _BATCH_SIZE):
@@ -57,7 +60,13 @@ def embed_texts(
         payload = {"input": batch, "model": model}
 
         for attempt in range(_MAX_RETRIES):
+            # Adaptive pacing — wait if approaching rate limit
+            limiter.wait()
+
             resp = requests.post(_API_URL, headers=headers, json=payload, timeout=60)
+
+            # Learn actual rate limits from response headers
+            limiter.update(resp)
 
             if resp.status_code == 429:
                 wait = _BACKOFF_BASE * (2**attempt)

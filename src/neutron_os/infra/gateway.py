@@ -127,37 +127,59 @@ class CompletionResponse:
 
 
 def _post_with_rate_limit_retry(requests_mod, url, payload, headers, timeout=60, **kwargs):
-    """POST with exponential backoff on HTTP 429 (rate limit)."""
+    """POST with adaptive rate limiting and exponential backoff on 429.
+
+    Uses the adaptive rate limiter to pace requests below the observed
+    threshold. Falls back to exponential backoff if a 429 still occurs.
+    """
+    from neutron_os.infra.rate_limiter import get_limiter
+
+    conn_name = _infer_connection_from_url(url)
+    limiter = get_limiter(conn_name) if conn_name else None
+
     for attempt in range(_RATE_LIMIT_MAX_RETRIES):
+        # Pace: wait if we're approaching the rate limit
+        if limiter:
+            limiter.wait()
+
         start = time.monotonic()
         response = requests_mod.post(url, json=payload, headers=headers, timeout=timeout, **kwargs)
         elapsed = (time.monotonic() - start) * 1000
+
+        # Update limiter with response headers (learns the actual limits)
+        if limiter:
+            limiter.update(response)
+
         if response.status_code == 429:
             # Record throttle event
             try:
                 from neutron_os.infra.connections import record_usage
-                # Infer connection name from URL
-                conn_name = _infer_connection_from_url(url)
                 if conn_name:
                     record_usage(conn_name, elapsed, throttled=True)
             except Exception:
                 pass
+            # Limiter.update() already parsed retry-after; wait() will respect it
             wait = _RATE_LIMIT_BACKOFF_BASE * (2 ** attempt)
             log.warning("Rate limited (429) from %s, retrying in %.1fs", url, wait)
             time.sleep(wait)
             continue
+
         response.raise_for_status()
         # Record successful usage
         try:
             from neutron_os.infra.connections import record_usage
-            conn_name = _infer_connection_from_url(url)
             if conn_name:
                 record_usage(conn_name, elapsed)
         except Exception:
             pass
         return response
-    # Final attempt — let it raise on any error
+
+    # Final attempt
+    if limiter:
+        limiter.wait()
     response = requests_mod.post(url, json=payload, headers=headers, timeout=timeout, **kwargs)
+    if limiter:
+        limiter.update(response)
     response.raise_for_status()
     return response
 
