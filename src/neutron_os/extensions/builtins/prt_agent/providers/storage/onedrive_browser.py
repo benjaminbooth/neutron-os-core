@@ -61,6 +61,8 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             "site_url",
             os.environ.get("NEUT_SHAREPOINT_URL", ""),
         )
+        # Track current folder to avoid redundant navigation in batch uploads
+        self._current_folder: str | None = None
 
     @staticmethod
     def _ensure_playwright():
@@ -295,45 +297,52 @@ class OneDriveBrowserStorageProvider(StorageProvider):
         import urllib.request
         import urllib.error
 
-        onedrive_url = self._resolve_onedrive_url()
-        page.goto(onedrive_url, wait_until="domcontentloaded", timeout=30000)
+        # Skip full navigation if we're already in the target folder (batch optimization)
+        already_in_folder = (self._current_folder == target_folder)
 
-        # Handle login if needed
-        if self._needs_login(page):
-            self._do_login(page)
+        if not already_in_folder:
+            onedrive_url = self._resolve_onedrive_url()
+            page.goto(onedrive_url, wait_until="domcontentloaded", timeout=30000)
 
-        page.wait_for_timeout(3000)
+            # Handle login if needed
+            if self._needs_login(page):
+                self._do_login(page)
+
+            page.wait_for_timeout(3000)
 
         # Upload via OneDrive web UI (tested: UT SharePoint, March 2026)
         try:
-            # Navigate to "My files" — this resolves the personal site URL
-            try:
-                page.click("text=My files", timeout=5000)
-                page.wait_for_timeout(3000)
-            except Exception:
-                pass
-
-            # Save the discovered URL AFTER navigating to My files
-            # (the redirect from office.com lands on Home, not personal files)
-            actual_url = page.url
-            if "sharepoint.com" in actual_url:
-                self._save_discovered_url(actual_url)
-
-            # Navigate into target folder using DOUBLE-CLICK
-            parts = [fp for fp in target_folder.strip("/").split("/") if fp]
-            missing_from = None
-
-            for i, part in enumerate(parts):
-                folder_el = page.query_selector(
-                    f"[data-automationid='field-LinkFilename']:has-text('{part}')"
-                )
-                if folder_el:
-                    folder_el.dblclick()
+            if not already_in_folder:
+                # Navigate to "My files" — this resolves the personal site URL
+                try:
+                    page.click("text=My files", timeout=5000)
                     page.wait_for_timeout(3000)
-                else:
-                    # This folder and all remaining don't exist
-                    missing_from = i
-                    break
+                except Exception:
+                    pass
+
+                # Save the discovered URL AFTER navigating to My files
+                actual_url = page.url
+                if "sharepoint.com" in actual_url:
+                    self._save_discovered_url(actual_url)
+
+                # Navigate into target folder using DOUBLE-CLICK
+                parts = [fp for fp in target_folder.strip("/").split("/") if fp]
+                missing_from = None
+
+                for i, part in enumerate(parts):
+                    folder_el = page.query_selector(
+                        f"[data-automationid='field-LinkFilename']:has-text('{part}')"
+                    )
+                    if folder_el:
+                        folder_el.dblclick()
+                        page.wait_for_timeout(3000)
+                    else:
+                        # This folder and all remaining don't exist
+                        missing_from = i
+                        break
+            else:
+                missing_from = None
+                parts = [fp for fp in target_folder.strip("/").split("/") if fp]
 
             if missing_from is not None:
                 # Use "Folder upload" to create missing folders + upload in one step.
@@ -369,25 +378,36 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                     page.click("text=Files upload", timeout=5000)
                 fc = fc_info.value
                 fc.set_files(str(local_path))
-                page.wait_for_timeout(5000)
 
-                # Check for "Replace" dialog (file already exists)
-                replace_btn = page.query_selector("button:has-text('Replace')")
-                if replace_btn:
-                    replace_btn.click()
-                    page.wait_for_timeout(3000)
+                # Wait for Replace dialog OR upload completion.
+                # OneDrive shows "Replace" when a file with the same name exists.
+                # We MUST click Replace to preserve the file's item ID and URL.
+                replaced = self._wait_for_replace_dialog(page)
+                if replaced is None:
+                    # No dialog appeared — file was new, upload completed
+                    pass
+                elif not replaced:
+                    # Dialog appeared but we couldn't click Replace
+                    return UploadResult(
+                        success=False, url="",
+                        error="Replace dialog appeared but could not be confirmed",
+                    )
 
                 # Check for error toast (file locked, permission denied, etc.)
-                page.wait_for_timeout(2000)
-                error_toast = page.query_selector("[class*='error'], [class*='Error'], [role='alert']")
-                if error_toast:
-                    error_text = error_toast.inner_text()
-                    if "locked" in error_text.lower() or "error" in error_text.lower():
-                        return UploadResult(
-                            success=False, url="",
-                            error=f"OneDrive rejected upload: {error_text[:200]}",
-                        )
+                error = self._check_upload_error(page)
+                if error:
+                    return UploadResult(success=False, url="", error=error)
 
+                # Verify no duplicate was created (e.g., "filename (1).docx")
+                duplicate = self._check_for_duplicate(page, remote_name)
+                if duplicate:
+                    return UploadResult(
+                        success=False, url="",
+                        error=f"Duplicate created: '{duplicate}'. Replace dialog may have been missed. "
+                              f"Delete the duplicate on OneDrive and retry.",
+                    )
+
+            self._current_folder = target_folder
             return UploadResult(
                 success=True,
                 url=page.url,
@@ -400,11 +420,98 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             )
 
         except Exception as e:
+            self._current_folder = None  # Reset on failure
             try:
                 page.screenshot(path=str(Path.home() / ".neut" / "onedrive-debug.png"))
             except Exception:
                 pass
             return UploadResult(success=False, url="", error=f"Upload failed: {e}")
+
+    def _wait_for_replace_dialog(self, page, timeout_ms: int = 8000) -> bool | None:
+        """Wait for the OneDrive 'Replace' confirmation dialog.
+
+        Returns:
+            True  — dialog appeared and Replace was clicked successfully
+            False — dialog appeared but Replace click failed
+            None  — no dialog appeared (file was new, no conflict)
+        """
+        # Poll for the Replace button with increasing waits.
+        # OneDrive's dialog can take 1-5 seconds to appear depending on file size.
+        elapsed = 0
+        poll_interval = 500
+        while elapsed < timeout_ms:
+            # Try multiple selector strategies for the Replace button
+            for selector in [
+                "button:has-text('Replace')",
+                "[data-automationid='confirmButton']:has-text('Replace')",
+                "button.ms-Button--primary:has-text('Replace')",
+                "button:has-text('replace')",  # case variation
+            ]:
+                btn = page.query_selector(selector)
+                if btn:
+                    try:
+                        btn.click()
+                        page.wait_for_timeout(3000)
+                        logger.info("Clicked Replace — file updated in-place (URL preserved)")
+                        return True
+                    except Exception as e:
+                        logger.warning("Replace button found but click failed: %s", e)
+                        return False
+
+            # Also check if upload already completed (progress bar gone, no dialog)
+            # If we see the file in the list and no dialog, upload succeeded as new file
+            progress = page.query_selector("[role='progressbar'], .od-FileUpload")
+            if not progress and elapsed > 3000:
+                # No progress bar and no dialog after 3s — upload completed without conflict
+                return None
+
+            page.wait_for_timeout(poll_interval)
+            elapsed += poll_interval
+
+        # Timeout — no dialog appeared
+        return None
+
+    def _check_upload_error(self, page) -> str | None:
+        """Check for OneDrive error toasts after upload attempt.
+
+        Returns error message string, or None if no error detected.
+        """
+        page.wait_for_timeout(1000)
+        for selector in [
+            "[class*='error']",
+            "[class*='Error']",
+            "[role='alert']",
+            ".od-ErrorToast",
+            "[data-automationid='errorMessage']",
+        ]:
+            toast = page.query_selector(selector)
+            if toast:
+                text = toast.inner_text().strip()
+                if text and ("locked" in text.lower() or "error" in text.lower()
+                             or "denied" in text.lower() or "failed" in text.lower()):
+                    return f"OneDrive rejected upload: {text[:200]}"
+        return None
+
+    def _check_for_duplicate(self, page, original_name: str) -> str | None:
+        """Check if a duplicate file was created instead of replacing.
+
+        OneDrive creates 'filename (1).docx' when Replace is missed.
+        Returns the duplicate filename if found, None otherwise.
+        """
+        stem = Path(original_name).stem
+        suffix = Path(original_name).suffix
+
+        # Look for common duplicate patterns: "name (1).docx", "name (2).docx"
+        for i in range(1, 4):
+            dup_name = f"{stem} ({i}){suffix}"
+            dup_el = page.query_selector(
+                f"[data-automationid='field-LinkFilename']:has-text('{dup_name}')"
+            )
+            if dup_el:
+                logger.warning("Duplicate detected: %s (Replace dialog may have been missed)", dup_name)
+                return dup_name
+
+        return None
 
     def _extract_access_token(self, page, context) -> str | None:
         """Extract a Graph API access token from the browser session.
