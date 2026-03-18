@@ -149,6 +149,8 @@ to the appropriate doc and link from others.
 
 - **Word docs (.docx)** go to `docs/_tools/generated/`, NOT alongside source markdown
 - **Mermaid diagrams** only (never ASCII art). Subgraph titles <16 chars, TB flow.
+- **Mermaid color contrast**: Light backgrounds (e.g., `#e3f2fd`, `#c8e6c9`, `#fff3e0`) need dark text (`color:#000000`). Dark backgrounds (e.g., `#1976d2`, `#388e3c`) need light text (`color:#ffffff`). Always include `color:` in style statements. See `docs/_tools/README_QUALITY.md` for full color list.
+- **Mermaid sizing**: Diagrams must fit cleanly on portrait 8.5×11" Word docs. Prefer `TB` (top-bottom) flow over `LR` (left-right) for complex diagrams. Avoid wide horizontal layouts that shrink to illegible text when exported.
 - **Extension-specific docs** live in `src/neutron_os/extensions/builtins/{ext}/docs/`
 
 ---

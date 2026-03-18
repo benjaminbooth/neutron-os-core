@@ -498,7 +498,7 @@ Note: Components that already self-manage expiration (echo suppression, provider
 ## Related Documents
 
 - [NeutronOS Executive PRD](prd-executive.md)
-- [Intelligence Amplification Pillar](prd-intelligence-amplification.md)
+- [Intelligence Amplification Research](../research/intelligence-amplification.md)
 - [Agent State Management Tech Spec](../tech-specs/spec-agent-state-management.md)
 - [RAG Architecture Spec](../tech-specs/spec-rag-architecture.md)
 - [Data Architecture Spec](../tech-specs/spec-data-architecture.md)

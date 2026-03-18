@@ -92,6 +92,8 @@ neut <noun> <verb> [args] [--flags]
 | **RAG** | `neut rag` | [RAG Architecture](spec-rag-architecture.md) | ✅ Shipped | Three-tier corpus (community/org/personal), pgvector, EC-compliant |
 | **Database** | `neut db` | — | ✅ Shipped | PostgreSQL lifecycle (up/down/migrate/status) |
 | **Demo** | `neut demo` | — | ✅ Shipped | 9-act guided walkthrough ("Jay's Story") |
+| **Model Corral** | `neut corral` | [Model Corral Spec](spec-model-corral.md) | 📋 Spec'd | Physics model registry: MCNP/VERA/SAM decks, ROMs, validation datasets |
+| **Digital Twin** | `neut twin` | [DT Hosting Spec](spec-digital-twin-architecture.md) | 📋 Spec'd | Run ROMs, Shadow simulations, validation, comparison |
 
 ### Utilities
 
@@ -199,18 +201,56 @@ Credential resolution: env var → settings → keychain → file → browser �
 
 ---
 
-## Digital Twin Architecture
+## Model Corral
 
-**Authoritative spec:** [Digital Twin Architecture Spec](spec-digital-twin-architecture.md)
+**Authoritative spec:** [Model Corral Spec](spec-model-corral.md)
+
+Model Corral is NeutronOS's registry for physics simulation models and trained ROMs:
 
 | Component | Description | Status |
 |-----------|-------------|--------|
-| **Surrogate models** | ML approximations of physics simulations | 📋 Spec'd |
-| **Provider interface** | Abstract base for model integration | 📋 Spec'd |
-| **WASM runtime** | Sandboxed execution of surrogate models | 📋 Spec'd ([ADR-008](../requirements/adr-008-wasm-extension-runtime.md)) |
-| **Validation framework** | Compare surrogate vs. reference results | 📋 Spec'd |
+| **Model registry** | PostgreSQL metadata + S3 object storage | 📋 Spec'd |
+| **Manifest schema** | `model.yaml` validation (JSON Schema) | 📋 Spec'd |
+| **ROM extension** | Training provenance, tier assignment | 📋 Spec'd |
+| **Git sync** | Optional bidirectional Git integration | 📋 Spec'd |
+| **Validation framework** | Schema, file, syntax checking | 📋 Spec'd |
+| **CLI** | `neut corral` (search, add, pull, validate) | 📋 Spec'd |
+| **Web UI** | Catalog browser, upload wizard, lineage graph | 📋 Spec'd |
 
-Digital twin capabilities are planned for post-MVP deployment. The architecture is designed but not implemented.
+**Model types:** High-fidelity input decks (MCNP, VERA, SAM, Griffin), trained ROMs (WASM, ONNX), validation datasets, CoreForge configurations.
+
+**Access tiers:** `public` (open benchmarks) and `facility` (facility-specific). Per Nick Luciano, physics models don't require export control classification — tiers are for deployment visibility management.
+
+---
+
+## Digital Twin Hosting
+
+**Authoritative spec:** [Digital Twin Hosting Spec](spec-digital-twin-architecture.md)
+
+Digital Twin Hosting provides execution infrastructure for computational models:
+
+| Component | Description | Status |
+|-----------|-------------|--------|
+| **ROM tiers** | ROM-1 (10Hz), ROM-2 (5-20s), ROM-3 (<5min), ROM-4 (minutes) | 📋 Spec'd |
+| **Shadow** | Calibrated high-fidelity physics code execution | 📋 Spec'd |
+| **WASM runtime** | Uniform ROM execution with capability-based security | 📋 Spec'd ([ADR-008](../requirements/adr-008-wasm-extension-runtime.md)) |
+| **Run tracking** | `dt_runs`, `dt_run_states`, `dt_run_validations` | 📋 Spec'd |
+| **Provider interface** | Reactor-specific physics adapters | 📋 Spec'd |
+| **Validation framework** | ROM vs Shadow, prediction vs measurement | 📋 Spec'd |
+| **CLI** | `neut twin` (run, shadow, rom-train, compare) | 📋 Spec'd |
+| **Web UI** | Run dashboard, comparison view, Shadow manager | 📋 Spec'd |
+
+**Use cases:**
+1. Real-time display (<100ms, ROM-1)
+2. Live activation / control loop (<100ms, ROM-1)
+3. Comms & Viz / interactive (5-20s, ROM-2)
+4. Experiment planning (<5 min, ROM-3)
+5. Operational planning (minutes, ROM-4)
+6. Analysis & V&V (offline, Shadow)
+
+Digital twin capabilities are planned for post-MVP deployment. Model Corral and DT Hosting are designed together as a unified architecture — models stored in Corral, executed via DT Hosting.
+
+**Autonomy Target:** NAL-2 (Advisory) — operator suggestions without automated execution. Progression to higher autonomy levels (NAL-3+) requires validated "progression proofs" demonstrating safety at each level. See [DT Hosting Spec §15](spec-digital-twin-architecture.md#15-autonomy-progression-framework) for the Nuclear Autonomy Levels framework.
 
 ---
 

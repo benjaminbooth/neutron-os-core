@@ -91,6 +91,73 @@ style DL_SPACER fill:none,stroke:none,color:#999,font-size:2px  # Standard spaci
 
 ---
 
+## Anti-Patterns: NEVER DO THIS
+
+### ❌ Anti-Pattern 1: Long Subgraph Titles in `graph LR`
+
+**Problem:** `graph LR` diagrams with wrapped subgraph titles have boxes that overlap the title text.
+
+```mermaid
+%% ❌ BAD - Title "Prediction Uncertainty Over Time" wraps and gets hidden
+graph LR
+    subgraph "Prediction Uncertainty Over Time"
+        T0["t=0ms<br/>Sensor: 850°C"]
+    end
+```
+
+**Fix Options:**
+
+1. **Use `flowchart TB` instead** - Top-to-bottom layout doesn't overlap:
+   ```mermaid
+   flowchart TB
+       subgraph "Prediction Uncertainty Over Time"
+           T0["t=0ms<br/>Sensor: 850°C"]
+       end
+   ```
+
+2. **Shorten the title** to fit on one line:
+   ```mermaid
+   graph LR
+       subgraph "Uncertainty vs Time"
+           T0["t=0ms<br/>Sensor: 850°C"]
+       end
+   ```
+
+3. **Add an invisible spacer** (see spacer technique above)
+
+### ❌ Anti-Pattern 2: Multi-line `<br/>` Content in Small Containers
+
+**Problem:** Nodes with multiple `<br/>` line breaks overflow their containers.
+
+**Fix:** Use fewer lines or increase container padding via wrapping in larger subgraphs.
+
+### ❌ Anti-Pattern 3: Missing `color:` in Style Blocks
+
+**Problem:** Text becomes invisible on light or dark backgrounds.
+
+**Fix:** ALWAYS specify `color:#333` or `color:#fff` in every `style` statement.
+
+---
+
+## Automated Enforcement
+
+Run the Mermaid lint script before committing:
+
+```bash
+# From repo root
+python scripts/lint_mermaid.py docs/
+
+# Or use pre-commit
+pre-commit run lint-mermaid --all-files
+```
+
+The script checks for:
+- `graph LR` with subgraph titles > 25 characters
+- Style blocks missing explicit `color:` 
+- Subgraphs without spacer nodes when title has `<br/>`
+
+---
+
 ## Examples from Neutron_OS Documentation
 
 **Reference implementations** using these standards:

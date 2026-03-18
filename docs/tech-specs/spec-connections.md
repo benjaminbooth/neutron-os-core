@@ -326,6 +326,56 @@ required = false
 
 **This is future work** — documented here to prove the abstraction scales.
 
+### 3.7 DeepLynx Nexus Integration (Exploratory)
+
+INL's [DeepLynx](https://github.com/idaholab/DeepLynx) is an open-source digital
+engineering backbone used for nuclear projects. If partnership proceeds, NeutronOS
+could integrate as either an MCP client or via data exchange.
+
+**Option A: MCP Client** — NeutronOS queries DeepLynx's MCP server for ontology/graph data
+
+```toml
+[[connections]]
+name = "deeplynx"
+display_name = "DeepLynx Nexus (INL)"
+kind = "mcp"
+endpoint = "npx @inl/deeplynx-mcp-server"  # hypothetical
+transport = "stdio"
+credential_type = "api_key"
+credential_env_var = "DEEPLYNX_API_KEY"
+health_check = "custom"
+category = "ontology"
+extension = "core"
+required = false
+docs_url = "https://deeplynx.inl.gov/docs"
+```
+
+**Option B: REST API** — Direct GraphQL/REST access to DeepLynx backend
+
+```toml
+[[connections]]
+name = "deeplynx-api"
+display_name = "DeepLynx API (INL)"
+kind = "api"
+endpoint = "https://deeplynx.inl.gov/api/v2"
+transport = "https"
+credential_type = "oauth_token"
+credential_env_var = "DEEPLYNX_TOKEN"
+health_check = "http_get"
+health_endpoint = "https://deeplynx.inl.gov/api/v2/health"
+category = "ontology"
+extension = "core"
+required = false
+```
+
+**Use Cases (if integrated):**
+- Query reactor component ontology for AI agent context
+- Fetch safety limits and classifications from DeepLynx schema
+- Exchange timeseries data via CSV/Parquet (both use DuckDB)
+- Cross-facility digital twin coordination (NETL ↔ INL TRIGA)
+
+**Reference:** [DeepLynx Assessment](../research/deeplynx-assessment.md)
+
 ---
 
 ## 4. Credential Storage

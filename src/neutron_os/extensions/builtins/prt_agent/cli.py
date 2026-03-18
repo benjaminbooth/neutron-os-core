@@ -1238,12 +1238,9 @@ def _postprocess_docx(docx_path: Path) -> None:
             tblW.set(qn("w:type"), "pct")  # 100% of available width
             tblPr.append(tblW)
 
-            # Auto-fit: let Word optimize column widths based on content
-            for existing in tblPr.findall(qn("w:tblLayout")):
-                tblPr.remove(existing)
-            layout = OxmlElement("w:tblLayout")
-            layout.set(qn("w:type"), "autofit")
-            tblPr.append(layout)
+            # Calculate column widths based on content length
+            # Total available width: ~9360 twips (6.5 inches × 1440 twips/inch)
+            total_twips = 9360
 
             # Cell borders
             for row in table.rows:
@@ -1267,19 +1264,63 @@ def _postprocess_docx(docx_path: Path) -> None:
                         borders.append(border)
                     tcPr.append(borders)
 
-                    # Remove fixed column widths so autofit works
-                    for existing in tcPr.findall(qn("w:tcW")):
-                        tcPr.remove(existing)
+            # Set column widths proportional to max content length per column
+            num_cols = len(table.columns)
+            if num_cols > 0:
+                max_lens = [0] * num_cols
+                for row in table.rows:
+                    for j, cell in enumerate(row.cells):
+                        if j < num_cols:
+                            content_len = max(len(line) for line in cell.text.split("\n")) if cell.text else 1
+                            max_lens[j] = max(max_lens[j], content_len)
 
-        # --- Headings: keep with next paragraph (prevents orphaned headings) ---
-        for para in doc.paragraphs:
+                # Ensure minimum width and calculate proportions
+                max_lens = [max(l, 3) for l in max_lens]
+                total_len = sum(max_lens)
+                col_widths = [int(total_twips * l / total_len) for l in max_lens]
+
+                # Apply widths to all cells
+                for row in table.rows:
+                    for j, cell in enumerate(row.cells):
+                        if j < num_cols:
+                            tc = cell._tc
+                            tcPr = tc.tcPr
+                            if tcPr is None:
+                                tcPr = OxmlElement("w:tcPr")
+                                tc.insert(0, tcPr)
+                            for existing in tcPr.findall(qn("w:tcW")):
+                                tcPr.remove(existing)
+                            tcW = OxmlElement("w:tcW")
+                            tcW.set(qn("w:w"), str(col_widths[j]))
+                            tcW.set(qn("w:type"), "dxa")
+                            tcPr.append(tcW)
+
+        # --- Headings + images: keep coupled, prevent page breaks between them ---
+        for i, para in enumerate(doc.paragraphs):
+            pPr = para._p.get_or_add_pPr()
+
+            # Headings: keep with next
             if para.style and para.style.name and "Heading" in para.style.name:
-                pPr = para._p.get_or_add_pPr()
-                # Keep with next
-                kwn = pPr.find(qn("w:keepNext"))
-                if kwn is None:
-                    kwn = OxmlElement("w:keepNext")
-                    pPr.append(kwn)
+                if pPr.find(qn("w:keepNext")) is None:
+                    pPr.append(OxmlElement("w:keepNext"))
+
+            # Image paragraphs: keep with previous heading AND keep lines together
+            has_image = bool(para._p.findall(".//" + qn("wp:inline")))
+            if has_image:
+                if pPr.find(qn("w:keepNext")) is None:
+                    pPr.append(OxmlElement("w:keepNext"))
+                if pPr.find(qn("w:keepLines")) is None:
+                    pPr.append(OxmlElement("w:keepLines"))
+                # Also set keepNext on the preceding paragraph if it's not already set
+                if i > 0:
+                    prev_pPr = doc.paragraphs[i-1]._p.get_or_add_pPr()
+                    if prev_pPr.find(qn("w:keepNext")) is None:
+                        prev_pPr.append(OxmlElement("w:keepNext"))
+
+            # Image captions: keep with previous
+            if para.style and para.style.name and "Caption" in para.style.name:
+                if pPr.find(qn("w:keepLines")) is None:
+                    pPr.append(OxmlElement("w:keepLines"))
 
         # --- Images: size to 6 inches wide (fits letter with 1.25" margins) ---
         max_width = Inches(6)

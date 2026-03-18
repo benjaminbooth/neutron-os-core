@@ -38,7 +38,16 @@ def _render_diagram(code: str, output_dir: Path, index: int) -> Path | None:
         return cached
 
     # Encode: JSON → zlib compress → base64url (no padding)
-    payload = json.dumps({"code": code, "mermaid": {"theme": "default"}})
+    # Use wider rendering for complex diagrams (gantt, large flowcharts)
+    width = 1200
+    if "gantt" in code.lower() or code.count("subgraph") > 2 or code.count("-->") > 15:
+        width = 1800
+
+    payload = json.dumps({
+        "code": code,
+        "mermaid": {"theme": "default"},
+        "width": width,
+    })
     compressed = zlib.compress(payload.encode(), 9)
     encoded = base64.urlsafe_b64encode(compressed).decode().rstrip("=")
 
@@ -83,9 +92,10 @@ def render_mermaid_blocks(md_content: str, output_dir: Path) -> str:
 
         img_path = _render_diagram(code, output_dir, idx)
         if img_path:
-            return f"![Diagram {idx}]({img_path})"
+            # No alt text caption — just the image
+            return f"![]({img_path})"
         else:
-            # Fallback: keep as code block but label it
-            return f"*[Diagram {idx} — rendering failed]*\n\n```\n{code}\n```"
+            # Fallback: keep as code block
+            return f"```\n{code}\n```"
 
     return pattern.sub(replace_block, md_content)

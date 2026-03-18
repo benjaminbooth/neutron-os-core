@@ -1,122 +1,159 @@
-# OKRs & Goals
+# NeutronOS 2026 OKRs
 
-> **Last Updated:** December 2025  
-> **Planning Horizon:** Q1-Q4 2026
-
----
-
-## Objective 1: Trusted Automated Operations
-> Users trust the pipeline runs reliably without intervention
-
-| Key Result | Target | Timeline | Owner |
-|------------|--------|----------|-------|
-| Pipeline success rate >98% | 98% | Q1 | TBD |
-| Mean time to recovery <4 hours | 4 hrs | Q1 | TBD |
-| Zero manual interventions for routine operations | 0 | Q2 | TBD |
-| Automated alerting for pipeline failures | Implemented | Q1 | TBD |
-
-### Supporting Initiatives
-- [ ] Add structured logging to Shadowcaster
-- [ ] Configure Slack/email alerts for failures
-- [ ] Create runbook for common failure modes
-- [ ] Implement automatic retry logic
+> **Last Updated:** March 2026  
+> **Planning Horizon:** Q2-Q4 2026 (Q1 nearly complete)  
+> **Aligned With:** [Executive PRD](prd-executive.md), [Digital Twin Hosting PRD](prd-digital-twin-hosting.md), [Model Corral PRD](prd-model-corral.md)
 
 ---
 
-## Objective 2: Near-Real-Time Insights
-> Reduce time from reactor event to actionable data
+## Current State Summary (March 2026)
 
-| Key Result | Target | Timeline | Owner |
-|------------|--------|----------|-------|
-| Processing latency <12 hours | 12 hrs | Q1 | TBD |
-| Automated Box upload from facility | Implemented | Q2 | TBD |
-| Document current latency baseline | Complete | Q1 | TBD |
-| Streaming architecture proof-of-concept | Demo | Q3 | TBD |
+### ✅ Shipped (Q4 2025 - Q1 2026)
 
-### Supporting Initiatives
-- [ ] Instrument pipeline with timestamps at each stage
-- [ ] Work with NETL to automate ZOC → Box upload
-- [ ] Evaluate real-time data streaming options (gRPC, Kafka)
-- [ ] Benchmark TACC job queue wait times
+| Component | Status | Description |
+|-----------|--------|-------------|
+| **LLM Gateway** | ✅ Shipped | Multi-provider routing with export control classification |
+| **Signal Agent** | ✅ Shipped | Voice/Teams/GitLab → extractors → correlator → synthesizer |
+| **Chat Agent** | ✅ Shipped | Interactive LLM with tool use, RAG, per-turn routing |
+| **Publisher** | ✅ Shipped | Markdown → generate → publish to 19 endpoints |
+| **RAG** | ✅ Shipped | Three-tier corpus (community/org/personal), pgvector |
+| **M-O Agent** | ✅ Shipped | Resource steward, scratch lifecycle, retention |
+| **State Store** | ✅ Shipped | Hybrid file + PostgreSQL backend |
+| **CLI Framework** | ✅ Shipped | `neut <noun> <verb>` with extension discovery |
+| **Demo** | ✅ Shipped | 9-act guided walkthrough ("Jay's Story") |
 
----
+### 📋 Spec'd (Ready for Implementation)
 
-## Objective 3: Validated Simulation Accuracy
-> Predictions trusted for V&V and decision-making
-
-| Key Result | Target | Timeline | Owner |
-|------------|--------|----------|-------|
-| Critical rod height RMSE <1.0 cm | 1.0 cm | Q2 | TBD |
-| Published validation dataset (citable) | 1 dataset | Q2 | TBD |
-| Bias correction model documented with UQ | Complete | Q2 | TBD |
-| Automated accuracy tracking dashboard | Implemented | Q2 | TBD |
-
-### Supporting Initiatives
-- [ ] Create automated RMSE calculation script
-- [ ] Document bias correction methodology
-- [ ] Prepare dataset for Zenodo/OSTI publication
-- [ ] Add uncertainty quantification to predictions
+| Component | PRD | Spec | Target |
+|-----------|-----|------|--------|
+| **Model Corral** | [PRD](prd-model-corral.md) | [Spec](../tech-specs/spec-model-corral.md) | Q2 2026 |
+| **Digital Twin Hosting** | [PRD](prd-digital-twin-hosting.md) | [Spec](../tech-specs/spec-digital-twin-architecture.md) | Q2-Q4 2026 |
+| **Data Lakehouse** | [PRD](prd-data-platform.md) | [Spec](../tech-specs/spec-data-architecture.md) | Q2 2026 |
+| **Connections** | [PRD](prd-connections.md) | [Spec](../tech-specs/spec-connections.md) | Q2 2026 |
 
 ---
 
-## Objective 4: Active User Community
-> Researchers and students regularly use the platform
+## Objective 1: Digital Twin Foundation
+> Establish infrastructure for ROM execution and Shadow simulations
 
-| Key Result | Target | Timeline | Owner |
-|------------|--------|----------|-------|
-| Establish baseline WAU metric | Measured | Q1 | TBD |
-| 25% WAU growth | +25% | Q2 | TBD |
-| 2+ courses incorporating tools | 2 courses | Q3 | TBD |
-| User satisfaction survey conducted | Complete | Q2 | TBD |
+**Aligns with:** [Digital Twin Hosting PRD](prd-digital-twin-hosting.md) Phases 1-2
 
-### Supporting Initiatives
-- [ ] Deploy web analytics (Plausible or PostHog)
-- [ ] Meet with M E 390G (Nuclear Engineering Laboratory) instructors about integration - this course directly uses TRIGA
-- [ ] Explore M E 361E (Nuclear Reactor Operations) and M E 336P (Concepts in Nuclear Engineering) for simulator use
-- [ ] Create tutorial documentation for new users
-- [ ] Implement in-app feedback mechanism
+| Key Result | Target | Timeline | Status |
+|------------|--------|----------|--------|
+| Run tracking schema deployed | PostgreSQL tables live | Q2 | 🔲 |
+| `neut twin run/status` CLI working | Commands operational | Q2 | 🔲 |
+| Shadow automation for TRIGA NETL | Nightly runs | Q2 | 🔲 |
+| ROM-2 inference operational | <20s latency | Q3 | 🔲 |
+| Prediction vs measured comparison | Dashboard live | Q3 | 🔲 |
+
+### Supporting Work
+- [ ] Define `dt_runs`, `dt_run_states`, `dt_run_validations` schema
+- [ ] Integrate SLURM job submission for secure HPC
+- [ ] Complete WASM surrogate runtime (from spike)
+- [ ] Build ROM-2 training pipeline
+- [ ] Create basic Superset dashboards for validation
 
 ---
 
-## Objective 5: Compliance Automation
-> Inspection-ready documentation on demand
+## Objective 2: Model Registry (Model Corral)
+> Physics models versioned, searchable, and validated
 
-| Key Result | Target | Timeline | Owner |
-|------------|--------|----------|-------|
-| 100% documentation coverage for 2026 operations | 100% | Q1 | TBD |
-| Automated compliance report generator | Shipped | Q2 | TBD |
-| Anomaly detection system prototype | Demo | Q3 | TBD |
-| Validation with facility management | Complete | Q2 | TBD |
+**Aligns with:** [Model Corral PRD](prd-model-corral.md)
 
-### Supporting Initiatives
-- [ ] Audit existing data for gaps
-- [ ] Define compliance report format with facility
+| Key Result | Target | Timeline | Status |
+|------------|--------|----------|--------|
+| Model Corral schema deployed | PostgreSQL + S3 | Q2 | 🔲 |
+| `neut corral` CLI working | search/add/pull/validate | Q2 | 🔲 |
+| TRIGA models migrated | 10+ models in registry | Q2 | 🔲 |
+| Web catalog UI | Browse + upload wizard | Q3 | 🔲 |
+| Git sync operational | Bidirectional with lab repos | Q3 | 🔲 |
+
+### Supporting Work
+- [ ] Implement `model.yaml` manifest schema validation
+- [ ] Build ROM extension fields (training provenance, tier)
+- [ ] Create validation framework (schema, file, syntax checks)
+- [ ] Integrate with RAG for model documentation search
+
+---
+
+## Objective 3: Data Platform Maturity
+> Bronze/Silver/Gold lakehouse operational with dbt transforms
+
+**Aligns with:** [Data Platform PRD](prd-data-platform.md)
+
+| Key Result | Target | Timeline | Status |
+|------------|--------|----------|--------|
+| Iceberg tables operational | Bronze layer populated | Q2 | 🔲 |
+| dbt models for TRIGA data | Silver layer transforms | Q2 | 🔲 |
+| Dagster orchestration | Scheduled pipelines | Q3 | 🔲 |
+| Streaming ingest (Redpanda) | <10s latency | Q3 | 🔲 |
+| Gold layer KPIs | Superset dashboards | Q3 | 🔲 |
+
+### Supporting Work
+- [ ] Deploy MinIO for object storage
+- [ ] Create dbt project structure
+- [ ] Define Bronze schemas for sensor data, ops logs, experiments
+- [ ] Build Silver transforms for data quality
+- [ ] Configure Dagster schedules and sensors
+
+---
+
+## Objective 4: Real-Time Predictions (ROM-1)
+> Control room display shows ROM predictions alongside sensors
+
+**Aligns with:** [Digital Twin Hosting PRD](prd-digital-twin-hosting.md) Phase 3
+
+| Key Result | Target | Timeline | Status |
+|------------|--------|----------|--------|
+| ROM-1 inference <100ms | 10 Hz update rate | Q4 | 🔲 |
+| Streaming integration | Redpanda → ROM-1 | Q4 | 🔲 |
+| WebSocket endpoint | Real-time predictions | Q4 | 🔲 |
+| Control room display | Sensor + prediction overlay | Q4 | 🔲 |
+| NAL-1 progression proof | Accuracy validated for N hours | Q4 | 🔲 |
+
+### Supporting Work
+- [ ] Optimize ROM-1 WASM module for latency
+- [ ] Build WebSocket server for real-time push
+- [ ] Integrate with TRIGA DT Website `/simulator`
+- [ ] Create divergence alerting system
+- [ ] Document uncertainty bounds
+
+---
+
+## Objective 5: Operations & Compliance
+> Reactor ops log and compliance reporting automated
+
+**Aligns with:** [Reactor Ops Log PRD](prd-reactor-ops-log.md), [Compliance Tracking PRD](prd-compliance-tracking.md)
+
+| Key Result | Target | Timeline | Status |
+|------------|--------|----------|--------|
+| Console check digitization | Paper → digital | Q2 | 🔲 |
+| Shift handoff workflow | Structured handoffs | Q3 | 🔲 |
+| Compliance report generator | One-click NRC reports | Q3 | 🔲 |
+| Anomaly detection prototype | Automated flagging | Q4 | 🔲 |
+
+### Supporting Work
+- [ ] Design console check UI (per [spec-console-check-ui-mockups.md](../tech-specs/spec-console-check-ui-mockups.md))
+- [ ] Build shift handoff templates
+- [ ] Define compliance evidence schema
 - [ ] Research anomaly detection approaches
-- [ ] Interview operators about off-normal identification
 
 ---
 
-## Objective 6: Medical Isotope Production Automation
-> Reduce isotope request-to-delivery time and eliminate manual coordination
+## Objective 6: Medical Isotope Automation
+> Reduce isotope request-to-delivery coordination overhead
 
-| Key Result | Target | Timeline | Owner |
-|------------|--------|----------|-------|
-| Document current isotope workflow (as-is) | Complete | Q1 | TBD |
-| Request-to-package time <30 minutes | 30 min | Q3 | TBD |
-| Automated ops package generation | Prototype | Q2 | TBD |
-| Zero phone calls required for routine orders | 0 | Q4 | TBD |
-| SLA tracking implemented | Complete | Q3 | TBD |
+**Aligns with:** [Medical Isotope PRD](prd-medical-isotope.md)
 
-### Supporting Initiatives
-- [ ] Shadow Dr. Charlton on 2-3 isotope request calls
-- [ ] Map current workflow end-to-end with timestamps
-- [ ] Interview Houston-area hospital contacts about pain points
-- [ ] Design isotope request portal/API
-- [ ] Integrate simulation auto-generation for isotope production configs
-- [ ] Create operator-facing production checklist generator
+| Key Result | Target | Timeline | Status |
+|------------|--------|----------|--------|
+| Current workflow documented | As-is map complete | Q2 | 🔲 |
+| Digital request intake | Form replaces phone calls | Q3 | 🔲 |
+| Automated ops package | DT generates config | Q3 | 🔲 |
+| SLA tracking | Order status visible | Q4 | 🔲 |
 
 ### Current State Problem
-Today, when a Houston cancer clinic needs isotopes:
+When a Houston cancer clinic needs isotopes:
 1. Hospital calls Dr. Charlton (NETL Director) directly
 2. Dr. Charlton assigns work to available student/professor
 3. Assignee manually reviews recent reactor ops
@@ -124,71 +161,80 @@ Today, when a Houston cancer clinic needs isotopes:
 5. Results compiled into Word doc with bullet points
 6. Word doc delivered via phone to operators next morning
 
-**This is why UT's head of Nuclear Engineering takes isotope calls** - there's no system to handle it otherwise.
-
-**This is why more reactors don't produce isotopes** - the coordination overhead is prohibitive without automation.
+**Goal:** Digital twin generates ops package automatically from request parameters.
 
 ---
 
-## Objective 7: Commercialization Foundation
-> Demonstrate replicable value for other facilities
+## Objective 7: Community & Adoption
+> Researchers and students actively using NeutronOS
 
-| Key Result | Target | Timeline | Owner |
-|------------|--------|----------|-------|
-| Full architecture documentation | Complete | Q1 | TBD |
-| Infrastructure cost model documented | Complete | Q1 | TBD |
-| 2 facilities expressing pilot interest | 2 | Q4 | TBD |
-| Deployment playbook for new reactor | Draft | Q4 | TBD |
-| **Isotope production revenue model documented** | Complete | Q2 | TBD |
-| **3 research reactors assessed for isotope capability** | 3 | Q3 | TBD |
+| Key Result | Target | Timeline | Status |
+|------------|--------|----------|--------|
+| Demo deployed publicly | Web-accessible | Q2 | 🔲 |
+| Documentation site | Searchable docs | Q2 | 🔲 |
+| 2+ courses using tools | ME 390G, ME 361E | Q3 | 🔲 |
+| User feedback mechanism | In-app feedback | Q3 | 🔲 |
+| 10+ active weekly users | WAU metric | Q4 | 🔲 |
 
-### Supporting Initiatives
-- [ ] Create architecture diagram documentation
-- [ ] Analyze TACC billing for cost breakdown
-- [ ] Identify potential pilot reactor facilities
-- [ ] Abstract TACC-specific dependencies
-- [ ] Research medical isotope market size and pricing
-- [ ] Identify US research reactors with isotope production capability
+### Supporting Work
+- [ ] Deploy demo environment (non-VPN accessible)
+- [ ] Create onboarding tutorials
+- [ ] Meet with course instructors about integration
+- [ ] Implement analytics (Plausible or PostHog)
+
+---
+
+## Objective 8: Multi-Facility Foundation
+> Architecture ready for second reactor deployment
+
+**Aligns with:** [Digital Twin Hosting PRD](prd-digital-twin-hosting.md) Phase 4
+
+| Key Result | Target | Timeline | Status |
+|------------|--------|----------|--------|
+| Reactor provider abstraction | Generic interface | Q4 | 🔲 |
+| MSR provider prototype | Second reactor type | Q4+ | 🔲 |
+| Deployment playbook | Documented process | Q4 | 🔲 |
+| 1+ facility expressing interest | Letter of intent | Q4 | 🔲 |
+
+### Supporting Work
+- [ ] Abstract TRIGA-specific code into provider
+- [ ] Document reactor provider contract
+- [ ] Identify potential pilot facilities
+- [ ] Cost model for deployment
 
 ---
 
 ## Quarterly Roadmap Summary
 
-### Q1 2026: Foundation + Isotope Discovery
-- Establish metrics baselines
-- Instrument pipeline for observability
-- Document architecture and costs
-- Achieve >98% pipeline reliability
-- **Document current isotope workflow end-to-end**
-- **Shadow Dr. Charlton on 2-3 isotope request calls**
-- **Identify Houston hospital contacts**
+### Q2 2026: Foundation
+**Theme:** Data platform + Model Corral + DT run tracking
 
-### Q2 2026: Quality + Isotope Prototype
-- Improve simulation accuracy (<1.0 cm RMSE)
-- Publish validation dataset
-- Ship compliance report generator
-- Conduct user satisfaction survey
-- **Prototype isotope request form (even Google Form)**
-- **Auto-generate first ops package from digital inputs**
-- **Interview 3+ isotope customers**
+- Deploy Iceberg + dbt Bronze/Silver layers
+- Ship Model Corral with `neut corral` CLI
+- Implement DT run tracking schema
+- Automate Shadow runs for TRIGA
+- Document isotope workflow as-is
+- Deploy public demo environment
 
-### Q3 2026: Growth + Isotope SLA
-- Deploy streaming PoC
-- Integrate with 2+ courses
-- Launch anomaly detection prototype
-- 25% WAU growth achieved
-- **Implement SLA tracking for isotope orders**
-- **Request-to-package time <30 minutes**
-- **Research ARPA-E MEITNER funding alignment**
+### Q3 2026: Intelligence
+**Theme:** ROM-2 operational + Compliance + Streaming
 
-### Q4 2026: Scale + Isotope Expansion
-- Engage pilot facility candidates
-- Draft deployment playbook
-- Demonstrate full automation
-- Year-end metrics review
-- **Assess 3 additional reactors for isotope capability**
-- **Document isotope production revenue model**
-- **Evaluate spin-out vs university licensing path**
+- ROM-2 inference with <20s latency
+- Prediction vs measured dashboards
+- dbt Gold layer KPIs
+- Redpanda streaming ingest
+- Compliance report generator
+- Digital isotope request intake
+
+### Q4 2026: Real-Time
+**Theme:** ROM-1 + NAL-1 + Multi-facility prep
+
+- ROM-1 at 10 Hz in control room display
+- NAL-1 progression proof (accuracy validation)
+- Anomaly detection prototype
+- Reactor provider abstraction
+- Facility pilot engagement
+- 10+ active weekly users
 
 ---
 
@@ -196,11 +242,11 @@ Today, when a Houston cancer clinic needs isotopes:
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| TACC infrastructure changes | Pipeline breaks | Document dependencies, test on alternate systems |
-| Key personnel departure | Knowledge loss | Comprehensive documentation, cross-training |
-| NETL facility schedule | No data to process | Coordinate with operators, handle gaps gracefully |
-| MPACT version changes | Simulation mismatch | Pin versions, test upgrades |
-| VPN access barriers | User adoption blocked | Work with TACC on alternatives |
+| WASM runtime performance | ROM-1 misses latency target | Prototype early, optimize iteratively |
+| Secure HPC access (SLURM) | Shadow runs blocked | Work with TACC on authentication |
+| Streaming complexity (Redpanda) | Delayed real-time features | Start with batch, add streaming incrementally |
+| ROM accuracy | Can't achieve NAL-1 proof | Increase training data, improve models |
+| Course instructor buy-in | Low adoption | Early engagement, show value first |
 
 ---
 
@@ -208,7 +254,16 @@ Today, when a Houston cancer clinic needs isotopes:
 
 | Cadence | Activity |
 |---------|----------|
-| Weekly | Check pipeline health, review alerts |
-| Monthly | Metrics dashboard review, progress on KRs |
-| Quarterly | OKR scoring, goal adjustment, stakeholder update |
-| Annually | Strategy review, next year planning |
+| Weekly | Implementation progress check |
+| Monthly | KR scoring, blocker review |
+| Quarterly | OKR retrospective, stakeholder update |
+
+---
+
+## Related Documents
+
+- [Executive PRD](prd-executive.md) — Product vision
+- [Digital Twin Hosting PRD](prd-digital-twin-hosting.md) — DT execution infrastructure
+- [Model Corral PRD](prd-model-corral.md) — Physics model registry
+- [Data Platform PRD](prd-data-platform.md) — Lakehouse architecture
+- [Executive Tech Spec](../tech-specs/spec-executive.md) — Implementation status

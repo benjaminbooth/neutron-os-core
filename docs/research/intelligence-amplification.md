@@ -7,9 +7,10 @@
 | Property | Value |
 |----------|-------|
 | Version | 1.0 |
-| Last Updated | 2026-02-24 |
-| Status | Draft |
+| Last Updated | 2026-03-17 |
+| Status | Research |
 | Owner | Ben Booth |
+| Classification | Research (moved from PRD 2026-03-17) |
 
 ---
 

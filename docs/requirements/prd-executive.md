@@ -2,819 +2,209 @@
 
 **Nuclear Energy Unified Technology for Research, Operations & Networks**
 
----
-
 | Property | Value |
 |----------|-------|
-| Version | 1.0 |
-| Last Updated | 2026-01-21 |
-| Status | Active |
+| Version | 2.0 |
+| Last Updated | 2026-03-17 |
+| Status | Active Development (v0.4.0) |
 | Product Owner | Ben Booth |
 
 ---
 
-## What is Neutron OS?
+## The Story So Far
 
-Neutron OS is a **modular digital platform for nuclear facilities** that unifies data management, operations tracking, experiment scheduling, and analytics into a single system. It replaces fragmented workflows (paper logs, spreadsheets, phone calls, email calendars) with integrated digital tools.
+For decades, nuclear facilities have run on paper logs, spreadsheets, phone calls, and siloed software systems. Reactor operators track 30-minute surveillance checks on clipboards. Researchers schedule beam time via email chains. Meeting decisions evaporate into forgotten transcripts. Experiment data lives on individual hard drives. Compliance evidence is assembled by hand, days before an NRC inspection.
 
----
+This worked when nuclear energy was a mature, slow-moving industry. It doesn't work now.
 
-## Who is it for?
+Nuclear energy is entering its most consequential decade — advanced reactors, medical isotope production at scale, AI-augmented operations, digital twins, and a global push to triple nuclear capacity by 2050. The facilities that thrive will be the ones that digitize intelligently, connecting their data, their people, and their decision-making into a coherent system.
 
-```mermaid
-flowchart LR
-    ROOT((Neutron OS Users))
-    
-    ROOT --- OPS[Operations]
-    ROOT --- RES[Research]
-    ROOT --- ADM[Administration]
-    ROOT --- EXT[External]
-    
-    OPS --- RO[Reactor Operators]
-    OPS --- SRO[Senior Reactor Operators]
-    OPS --- RM[Reactor Manager]
-    OPS --- HP[Health Physics]
-    
-    RES --- GR[Graduate Researchers]
-    RES --- PI[Principal Investigators]
-    RES --- VS[Visiting Scientists]
-    
-    ADM --- FD[Facility Director]
-    ADM --- CO[Compliance Officers]
-    ADM --- NRC[NRC Inspectors]
-    
-    EXT --- MIC[Medical Isotope Customers]
-    EXT --- CS[Courier Services]
-    
-    style ROOT fill:#1565c0,color:#fff,stroke:#0d47a1
-    style OPS fill:#2e7d32,color:#fff,stroke:#1b5e20
-    style RO fill:#4caf50,color:#fff,stroke:#2e7d32
-    style SRO fill:#4caf50,color:#fff,stroke:#2e7d32
-    style RM fill:#4caf50,color:#fff,stroke:#2e7d32
-    style HP fill:#4caf50,color:#fff,stroke:#2e7d32
-    style RES fill:#5d4037,color:#fff,stroke:#3e2723
-    style GR fill:#8d6e63,color:#fff,stroke:#5d4037
-    style PI fill:#8d6e63,color:#fff,stroke:#5d4037
-    style VS fill:#8d6e63,color:#fff,stroke:#5d4037
-    style ADM fill:#1976d2,color:#fff,stroke:#0d47a1
-    style FD fill:#42a5f5,color:#fff,stroke:#1565c0
-    style CO fill:#42a5f5,color:#fff,stroke:#1565c0
-    style NRC fill:#42a5f5,color:#fff,stroke:#1565c0
-    style EXT fill:#00796b,color:#fff,stroke:#004d40
-    style MIC fill:#26a69a,color:#fff,stroke:#00796b
-    style CS fill:#26a69a,color:#fff,stroke:#00796b
-    linkStyle default stroke:#777777,stroke-width:3px
-```
+NeutronOS is that system.
+
+Built at the University of Texas at Austin's Nuclear Engineering Teaching Laboratory (NETL), NeutronOS draws on six decades of reactor operations experience and the latest advances in AI, data engineering, and software architecture. It stands on the shoulders of the researchers, operators, and engineers who built the nuclear infrastructure we have today — and extends their work into the digital age.
 
 ---
 
-## Product Modules
+## What NeutronOS Does
 
-Neutron OS is modular — facilities enable only the modules they need. Each module is a self-contained extension that can be installed, configured, and updated independently. Core infrastructure modules are required; application modules default to "on" but can be disabled; future modules are roadmap items not yet implemented.
+NeutronOS is a **modular digital platform for nuclear facilities**. It replaces fragmented workflows with integrated digital tools, organized as independently deployable modules:
 
-### Core Infrastructure
+### Core Platform
 
-| Module | Purpose | PRD | Default |
-|--------|---------|-----|---------|  
-| **Core Platform** | Data lakehouse, authentication, dashboards | [Data Platform PRD](prd-data-platform.md) | Required |
-| **Scheduling System** | Cross-cutting time management, resource allocation | [Scheduling System PRD](prd-scheduling-system.md) | Required |
-| **Compliance Tracking** | Cross-cutting regulatory monitoring, evidence generation | [Compliance Tracking PRD](prd-compliance-tracking.md) | Required |
+| Module | Purpose | Details |
+|--------|---------|---------|
+| [Data Platform](prd-data-platform.md) | Lakehouse architecture, time-series ingestion, analytics | Bronze → Silver → Gold medallion pattern |
+| [Scheduling System](prd-scheduling-system.md) | Cross-cutting time management, resource allocation | Unified scheduling across all modules |
+| [Compliance Tracking](prd-compliance-tracking.md) | Regulatory monitoring, evidence generation | 30-minute check enforcement, NRC audit support |
 
-### Application Modules
+### Operations
 
-| Module | Purpose | PRD | Default |
-|--------|---------|-----|---------|  
-| **Reactor Ops Log** | Operations logging, console checks, shift handoffs | [Reactor Ops Log PRD](prd-reactor-ops-log.md) | On |
-| **Experiment Manager** | Sample lifecycle, metadata, results correlation | [Experiment Manager PRD](prd-experiment-manager.md) | On |
-| **Analytics Dashboards** | Superset visualizations, KPIs, trending | [Analytics PRD](prd-analytics-dashboards.md) | On |
-| **Medical Isotope Production** | Customer orders, QA/QC, shipping | [Medical Isotope PRD](prd-medical-isotope.md) | Off |
+| Module | Purpose | Details |
+|--------|---------|---------|
+| [Reactor Ops Log](prd-reactor-ops-log.md) | Console checks, shift handoffs, maintenance tracking | Tamper-proof audit trail, digital shift summaries |
+| [Experiment Manager](prd-experiment-manager.md) | Sample lifecycle, metadata, chain of custody | ROC authorization, results correlation |
+| [Analytics Dashboards](prd-analytics-dashboards.md) | Superset visualizations, KPIs, trending | Reactor utilization, fuel burnup, data quality |
+| [Medical Isotope Production](prd-medical-isotope.md) | Customer orders, production batching, QA/QC, shipping | End-to-end isotope lifecycle |
 
-### Future Modules
+### Computational
 
-| Module | Purpose | PRD | Default |
-|--------|---------|-----|---------|  
-| **Training** | Qualification tracking, requal scheduling, records | *(future PRD)* | Off |
-| **Personnel** | Staff directory, certifications, contact info | *(future PRD)* | Off |
-| **Search / AI** | RAG, workflow agents, tuned LLMs | *(future PRD)* | Off |
-| **Connections** | External system integrations | *(future PRD)* | Off |
+| Module | Purpose | Details |
+|--------|---------|---------|
+| Model Corral | Physics model registry, ROM versioning, validation datasets | *(PRD in progress)* |
+| Digital Twin Hosting | ROM execution, shadow runs, prediction validation | *(PRD in progress)* |
 
-This swimlane diagram shows how different users interact with Neutron OS throughout a typical week:
+### Intelligence Platform
 
-```mermaid
-flowchart LR
-    %% Time headers
-    Mon[Monday]:::timeHeader
-    Tue[Tuesday-Thursday]:::timeHeader  
-    Fri[Friday]:::timeHeader
-    
-    %% Operator Lane
-    Op1[Check facility<br/>display]:::operator
-    Op2[30-min console checks<br/>Log sample ops]:::operator
-    Op3[End-of-shift<br/>review]:::operator
-    
-    %% Reactor Manager Lane
-    RM1[Review<br/>schedule]:::manager
-    RM2[Approve experiment<br/>& production requests]:::manager
-    RM3[Review compliance<br/>Check burnup]:::manager
-    
-    %% Researcher Lane
-    Rs1[Check availability<br/>Review samples]:::researcher
-    Rs2[Submit metadata<br/>Request reactor time]:::researcher
-    Rs3[Analyze<br/>experiment data]:::researcher
-    
-    %% Production Manager Lane
-    PM1[Review<br/>isotope orders]:::production
-    PM2[Batch & schedule<br/>production runs]:::production
-    PM3[Forecast<br/>next week]:::production
-    
-    %% QA Officer Lane
-    QA2[Perform QA/QC<br/>Generate COA]:::qa
-    QA3[Verify<br/>compliance]:::qa
-    
-    %% Compliance Officer Lane  
-    CO2[Monitor<br/>evidence]:::compliance
-    CO3[Export<br/>NRC reports]:::compliance
-    
-    %% Connect time flow
-    Mon -.-> Tue -.-> Fri
-    
-    %% Operator flow
-    Mon --> Op1
-    Op1 --> Op2
-    Op2 --> Op3
-    Op3 --> Fri
-    
-    %% Manager flow
-    Mon --> RM1
-    RM1 --> RM2
-    RM2 --> RM3
-    RM3 --> Fri
-    
-    %% Researcher flow
-    Mon --> Rs1
-    Rs1 --> Rs2
-    Rs2 --> Rs3
-    Rs3 --> Fri
-    
-    %% Production flow
-    Mon --> PM1
-    PM1 --> PM2
-    PM2 --> PM3
-    PM3 --> Fri
-    
-    %% QA flow
-    Tue --> QA2
-    QA2 --> QA3
-    QA3 --> Fri
-    
-    %% Compliance flow
-    Tue --> CO2
-    CO2 --> CO3
-    CO3 --> Fri
-    
-    %% Styling
-    classDef timeHeader fill:#263238,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef operator fill:#1565c0,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef manager fill:#2e7d32,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef researcher fill:#7b1fa2,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef production fill:#e65100,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef qa fill:#c62828,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef compliance fill:#6a1b9a,color:#ffffff,stroke:#777777,stroke-width:3px
-    
-    linkStyle default stroke:#777777,stroke-width:3px
-```
+| Capability | Agent | Details |
+|------------|-------|---------|
+| [Signal Processing](../tech-specs/spec-agent-architecture.md) | **EVE** (Event Evaluator) | Ingests voice memos, meetings, code, chat → structured intelligence |
+| [Document Lifecycle](../tech-specs/spec-publisher.md) | **PR-T** (Purty) | .md → .docx → OneDrive/Box with bidirectional sync |
+| [Resource Stewardship](prd-agent-state-management.md) | **M-O** (Micro-Obliterator) | Data retention, system hygiene, scratch management |
+| [Diagnostics](../tech-specs/spec-executive.md) | **D-FIB** (Defib) | System health, security scans, configuration audit |
+| [Export Control Routing](../tech-specs/spec-model-routing.md) | **Neut** (Orchestrator) | Two-tier LLM routing, sensitivity classification |
+| [Knowledge Retrieval](../tech-specs/spec-rag-architecture.md) | RAG | Three-tier corpus (community / facility / personal) |
+| [External Connections](../tech-specs/spec-connections.md) | Connections | Unified auth for OneDrive, Box, GitHub, GitLab, Teams |
+
+### Security & Access Control
+
+| Capability | Details |
+|------------|---------|
+| [Export Control](../tech-specs/spec-model-routing.md) | Keyword + SLM classification, VPN-gated private endpoints |
+| [Security & Access Control](prd-security-access-control.md) | OpenFGA (ReBAC/RBAC/ABAC), prompt injection defense |
+| [TACC Integration](../tech-specs/spec-model-routing.md#9-deployment-options-for-the-private-endpoint) | Data locality for export-controlled simulation codes |
 
 ---
 
-## Module Architecture
+## How It's Built
 
-```mermaid
-flowchart TB
-    %% Application Layer
-    OpsLog[Reactor<br/>Ops Log]:::active
-    Exp[Experiment<br/>Manager]:::active
-    Med[Medical<br/>Isotope]:::optional
-    Dash[Analytics<br/>Dashboards]:::active
-    Train[Training]:::future
-    Pers[Personnel]:::future
-    AI[Search/AI]:::future
-    
-    %% Cross-cutting Services
-    Sched[Scheduling System]:::crosscut
-    Comp[Compliance Tracking]:::crosscut
-    
-    %% Core Platform
-    Core[Core Platform<br/>• Data Lakehouse<br/>• Authentication<br/>• Notifications<br/>• Audit Trail]:::core
-    
-    %% External Integrations  
-    Ext[External Systems<br/>• Reactor DCS<br/>• Google/Outlook<br/>• Shipping APIs<br/>• HR Systems]:::external
-    
-    %% Connections (simplified)
-    OpsLog --> Sched
-    Exp --> Sched
-    Med --> Sched
-    
-    OpsLog --> Comp
-    Exp --> Comp
-    Med --> Comp
-    
-    Sched --> Core
-    Comp --> Core
-    Dash --> Core
-    
-    OpsLog --> Core
-    Exp --> Core
-    Med --> Core
-    
-    Core -.-> Ext
-    
-    %% Styling
-    classDef active fill:#2e7d32,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef optional fill:#ff6f00,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef future fill:#9e9e9e,color:#ffffff,stroke:#777777,stroke-width:3px,stroke-dasharray: 5 5
-    classDef crosscut fill:#7b1fa2,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef core fill:#1565c0,color:#ffffff,stroke:#777777,stroke-width:3px
-    classDef external fill:#424242,color:#ffffff,stroke:#777777,stroke-width:3px
-    
-    linkStyle default stroke:#777777,stroke-width:3px
-```
+Everything in NeutronOS is an **extension**. Web apps, agents, tools, utilities — all extensions, discovered via TOML manifests, deployed independently. The core provides infrastructure; domain functionality ships as modules.
 
-### Module Status Legend
+| Principle | Implementation |
+|-----------|---------------|
+| **Everything is an extension** | 3-tier discovery: project → user → builtin |
+| **Reactor-agnostic core** | Reactor-specific features via external extension repos |
+| **Offline-first** | Queue locally, sync on restore — nuclear facilities lose network |
+| **Human-in-the-loop** | Agents inform, humans approve — especially for safety-adjacent actions |
+| **Model-agnostic** | Cloud LLMs for general use, private endpoints for export-controlled data |
 
-| Symbol | Status | Description |
-|--------|--------|-------------|
-| 🟢 Green | **Priority** | First release modules, enabled by default |
-| 🟠 Orange | **Optional** | First release modules, off by default |
-| ⬜ Grey Dashed | **Future** | Planned for later releases |
-| 🟣 Purple | **Cross-cutting** | Shared services used by multiple modules |
-| 🔵 Blue | **Core** | Required platform infrastructure |
-| ⬛ Dark Grey | **External** | Third-party integrations |
+For technical architecture, see the [Executive Tech Spec](../tech-specs/spec-executive.md).
 
 ---
 
-## Key Value Propositions
+## The Agent Team
 
-### For Operations Staff
+NeutronOS agents are named after robots from Pixar's WALL-E — a film about a world made uninhabitable by environmental neglect. The irony is intentional: NeutronOS helps build the cleanest large-scale energy source available, exactly the technology that could prevent the future WALL-E depicts.
 
-| Pain Point | Neutron OS Solution |
-|------------|---------------------|
-| Paper logbooks are hard to search | Full-text search across all entries |
-| 30-minute checks sometimes missed | Timer alerts, gap detection dashboard |
-| Shift handoffs lose context | Digital shift summary, persistent state |
-| NRC inspection prep takes days | One-click evidence export |
-
-### For Researchers
-
-| Pain Point | Neutron OS Solution |
-|------------|---------------------|
-| Scheduling via email is slow | AI-assisted scheduling with conflict detection and automatic optimization |
-| Sample tracking in personal spreadsheets | Unified sample lifecycle with chain-of-custody audit trail |
-| "What were reactor conditions during my experiment?" | Real-time digital twin correlation with sub-second query response |
-| Repeating experiment setup is tedious | Template library with institutional memory — learn from every past experiment |
-| Research results scattered across HPC systems | Unified RAG-indexed knowledge base across all research outputs |
-
-### For Facility Management
-
-| Pain Point | Neutron OS Solution |
-|------------|---------------------|
-| No visibility into facility utilization | Usage dashboards, capacity planning |
-| Compliance gaps discovered during audits | Real-time compliance monitoring |
-| Medical isotope orders via phone calls | Customer self-service portal |
-| Revenue tracking in spreadsheets | Integrated billing and reporting |
+| Agent | Character | Role | CLI |
+|-------|-----------|------|-----|
+| **Neut** | The Axiom | Orchestrator — routes commands, delegates, maintains context | `neut chat` |
+| **EVE** | Probe droid | Event Evaluator — signal detection and intelligence extraction | `neut signal` |
+| **M-O** | Cleaning robot | Micro-Obliterator — resource stewardship and system hygiene | `neut mo` |
+| **PR-T** | Beauty bot | Purty — document lifecycle, .md → polished .docx → publish | `neut pub` |
+| **D-FIB** | Medical bot | Defib — diagnostics, security health, configuration audit | `neut doctor` |
 
 ---
 
-## Community & Collaboration
-
-NeutronOS is designed for teams, not individuals. Key collaboration features:
-
-- **Shared RAG corpus** — facility-wide knowledge indexed and searchable by all team members
-- **Published document lifecycle** — .md → .docx → OneDrive with bidirectional sync
-- **Signal pipeline** — meeting transcripts, code changes, and chat messages automatically processed into actionable intelligence
-- **Role-based access** — OpenFGA authorization controls who can access export-controlled endpoints
-
----
-
-## Key Design Decisions
-
-Neutron OS architecture embodies several foundational decisions documented in our [Architecture Decision Records](../adr/README.md):
-
-| Decision | Implication | ADR |
-|----------|-------------|-----|
-| **Streaming-first architecture** | Real-time is the default; batch processing for aggregations and fallback | [ADR 007](../adr/007-streaming-first-architecture.md) |
-| **Open lakehouse (Iceberg + DuckDB)** | No vendor lock-in; on-premise deployment possible | [ADR 003](../adr/003-lakehouse-iceberg-duckdb-superset.md) |
-| **Multi-facility via configuration** | Same codebase serves NETL, NRAD, etc. with facility-specific settings | Tech Spec §1.5 |
-| **Module-based architecture** | Facilities enable only what they need; Medical Isotope off by default | This PRD |
-
-### Streaming-First Philosophy
-
-**Designed for commercial reactor scale from day one.**
-
-As nuclear commercialization accelerates, fleet operators will manage dozens of units generating petabytes of telemetry. Streaming-first architecture enables:
-- **Fleet-wide anomaly detection** — correlate signals across multiple units in real-time
-- **Instant operating limit propagation** — safety parameter changes flow immediately to all systems
-- **Coordinated load-following** — respond to grid demands across a fleet, not just one unit
-- **Graceful scaling** — same architecture handles one research reactor or fifty commercial units
-
-With streaming-first:
-- **🟢 Live** is the default — users assume data is current
-- **⚠️ Stale** warnings only appear when streaming is degraded
-- Batch processing handles historical aggregations and disaster recovery
-
-### Deployment Architecture
-
-```mermaid
-flowchart TB
-    subgraph Cloud["☁️ Cloud Infrastructure"]
-        subgraph Streaming["Real-Time Layer"]
-            Kafka[Apache Kafka]
-            Flink[Apache Flink]
-            Redis[(Redis Cache)]
-        end
-        
-        subgraph Storage["Storage Layer"]
-            S3[(S3/Object Storage)]
-            Iceberg[(Apache Iceberg)]
-            TimeSeries[(Time Series DB)]
-        end
-        
-        subgraph Compute["Compute Layer"]
-            DuckDB[DuckDB Engine]
-            Superset[Apache Superset]
-            API[REST/GraphQL APIs]
-        end
-    end
-    
-    subgraph OnPrem["On-Premise"]
-        subgraph Sensors["Sensor Network"]
-            DCS[Reactor DCS]
-            Rad[Radiation Monitors]
-            Env[Environmental Sensors]
-        end
-        
-        subgraph Edge["Edge Computing"]
-            Gateway[IoT Gateway]
-            Buffer[Local Buffer]
-            Process[Edge Processing]
-        end
-    end
-    
-    subgraph Users["👥 User Access"]
-        Web[Web Portal]
-        Mobile[Mobile Apps]
-        Desktop[Desktop Client]
-        API_Client[API Clients]
-    end
-    
-    Sensors --> Gateway
-    Gateway --> Buffer
-    Buffer --> Kafka
-    Kafka --> Flink
-    Flink --> Iceberg
-    Flink --> Redis
-    Flink --> TimeSeries
-    
-    Iceberg --> DuckDB
-    DuckDB --> Superset
-    DuckDB --> API
-    
-    API --> Web
-    API --> Mobile
-    API --> Desktop
-    API --> API_Client
-    
-    Redis --> API
-    
-    style Cloud fill:#e3f2fd,color:#000000
-    style OnPrem fill:#f3e5f5,color:#000000
-    style Users fill:#e8f5e9,color:#000000
-    linkStyle default stroke:#777777,stroke-width:3px
-```
-
----
-
-## Phased Rollout
+## Where We Are
 
 ```mermaid
 gantt
-    title Neutron OS Deployment Phases
+    title NeutronOS Deployment Phases
     dateFormat  YYYY-MM
-    section Phase 1
-    Data Puddle (MVP Dashboards)    :done, p1a, 2026-01, 2026-02
-    Data Foundation (Iceberg)       :active, p1b, 2026-01, 2026-03
-    section Phase 2
-    Reactor Ops Log (Core)          :p2a, 2026-03, 2026-05
-    Experiment Manager (Core)       :p2b, 2026-03, 2026-05
-    section Phase 3
-    Scheduling Integration          :p3a, 2026-05, 2026-07
-    Medical Isotope (if enabled)    :p3b, 2026-06, 2026-08
-    section Phase 4
-    AI/LLM Features                 :p4, 2026-08, 2026-12
-    Multi-Facility Support          :p5, 2026-10, 2027-02
+    section Foundation
+    CLI + Extension System (v0.1-0.3)       :done, f1, 2026-01, 2026-02
+    Signal Pipeline (EVE)                    :done, f2, 2026-01, 2026-03
+    Export Control Router                    :done, f3, 2026-02, 2026-03
+    Publisher (PR-T)                         :done, f4, 2026-02, 2026-03
+    RAG + Knowledge Base                     :done, f5, 2026-03, 2026-03
+    State Management + Retention (M-O)       :done, f6, 2026-03, 2026-03
+    section Current (v0.4)
+    Agent Identity (EVE, M-O, PR-T, D-FIB)  :active, c1, 2026-03, 2026-04
+    OneDrive Bidirectional Sync              :active, c2, 2026-03, 2026-04
+    Connections Framework                    :active, c3, 2026-03, 2026-04
+    section Next
+    Reactor Ops Log                          :n1, 2026-04, 2026-06
+    Experiment Manager                       :n2, 2026-04, 2026-06
+    Security (OpenFGA)                       :n3, 2026-05, 2026-07
+    section Future
+    Digital Twin Hosting                     :ft1, 2026-07, 2026-10
+    Multi-Facility Support                   :ft2, 2026-08, 2027-01
 ```
 
----
-
-## Data Flow & Integration
-
-```mermaid
-flowchart LR
-    subgraph Input["Data Sources"]
-        Manual[Manual Entry • Console checks • Sample data • Maintenance logs]
-        Auto[Automated • DCS sensors • Radiation monitors • Environmental]
-        External[External • Customer orders • Shipping status • Weather API]
-    end
-    
-    subgraph Process["Processing"]
-        Stream[Stream Processing • Real-time alerts • Anomaly detection • Compliance checks]
-        Batch[Batch Processing • Daily summaries • Monthly reports • Trend analysis]
-        ML[ML/AI Pipeline • Predictive maintenance • Optimization • Smart defaults]
-    end
-    
-    subgraph Store["💾 Storage Layers"]
-        Bronze[(Bronze Raw data)]
-        Silver[(Silver Cleaned data)]
-        Gold[(Gold Analytics-ready)]
-    end
-    
-    subgraph Output["📤 Outputs"]
-        Dash[Dashboards • Operations • Compliance • Analytics]
-        Reports[Reports • NRC export • Shift summary • Monthly stats]
-        Alerts[Alerts • Safety limits • Missed checks • System health]
-    end
-    
-    Manual --> Stream
-    Auto --> Stream
-    External --> Batch
-    
-    Stream --> Bronze
-    Batch --> Bronze
-    Bronze --> Silver
-    Silver --> Gold
-    
-    Silver --> ML
-    ML --> Gold
-    
-    Gold --> Dash
-    Gold --> Reports
-    Stream --> Alerts
-    
-    style Input fill:#fff3e0,color:#000000
-    style Process fill:#e8f5e9,color:#000000
-    style Store fill:#e3f2fd,color:#000000
-    style Output fill:#f3e5f5,color:#000000
-linkStyle default stroke:#777777,stroke-width:3px
-```
+**1,600+ automated tests. 46 documents. 17 builtin extensions. 5 agents.** All open source.
 
 ---
 
-## Compliance & Safety Framework
+## Document Family
 
-```mermaid
-flowchart TB
-    subgraph Regulations["Regulatory Requirements"]
-        NRC[NRC 10 CFR • Part 50/55 • Reporting • Records]
-        DOE[DOE Orders • Safety • Security • Training]
-        State[State/Local • Environmental • Emergency • Health]
-    end
-    
-    subgraph Monitoring["Continuous Monitoring"]
-        Check30[30-Min Checks ✅ Auto-tracked ⚠️ Gap detection Compliance %]
-        Limits[Operating Limits 🔴 Hard stops 🟡 Warnings 🟢 Normal]
-        Training[Training Currency 👤 Individual 📅 Expiration 🔄 Renewal]
-    end
-    
-    subgraph Actions["⚡ Automated Actions"]
-        Alert[Alert Generation • SMS/Email • Console popup • Manager escalation]
-        Lock[System Interlocks • Prevent operation • Require approval • Force compliance]
-        Report[Auto-Reporting • Daily summary • Exception reports • Audit trail]
-    end
-    
-    subgraph Evidence["📁 Compliance Evidence"]
-        Logs[(Operation Logs)]
-        Certs[(Certifications)]
-        Audits[(Audit Trail)]
-        Exports[(NRC Exports)]
-    end
-    
-    NRC --> Check30
-    NRC --> Limits
-    DOE --> Training
-    State --> Limits
-    
-    Check30 --> Alert
-    Limits --> Lock
-    Training --> Lock
-    
-    Check30 --> Report
-    Limits --> Report
-    Training --> Report
-    
-    Report --> Logs
-    Alert --> Audits
-    Lock --> Audits
-    Training --> Certs
-    
-    Logs --> Exports
-    Certs --> Exports
-    Audits --> Exports
-    
-    style Regulations fill:#ffebee,color:#000000
-    style Monitoring fill:#e8f5e9,color:#000000
-    style Actions fill:#fff3e0,color:#000000
-    style Evidence fill:#e3f2fd,color:#000000
-linkStyle default stroke:#777777,stroke-width:3px
-```
+This executive PRD is the entry point. Each capability has its own detailed PRD and technical specification:
 
----
+### Product Requirements
 
-## Success Metrics (Platform-Wide)
+| PRD | Status |
+|-----|--------|
+| [Agent State Management](prd-agent-state-management.md) | ✅ Shipped |
+| [Agents Platform](prd-agents.md) | 🟡 Partial |
+| [Analytics Dashboards](prd-analytics-dashboards.md) | 🔲 Planned |
+| [Compliance Tracking](prd-compliance-tracking.md) | 🔲 Planned |
+| [Connections](prd-connections.md) | 📋 Spec'd |
+| [Data Platform](prd-data-platform.md) | 🔲 Planned |
+| [Experiment Manager](prd-experiment-manager.md) | 🔲 Planned |
+| [Intelligence Amplification](prd-intelligence-amplification.md) | 📋 Designed |
+| [Media Library](prd-media-library.md) | 🔲 Planned |
+| [Medical Isotope Production](prd-medical-isotope.md) | 🔲 Planned |
+| [Neut CLI](prd-neut-cli.md) | 🟡 Partial |
+| [Publisher](prd-publisher.md) | ✅ Shipped |
+| [Reactor Ops Log](prd-reactor-ops-log.md) | 🔲 Planned |
+| [Scheduling System](prd-scheduling-system.md) | 🔲 Planned |
+| [Security & Access Control](prd-security-access-control.md) | 📋 Spec'd |
 
-| Metric | Target | Timeline |
-|--------|--------|----------|
-| **Adoption** | 90% of daily operations use Neutron OS | 6 months post-launch |
-| **Data Entry Time** | 50% reduction vs. current workflows | 6 months |
-| **Compliance Gaps** | Zero missed 30-minute checks | 3 months |
-| **Self-Service Rate** | 80% of scheduling via portal (not email) | 6 months |
-| **NRC Prep Time** | 75% reduction in inspection prep | 12 months |
+### Technical Specifications
+
+| Spec | Focus |
+|------|-------|
+| [Executive Tech Spec](../tech-specs/spec-executive.md) | Architecture overview, implementation status |
+| [Agent Architecture](../tech-specs/spec-agent-architecture.md) | Signal pipeline, extractors, correlator, synthesizer |
+| [Model Routing](../tech-specs/spec-model-routing.md) | Export control classification, two-tier LLM routing |
+| [RAG Architecture](../tech-specs/spec-rag-architecture.md) | Three-tier corpus, EC-compliant embeddings |
+| [Connections](../tech-specs/spec-connections.md) | Unified auth, credential resolution, endpoint watcher |
+| [State Management](../tech-specs/spec-agent-state-management.md) | Hybrid file/PostgreSQL backend, retention policies |
+| [Publisher](../tech-specs/spec-publisher.md) | Document lifecycle, format-endpoint compatibility |
+| [Data Architecture](../tech-specs/spec-data-architecture.md) | Medallion pattern, Iceberg, schemas |
+| [Digital Twin](../tech-specs/spec-digital-twin-architecture.md) | Surrogate models, WASM runtime |
+
+### Architecture Decisions
+
+| ADR | Decision |
+|-----|----------|
+| [ADR-001](adr-001-polyglot-monorepo-bazel.md) | Monorepo (Python, not Bazel) |
+| [ADR-002](adr-002-hyperledger-fabric-multi-facility.md) | Hyperledger for tamper-proof audit |
+| [ADR-003](adr-003-lakehouse-iceberg-duckdb-superset.md) | Iceberg + DuckDB lakehouse |
+| [ADR-004](adr-004-infrastructure-terraform-k8s-helm.md) | Terraform + K8S + Helm |
+| [ADR-006](adr-006-mcp-agentic-access.md) | MCP + CLI as agentic interfaces |
+| [ADR-010](adr-010-cli-architecture.md) | CLI as agentic terminal |
+
+### Research
+
+| Document | Topic |
+|----------|-------|
+| [State Backend Whitepaper](../research/whitepaper-state-backend-comparison.md) | Flat file vs PostgreSQL: benchmarks, token efficiency |
+| [Platform Comparison](../research/platform-comparison-databricks.md) | NeutronOS vs Databricks |
+| [DeepLynx Assessment](../research/deeplynx-assessment.md) | INL DeepLynx peer-platform analysis |
 
 ---
 
-## Constituent PRDs
+## Research Foundations
 
-Each module has a detailed PRD with user stories, schemas, and mockups:
+NeutronOS is developed at UT Austin's Department of Mechanical Engineering, Nuclear & Radiation Engineering Program, with research alignment to active NEUP proposals:
 
-### Core Infrastructure
-
-1. **[Data Platform PRD](prd-data-platform.md)**
-   - Lakehouse architecture (Bronze/Silver/Gold)
-   - Time-series ingestion
-   - Query layer (DuckDB, Superset)
-   - Streaming and batch processing
-
-2. **[Scheduling System PRD](prd-scheduling-system.md)** *(Cross-Cutting)*
-   - Unified time slot management
-   - Resource allocation and conflicts
-   - Multi-module integration
-   - Calendar synchronization
-
-3. **[Compliance Tracking PRD](prd-compliance-tracking.md)** *(Cross-Cutting)*
-   - Regulatory monitoring (NRC, DOE)
-   - 30-minute check enforcement
-   - Evidence package generation
-   - Real-time compliance dashboards
-
-### Application Modules
-
-4. **[Reactor Ops Log PRD](prd-reactor-ops-log.md)**
-   - Console check logging
-   - Shift handoffs and summaries
-   - Maintenance tracking
-   - Tamper-proof audit trail
-
-5. **[Experiment Manager PRD](prd-experiment-manager.md)**
-   - Sample lifecycle tracking
-   - Metadata and chain of custody
-   - Results correlation
-   - ROC authorization tracking
-
-6. **[Analytics Dashboards PRD](prd-analytics-dashboards.md)**
-   - Reactor Operations dashboard
-   - Utilization metrics
-   - Fuel burnup visualization
-   - Data quality monitoring
-
-### Platform Tooling
-
-7. **[Publisher PRD](prd-publisher.md)** *(neut pub)*
-   - Document lifecycle: markdown → generate → publish
-   - Multi-endpoint publishing (local, OneDrive, Google Drive, S3)
-   - Declarative format-endpoint compatibility with graceful fallback
-   - Audience targeting system (forward-looking)
-   - See also: [Publisher Architecture Spec](../tech-specs/spec-publisher.md)
-
-8. **[Agent State Management PRD](prd-agent-state-management.md)**
-   - Safe concurrent access to shared agent state files
-   - Verifiable data retention policies (M-O enforced)
-   - Retention audit logging for compliance
-   - See also: [Agent State Management Spec](../tech-specs/spec-agent-state-management.md)
-
-9. **[Connections PRD](prd-connections.md)**
-   - Unified `neut connect` for all external integrations
-   - Credential resolution chain (env → settings → keychain → file → browser)
-   - Extension builder contract: declare connections in TOML, call `get_credential()`
-   - See also: [Connections & Credentials Spec](../tech-specs/spec-connections.md)
-
-10. **[Security & Access Control PRD](prd-security-access-control.md)**
-    - Prompt injection defense (chunk sanitization, response scanning)
-    - EC leakage detection and incident response
-    - OpenFGA authorization (ReBAC/RBAC/ABAC)
-    - See also: [Model Routing Spec §7-8-10](../tech-specs/spec-model-routing.md)
-
-### Optional Modules
-
-5. **[Medical Isotope Production PRD](prd-medical-isotope.md)**
-   - Customer order portal
-   - Production batching
-   - QA/QC workflow
-   - Shipping and delivery tracking
+| Research Area | NeutronOS Alignment |
+|---------------|--------------------|
+| Operator LLM Safety | Export control routing, prompt injection defense |
+| Cyber-Nuclear Security | Security architecture, EC leakage detection |
+| Digital Twin Framework | Model Corral, Digital Twin Hosting, surrogate validation |
+| AI Cross-Section Tuning | RAG-indexed nuclear data, model-agnostic gateway |
 
 ---
 
-## Module Feature Comparison
-
-| Module | Complexity | Business Value | Priority |
-|--------|------------|----------------|----------|
-| **Reactor Ops Log** | Medium | Critical | First release |
-| **Experiment Manager** | Medium | High | First release |
-| **Analytics Dashboards** | Low | High | First release |
-| **Medical Isotope Production** | High | Medium | Optional |
-| **Scheduling System** | Low | Critical | Core infrastructure |
-| **Compliance Tracking** | Low | Critical | Core infrastructure |
-| **Training Module** | Medium | Medium | Future |
-| **AI/Search** | Very High | High | Future |
-| **Personnel** | Low | Low | Future |
-
-### Module Interdependencies
-
-```mermaid
-graph TB
-    subgraph Foundation["🏗️ Foundation Layer"]
-        Core[Core Platform Required]
-    end
-    
-    subgraph Operational["Operational Modules"]
-        Ops[Reactor Ops Log]
-        Exp[Experiment Manager]
-        Med[Medical Isotope]
-    end
-    
-    subgraph Intelligence["🧠 Intelligence Layer"]
-        Dash[Analytics]
-        AI[AI/Search]
-    end
-    
-    subgraph Support["🛠️ Support Modules"]
-        Train[Training]
-        Pers[Personnel]
-        Conn[Connections]
-    end
-    
-    Core --> Ops
-    Core --> Exp
-    Core --> Med
-    Core --> Dash
-    
-    Ops --> Dash
-    Exp --> Dash
-    Med --> Dash
-    
-    Ops -.-> AI
-    Exp -.-> AI
-    Dash --> AI
-    
-    Pers --> Train
-    Core --> Pers
-    Core --> Conn
-    
-    Conn -.-> Ops
-    Conn -.-> Exp
-    Conn -.-> Med
-    
-    style Foundation fill:#1565c0,color:#fff
-    style Operational fill:#2e7d32,color:#fff
-    style Intelligence fill:#7b1fa2,color:#fff
-    style Support fill:#e65100,color:#fff
-    
-    linkStyle default stroke:#777777,stroke-width:3px
-```
-
----
-
-## Technical Foundation
-
-For technical architecture, schemas, and implementation details, see:
-
-- **[Neutron OS Master Tech Spec](../tech-specs/spec-executive.md)** — Full technical specification
-- **[Executive Technical Summary](../tech-specs/spec-executive.md)** — 2-page technical overview
-
----
-
-## Feedback & Stakeholder Input
-
-This PRD incorporates feedback from:
-
-| Stakeholder | Role | Input Incorporated |
-|-------------|------|-------------------|
-| Khiloni Shah | Post-Doctoral Nuclear Engineering Researcher | Experiment workflow, facility names, sample metadata |
-| Jim (TJ) | NETL TRIGA Manager | Reactor Ops Log requirements, 30-min checks, compliance |
-| Nick Luciano | Post-Doctoral Nuclear Engineering Researcher | Time-series data, security, dashboards |
-
----
-
-## NEUP Research Addendum
-
-This section maps NEUP 2026 proposals to Neutron OS modules and identifies platform enhancements driven by research needs.
-
-### Research-Platform Alignment Matrix
-
-| NEUP Proposal | Primary Module | Integration Type |
-|---------------|----------------|------------------|
-| DT Framework IRP | Core Platform | Architecture validation |
-| Operator LLM Safety | Search/AI (future) | Safety requirements |
-| Cyber-Nuclear Security | All modules | Cross-cutting security |
-| Virtual Systems Engineer | Search/AI (future) | Agent capabilities |
-| Semi-Autonomous Controls | Reactor Ops Log | Autonomy specification |
-| KANs / PINNs / ML Neutronics | Analytics (DT) | Surrogate model options |
-| Medical Isotope Optimization | Medical Isotope | Production planning AI |
-| Resolving Sensor Data Conflicts | Data Platform | Data quality layer |
-| Cherenkov Power Monitoring | Data Platform | New sensor modality |
-
-### NEUP Proposal: Operator LLM Safety
-
-**Proposal:** Establishing safety guardrails for LLM use in nuclear operations.
-
-**Gap Addressed:** Future "Search/AI" module lacks safety specifications for operational contexts.
-
-#### LLM Safety Framework
-
-| Interaction Type | Safety Level | Requirements |
-|-----------------|--------------|-------------|
-| Information lookup | Low | Standard RAG with source citation |
-| Procedure assistance | Medium | Cross-reference approved procedures; human confirmation |
-| Operational recommendation | High | Multi-model consensus; physics validation; SRO approval |
-| Control action suggestion | **Prohibited** | LLM cannot suggest direct control actions |
-
-#### New Requirements for Search/AI Module
-
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| AI-001 | All LLM responses logged with query, response, sources cited | P0 |
-| AI-002 | Confidence scores required for operational queries | P0 |
-| AI-003 | Human-in-the-loop mandatory for action-oriented responses | P0 |
-| AI-004 | Prompt injection prevention via input sanitization | P1 |
-
----
-
-### NEUP Proposal: Cyber-Nuclear Security (Topic 11)
-
-**Proposal:** Cybersecurity frameworks specifically for nuclear digital twins.
-
-**Gap Addressed:** Security architecture focuses on auth/authz; lacks cyber-physical threat modeling.
-
-#### Cyber-Physical Security Layer
-
-| Security Domain | Current State | Needed Enhancement |
-|-----------------|---------------|-------------------|
-| Authentication | ✅ Defined | — |
-| Authorization | ✅ Defined | — |
-| Sensor integrity | ❌ Not specified | Signed readings, spoofing detection |
-| Model tampering | ❌ Not specified | Secure model deployment, validation |
-| Air-gap deployment | ❌ Not specified | Network isolation option |
-
----
-
-### NEUP Proposal: Digital Twin Framework IRP
-
-**Proposal:** Industry-wide standards for nuclear digital twin architectures.
-
-**Supporting PRD Element:** Modular architecture already uses factory/provider pattern enabling multi-facility deployment.
-
-**Recommended Enhancement:** Publish `ReactorProvider` interface as open standard for industry adoption.
-
----
-
-### Research Collaboration Priorities
-
-| Priority | Proposal | POCs | Contact Reason |
-|----------|----------|------|----------------|
-| 🔴 Critical | DT Framework IRP | PI TBD; Collab: Ryan Stewart (INL), U Utah | Align Neutron OS architecture with emerging standards |
-| 🔴 Critical | Operator LLM Safety | PI TBD; Collab: Ron Boring (INL) | Define safety constraints before AI deployment |
-| 🔴 Critical | DT Safety (Cyber-Nuclear) | PI W. Charlton (UT); Collab: C. Gentry (UT), A. Williams (SNL) | Fill security documentation gap |
-| 🟡 High | Medical Isotope Optimization | PI B. Collins (UT); Collab: S. Aslam (UT), W. Charlton (UT) | Revenue-generating module enhancement |
-| 🟡 High | Semi-Autonomous Controls | PI B. Collins (UT); Collab: S. Aslam (UT), J. Ross (Natural Resources) | Future roadmap acceleration |
-| 🟡 High | Resolving Sensor Data Conflicts | PI TBD; Collab: K. Clarno (UT) | Data quality foundation |
-
-**Additional NEUP POCs for Related Proposals:**
-- **KANs Reactor Modeling:** PI Majdi Radaideh (U Michigan); Collab: Jeongwon Seo (UT), Cole Gentry (UT)
-- **PINNs Self-Shielding:** PI Cole Gentry (UT); Collab: Nicholas Luciano (UT), Yaqi Wang (INL)
-- **AI XS Library Tuning:** PI Cole Gentry (UT); Collab: Yaqi Wang (INL), Jesse Brown (ORNL)
-- **ML Neutronics Acceleration:** PI Cole Gentry (UT); Collab: Cody Permann (INL)
-- **Nuclear LLM Bench:** PI Kevin Clarno (UT); Collab: Derek Booth (UT), Ondrej Chvala (UT)
-- **Virtual Systems Engineer:** PI TBD; Collab: Ron Boring (INL)
-- **Cherenkov Power Monitoring:** PI W. Charlton (UT); Collab: J. Seo (UT), R. Steward (INL)
-
-*This addendum establishes the research integration framework for Neutron OS evolution.*
-
----
-
-## Potential Future Partners
-
-| Organization | Capability | Alignment |
-|--------------|-----------|-----------|
-| **Idaho National Laboratory (INL)** | Advanced reactor design, fuel qualification, material testing | Digital twin for next-generation reactors, isotope production for materials research |
-| **Oregon State University** | TRIGA reactor operations, university reactor community network | Peer validation, shared best practices for university digital twin deployment |
-
----
-
-*Document Status: Active — Updated with stakeholder feedback January 2026*
+*For technical architecture, see the [Executive Tech Spec](../tech-specs/spec-executive.md). For the CLI, run `neut --help`.*

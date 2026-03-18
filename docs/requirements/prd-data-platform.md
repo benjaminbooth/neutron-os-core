@@ -315,7 +315,9 @@ See: [Superset Scenarios](../tech-specs/superset-scenarios/)
 - Dagster (orchestration)
 - Object storage (pending hosting decision)
 - **Semantic search capability** (Vector database / embeddings infrastructure — specification TBD)
-- **Neut agent integration** (Signal extraction and Bronze ingestion via Neut's sensing role — see [Intelligence Amplification Pillar](prd-intelligence-amplification.md))
+- **Neut agent integration** (Signal extraction and Bronze ingestion via Neut's sensing role — see [Intelligence Amplification Research](../research/intelligence-amplification.md))
+- **Digital Twin integration** (ROM predictions, Shadow outputs, run tracking — see [Digital Twin Hosting PRD](prd-digital-twin-hosting.md))
+- **Streaming infrastructure** (Redpanda/Flink for real-time ROM predictions — see [ADR-007](adr-007-streaming-first-architecture.md))
 
 ---
 
@@ -328,6 +330,86 @@ See: [Superset Scenarios](../tech-specs/superset-scenarios/)
 5. **[RAG Integration]** How should Neut's signal outputs (from sensing role) flow into Bronze tables? (Direct ingestion, staging area, batching strategy)
 6. **[Agent State]** Should Agent State Management system outputs (state snapshots, transitions) be persisted as Bronze/Silver tables?
 7. **[Real-time Streaming]** What is the boundary between real-time Neut signal ingestion (sensing role) and batch medallion processing?
+
+---
+
+## Digital Twin Integration
+
+This section defines how Digital Twin Hosting data flows into the Data Platform.
+
+### DT Data Sources
+
+| Source | Format | Refresh | Layer |
+|--------|--------|---------|-------|
+| **ROM Predictions** | JSON (via Redpanda) | Real-time (ROM-1: 10 Hz) | Bronze |
+| **Shadow Runs** | HDF5/Parquet | Nightly batch | Bronze |
+| **Physics Code Outputs** | HDF5/Parquet | On completion | Bronze |
+| **Run Metadata** | PostgreSQL | Event-driven | Silver |
+| **Validation Results** | JSON | Per-run | Silver |
+
+### New Bronze Tables
+
+| Table | Description | Partitioning |
+|-------|-------------|--------------|
+| `dt_runs_raw` | Raw run metadata from orchestrator | `facility`, `run_date` |
+| `rom_predictions_raw` | ROM inference outputs | `facility`, `timestamp` |
+| `shadow_outputs_raw` | Shadow simulation results | `facility`, `run_date` |
+| `physics_outputs_raw` | High-fidelity code results | `facility`, `run_date` |
+
+### New Silver Tables
+
+| Table | Description | Key Transforms |
+|-------|-------------|----------------|
+| `dt_runs` | Validated run tracking | Schema enforcement, FK validation |
+| `dt_run_states` | Reactor state snapshots per run | State interpolation, gap detection |
+| `rom_predictions_validated` | Cleaned ROM outputs with UQ | Outlier removal, uncertainty bounds |
+| `predicted_vs_measured` | Aligned prediction/measurement pairs | Timestamp alignment, sensor mapping |
+
+### New Gold Tables
+
+| Table | Description | Aggregation |
+|-------|-------------|-------------|
+| `prediction_accuracy_daily` | Daily accuracy metrics per ROM tier | RMSE, bias, max error by day |
+| `model_drift_weekly` | Drift detection trends | Rolling comparison, confidence intervals |
+| `rom_performance_summary` | ROM execution statistics | Latency p50/p95/p99, throughput |
+| `shadow_comparison_summary` | Shadow vs actual analysis | Deviations by state variable |
+
+### Integration with ADR-007 Streaming
+
+ROM-1 predictions at 10 Hz flow through the streaming pipeline:
+
+```
+ROM-1 Inference → Redpanda (rom.predictions.v1) 
+                     → Flink (timestamp alignment)
+                         → Bronze (rom_predictions_raw)
+                             → Real-time comparison (Flink)
+                                 → WebSocket (control room)
+```
+
+Shadow and physics code outputs use batch ingestion after job completion.
+
+### Data Quality Tests (dbt)
+
+```yaml
+# models/silver/dt_runs.yml
+tests:
+  - unique:
+      column_name: run_id
+  - accepted_values:
+      column_name: run_type
+      values: ['physics', 'shadow', 'rom_training', 'rom_inference', 'calibration']
+  - relationships:
+      to: ref('model_registry')
+      field: model_id
+  - not_null:
+      columns: [run_id, run_type, model_id, reactor_type, facility, status]
+```
+
+### See Also
+
+- [Digital Twin Hosting PRD](prd-digital-twin-hosting.md) — Full run tracking schema
+- [Model Corral PRD](prd-model-corral.md) — Model registry integration
+- [ADR-007: Streaming Architecture](adr-007-streaming-first-architecture.md) — Real-time data flow
 
 ---
 

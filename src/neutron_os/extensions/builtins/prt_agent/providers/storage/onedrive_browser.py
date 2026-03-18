@@ -363,6 +363,23 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                 fc.set_files(str(local_path))
                 page.wait_for_timeout(5000)
 
+                # Check for "Replace" dialog (file already exists)
+                replace_btn = page.query_selector("button:has-text('Replace')")
+                if replace_btn:
+                    replace_btn.click()
+                    page.wait_for_timeout(3000)
+
+                # Check for error toast (file locked, permission denied, etc.)
+                page.wait_for_timeout(2000)
+                error_toast = page.query_selector("[class*='error'], [class*='Error'], [role='alert']")
+                if error_toast:
+                    error_text = error_toast.inner_text()
+                    if "locked" in error_text.lower() or "error" in error_text.lower():
+                        return UploadResult(
+                            success=False, url="",
+                            error=f"OneDrive rejected upload: {error_text[:200]}",
+                        )
+
             return UploadResult(
                 success=True,
                 url=page.url,
