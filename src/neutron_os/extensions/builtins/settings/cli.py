@@ -14,7 +14,7 @@ import argparse
 import sys
 from typing import Any
 
-from .store import SettingsStore
+from .store import SettingsStore, _DEFAULTS
 
 
 def _fmt_value(v: Any) -> str:
@@ -103,6 +103,12 @@ def main():
             value: Any = True
         elif raw.lower() in ("false", "no"):
             value = False
+        elif raw.startswith("[") and raw.endswith("]"):
+            # Explicit list syntax: [a, b, c]
+            value = [v.strip().strip("'\"") for v in raw[1:-1].split(",") if v.strip()]
+        elif isinstance(_DEFAULTS.get(args.key), list):
+            # Key's default is a list — parse comma-separated into list
+            value = [v.strip() for v in raw.split(",") if v.strip()]
         else:
             try:
                 value = int(raw)

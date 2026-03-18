@@ -246,15 +246,21 @@ class Gateway:
                 file=sys.stderr,
             )
 
-        # Check if user has a preferred provider
+        # Check if user has a preferred provider chain
         try:
             from neutron_os.extensions.builtins.settings.store import SettingsStore
             settings = SettingsStore()
-            prefer = settings.get("routing.prefer_provider", "")
-            if prefer:
+            prefer = settings.get("routing.prefer_provider", [])
+
+            # Normalize: accept list or comma-separated string
+            if isinstance(prefer, str):
+                chain = [n.strip() for n in prefer.split(",") if n.strip()]
+            else:
+                chain = list(prefer) if prefer else []
+
+            if chain:
                 condition = settings.get("routing.prefer_when", "reachable")
-                # Try each preferred provider (comma-separated list)
-                for pref_name in [n.strip() for n in prefer.split(",") if n.strip()]:
+                for pref_name in chain:
                     for p in self.providers:
                         if p.name == pref_name and p.api_key:
                             if condition == "always":
@@ -265,8 +271,6 @@ class Gateway:
                                         return self._apply_model_override(p)
                                 else:
                                     return self._apply_model_override(p)
-                            # Other conditions can be added here:
-                            # "business_hours", "on_network", etc.
         except Exception:
             pass
 
