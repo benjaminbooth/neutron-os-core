@@ -2,12 +2,15 @@
 
 Called by neut connect when a connection declares post_setup_module
 pointing here. Keeps tool-specific setup logic in the owning extension.
+
+Uses infra.services.ServiceManager for persistent service lifecycle
+(launchd on macOS, systemd on Linux) — independent of how the binary
+was installed.
 """
 
 from __future__ import annotations
 
 import logging
-import platform
 import shutil
 import subprocess
 import time
@@ -15,31 +18,53 @@ import urllib.request
 
 log = logging.getLogger(__name__)
 
+_OLLAMA_ENV = {
+    "OLLAMA_FLASH_ATTENTION": "1",
+    "OLLAMA_KV_CACHE_TYPE": "q8_0",
+}
+
+
+def _get_ollama_service():
+    """Create a ServiceManager for Ollama."""
+    from neutron_os.infra.services import ServiceManager
+
+    binary = shutil.which("ollama") or "ollama"
+    return ServiceManager(
+        name="ollama",
+        binary=binary,
+        args=["serve"],
+        env=_OLLAMA_ENV,
+    )
+
 
 def setup_ollama() -> int:
-    """Post-install hook for Ollama: register as service + pull routing model.
+    """Post-install hook for Ollama: register as managed service + pull model.
 
-    Called by `neut connect ollama` after installation. Ensures Ollama
-    runs persistently (survives reboots) and the routing model is pulled.
-    The user should never think about Ollama lifecycle after this.
+    Called by `neut connect ollama` after installation. Installs a
+    launchd/systemd service so Ollama runs persistently (survives reboots)
+    with optimized settings. The user never thinks about Ollama again.
     """
     from neutron_os.extensions.builtins.settings.store import SettingsStore
 
     settings = SettingsStore()
     model = settings.get("routing.ollama_model", "llama3.2:1b")
 
-    # Start as a persistent service (not a raw subprocess)
     if not _is_ollama_serving():
-        _start_ollama_service()
-        # Wait for it to come up
+        svc = _get_ollama_service()
+        svc.install()
+        svc.start()
+        print("  Registering Ollama as managed service...")
+
         for _ in range(8):
             time.sleep(1)
             if _is_ollama_serving():
-                print("  \u2713 Ollama running (managed service)")
+                print("  \u2713 Ollama running (managed service, starts at login)")
                 break
         else:
             print("  \u26a0 Ollama service didn't start")
-            print("    Check with: brew services info ollama")
+            svc_info = svc.status()
+            print(f"    Status: {svc_info.status}")
+            print("    Logs: ~/.neut/services/ollama.stderr.log")
             return 1
     else:
         print("  \u2713 Ollama already running")
@@ -83,23 +108,42 @@ def ensure_ollama_running() -> bool:
     if _is_ollama_serving():
         return True
 
-    # Try to start it silently
-    _start_ollama_service(silent=True)
+    # Try to start via managed service
+    try:
+        svc = _get_ollama_service()
+        info = svc.status()
 
-    # Wait briefly
+        from neutron_os.infra.services import ServiceStatus
+        if info.status == ServiceStatus.NOT_INSTALLED:
+            # Install and start
+            svc.install()
+            svc.start()
+        elif info.status == ServiceStatus.STOPPED:
+            svc.start()
+        # else: already running or unknown — try anyway
+
+    except Exception as e:
+        log.debug("Service manager failed, trying direct start: %s", e)
+        # Fallback: raw Popen (e.g., services module not available)
+        try:
+            subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            return False
+
+    # Wait for it to come up
     for _ in range(5):
         time.sleep(0.5)
         if _is_ollama_serving():
-            log.info("Ollama auto-started")
+            log.info("Ollama auto-started via managed service")
             return True
 
     log.debug("Ollama auto-start failed")
     return False
 
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
 
 def _is_ollama_serving() -> bool:
     """Check if Ollama API is responding."""
@@ -108,30 +152,3 @@ def _is_ollama_serving() -> bool:
         return True
     except Exception:
         return False
-
-
-def _start_ollama_service(silent: bool = False) -> None:
-    """Start Ollama as a managed service (persists across reboots)."""
-    if platform.system() == "Darwin" and shutil.which("brew"):
-        try:
-            subprocess.run(
-                ["brew", "services", "start", "ollama"],
-                capture_output=True, timeout=15,
-            )
-            if not silent:
-                print("  Starting via brew services...")
-            return
-        except Exception:
-            pass
-
-    # Fallback: raw background process (Linux, or brew not available)
-    try:
-        subprocess.Popen(
-            ["ollama", "serve"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        if not silent:
-            print("  Starting ollama serve...")
-    except Exception:
-        pass
