@@ -68,7 +68,7 @@ PROJECT_ROOT = _find_project_root()
 
 @dataclass
 class GitPolicy:
-    publish_branches: list[str] = field(default_factory=lambda: ["main", "release/*"])
+    publish_branches: list[str] = field(default_factory=lambda: ["main", "release/*", "feat/*"])
     draft_branches: list[str] = field(default_factory=lambda: ["feature/*", "dev"])
     require_clean: bool = True
     require_pushed: bool = False  # Relaxed default for local dev

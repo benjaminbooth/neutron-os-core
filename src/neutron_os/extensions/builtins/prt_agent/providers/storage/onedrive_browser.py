@@ -85,7 +85,8 @@ class OneDriveBrowserStorageProvider(StorageProvider):
     def upload(
         self,
         local_path: Path,
-        remote_name: str | None = None,
+        destination: str | None = None,
+        metadata: dict | None = None,
         *,
         draft: bool = False,
         headed: bool = False,
@@ -94,7 +95,8 @@ class OneDriveBrowserStorageProvider(StorageProvider):
 
         Args:
             local_path: Path to the local .docx file
-            remote_name: Filename on OneDrive (defaults to local filename)
+            destination: Remote path/filename on OneDrive (defaults to local filename)
+            metadata: Upload metadata (ignored for browser upload)
             draft: If True, upload to draft folder
             headed: If True, show browser (for first-time login)
 
@@ -111,7 +113,7 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                 error=f"File not found: {local_path}",
             )
 
-        remote_name = remote_name or local_path.name
+        remote_name = destination or local_path.name
         target = self.draft_folder if draft else self.target_folder
         headless = not headed and self.headless
 

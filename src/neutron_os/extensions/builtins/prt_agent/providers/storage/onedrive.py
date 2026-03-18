@@ -205,5 +205,31 @@ class OneDriveStorageProvider(StorageProvider):
         return response.status_code in (200, 204)
 
 
+def _onedrive_auto_provider(config: dict[str, Any] | None = None) -> StorageProvider:
+    """Auto-select OneDrive provider: Graph API if credentials exist, browser fallback otherwise."""
+    config = config or {}
+    has_graph_creds = (
+        (config.get("client_id") or os.environ.get("MS_GRAPH_CLIENT_ID"))
+        and (config.get("client_secret") or os.environ.get("MS_GRAPH_CLIENT_SECRET"))
+    )
+    if has_graph_creds:
+        return OneDriveStorageProvider(config)
+
+    # Fall back to browser-based upload
+    from .onedrive_browser import OneDriveBrowserStorageProvider
+    return OneDriveBrowserStorageProvider(config)
+
+
+class _OneDriveAutoFactory:
+    """Wrapper so PublisherFactory.create() calls our auto-select function."""
+    def __init__(self, config: dict[str, Any] | None = None):
+        # Return the auto-selected provider — but __init__ must return None,
+        # so we use __new__ instead.
+        pass
+
+    def __new__(cls, config: dict[str, Any] | None = None):
+        return _onedrive_auto_provider(config)
+
+
 # Self-register with factory
-PublisherFactory.register("storage", "onedrive", OneDriveStorageProvider)
+PublisherFactory.register("storage", "onedrive", _OneDriveAutoFactory)
