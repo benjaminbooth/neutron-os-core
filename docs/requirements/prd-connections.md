@@ -298,6 +298,18 @@ Connections
 - Connection declarations in `neut-extension.toml`
 - `neut status` connection health display
 
+### Phase 1.5: D-FIB Self-Healing Integration (build now)
+
+- Connection events on EventBus: `connections.healthy`, `connections.degraded`, `connections.unhealthy`, `connections.throttled`
+- D-FIB subscribes to connection events for proactive remediation
+- Connection-aware recovery strategies in `self_heal.py`:
+  - Service down → `ensure_available()` → retry
+  - Credential expired → prompt via `neut connect <name>`
+  - Rate limited → backoff → retry (don't patch code)
+  - Credential missing → graceful skip (not an error)
+- Usage tracking: per-connection request count, error count, throttle count, avg latency
+- Capabilities reporting: read/write/admin/stream per connection
+
 ### Phase 2: Auth Method Negotiation + Onboarding
 
 - Multiple auth methods per connection

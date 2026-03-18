@@ -99,6 +99,62 @@ register_recovery("brief", _recover_brief_since)
 
 
 # ---------------------------------------------------------------------------
+# Connection-aware recovery
+# ---------------------------------------------------------------------------
+
+def _is_connection_error(error: Exception) -> bool:
+    """Check if an error is caused by a connection failure, not a code bug."""
+    error_str = str(error).lower()
+    error_type = type(error).__name__
+
+    connection_indicators = [
+        "connection refused", "connection reset", "connection timed out",
+        "timeout", "timed out", "rate limit", "429", "503", "502",
+        "name or service not known", "nodename nor servname",
+        "ssl", "certificate", "handshake",
+        "unauthorized", "401", "403",
+    ]
+    connection_types = [
+        "ConnectionError", "ConnectionRefusedError", "ConnectionResetError",
+        "TimeoutError", "HTTPError", "URLError", "SSLError",
+    ]
+
+    if error_type in connection_types:
+        return True
+    return any(indicator in error_str for indicator in connection_indicators)
+
+
+def _recover_connection_error(args: Namespace, error: Exception) -> Namespace | None:
+    """Try to fix connection errors by ensuring services are running.
+
+    Instead of patching code (D-FIB's normal path), check if the failure
+    is a connection issue and try to remediate it directly.
+    """
+    if not _is_connection_error(error):
+        return None
+
+    try:
+        from neutron_os.infra.connections import ensure_available, get_registry
+
+        registry = get_registry()
+        # Try to ensure all connections are available
+        for conn in registry.all():
+            if conn.ensure_module and conn.ensure_function:
+                ensure_available(conn.name, registry=registry)
+
+        # Return original args to retry the command
+        return args
+
+    except Exception:
+        return None
+
+
+# Register for all commands — connection errors can happen anywhere
+for _cmd in ["signal", "brief", "chat", "pub", "doc", "rag", "connect", "status"]:
+    register_recovery(_cmd, _recover_connection_error)
+
+
+# ---------------------------------------------------------------------------
 # Bus emission
 # ---------------------------------------------------------------------------
 

@@ -394,12 +394,31 @@ def register_custom_health_check(
     _custom_health_checks[name] = checker
 
 
+def _emit_connection_event(name: str, status: str, message: str = "") -> None:
+    """Publish a connection health event on the EventBus (if available)."""
+    try:
+        from neutron_os.infra.orchestrator.bus import EventBus
+        bus = EventBus()
+        topic = f"connections.{status}"
+        bus.publish(topic, {
+            "connection": name,
+            "status": status,
+            "message": message,
+        }, source="connections")
+    except Exception:
+        pass  # EventBus not available — no-op
+
+
 def check_health(
     name: str,
     *,
     registry: Optional[ConnectionRegistry] = None,
 ) -> ConnectionHealth:
-    """Run a health check for the named connection."""
+    """Run a health check for the named connection.
+
+    Emits EventBus events: connections.healthy, connections.degraded,
+    connections.unhealthy so D-FIB can react to failures.
+    """
     if registry is None:
         registry = _get_global_registry()
 
@@ -408,26 +427,40 @@ def check_health(
         return ConnectionHealth(status=HealthStatus.UNKNOWN, message=f"Unknown connection: {name}")
 
     check_type = conn.health_check
+    result: ConnectionHealth
 
     if check_type == "cli_version":
-        return _check_cli_version(conn)
+        result = _check_cli_version(conn)
     elif check_type == "tcp_connect":
-        return _check_tcp_connect(conn)
+        result = _check_tcp_connect(conn)
     elif check_type == "http_get":
-        return _check_http_get(conn)
+        result = _check_http_get(conn)
     elif check_type == "custom":
         checker = _custom_health_checks.get(name)
         if checker:
-            return checker(conn)
-        return ConnectionHealth(
-            status=HealthStatus.UNKNOWN,
-            message="No custom health check registered",
-        )
+            result = checker(conn)
+        else:
+            result = ConnectionHealth(
+                status=HealthStatus.UNKNOWN,
+                message="No custom health check registered",
+            )
     elif not check_type:
-        # No health check configured — report unknown
-        return ConnectionHealth(status=HealthStatus.UNKNOWN, message="No health check configured")
+        result = ConnectionHealth(status=HealthStatus.UNKNOWN, message="No health check configured")
+    else:
+        result = ConnectionHealth(status=HealthStatus.UNKNOWN, message=f"Unknown check type: {check_type}")
 
-    return ConnectionHealth(status=HealthStatus.UNKNOWN, message=f"Unknown check type: {check_type}")
+    # Add capabilities from connection declaration
+    result.capabilities = conn.capabilities or []
+
+    # Emit event for D-FIB and other subscribers
+    if result.status == HealthStatus.HEALTHY:
+        _emit_connection_event(name, "healthy", result.message)
+    elif result.status == HealthStatus.UNHEALTHY:
+        _emit_connection_event(name, "unhealthy", result.message)
+    else:
+        _emit_connection_event(name, "degraded", result.message)
+
+    return result
 
 
 def _check_cli_version(conn: Connection) -> ConnectionHealth:
@@ -580,8 +613,10 @@ def record_usage(
     error: str = "",
     throttled: bool = False,
 ) -> None:
-    """Record a usage event for a connection."""
+    """Record a usage event for a connection. Emits throttle events."""
     get_usage(name).record(latency_ms, error=error, throttled=throttled)
+    if throttled:
+        _emit_connection_event(name, "throttled", f"Rate limited (latency={latency_ms:.0f}ms)")
 
 
 def all_usage() -> dict[str, ConnectionUsage]:

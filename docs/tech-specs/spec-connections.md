@@ -578,11 +578,52 @@ Same semantics, NeutronOS's connection model.
 - Resolve from: env var → settings → credential file
 - Migrate existing extractors to use `get_credential()`
 
-### Phase 2: Connection Registry (build with next extension)
+### Phase 1.5: D-FIB Self-Healing (build now)
 
-- Connection declaration in `neut-extension.toml`
-- `neut connect` CLI command
-- `neut status` shows connection health
+Connections emit events on the EventBus. D-FIB subscribes to diagnose
+and remediate connection failures before they cascade to agent errors.
+
+**Events emitted by connections module:**
+- `connections.healthy` — Connection verified working
+- `connections.degraded` — Connection responding but throttled or slow
+- `connections.unhealthy` — Connection failed health check
+- `connections.throttled` — HTTP 429 received
+
+**D-FIB recovery strategies** (in `self_heal.py`):
+
+| Failure Mode | Strategy | Fallback |
+|-------------|----------|----------|
+| Service down | `ensure_available()` auto-start | File GitLab issue |
+| Credential expired | Prompt via `neut connect <name>` | Skip gracefully |
+| Rate limited | Exponential backoff, switch provider | Wait + retry |
+| Credential missing | Degrade gracefully (not an error) | — |
+| Connection error in CLI | Check connections before patching code | Standard D-FIB pipeline |
+
+**Credential storage hierarchy:**
+
+```
+Resolution order (first match wins):
+1. Environment variable     $ANTHROPIC_API_KEY          ← CI/CD, containers
+2. neut settings            connections.anthropic.token  ← explicit config
+3. Credential file          ~/.neut/credentials/anthropic/token (0600)
+4. OS Keychain              macOS Keychain / secret-service (Phase 2)
+5. Browser session          ~/.neut/credentials/teams/state.json (Phase 2)
+6. Interactive prompt       neut connect <name> (Phase 1)
+```
+
+**Usage tracking (per-connection):**
+- `requests` — Total API calls
+- `errors` — Failed calls
+- `throttled_count` — 429 responses
+- `avg_latency_ms` — Running average
+- Visible in `neut connect --check` and `neut status`
+
+### Phase 2: Connection Registry (shipped in Phase 1)
+
+- Connection declaration in `neut-extension.toml` ✅
+- `neut connect` CLI command ✅
+- `neut status` shows connection health ✅
+- Capabilities: read/write/admin/stream ✅
 
 ### Phase 3: Auth Method Negotiation
 
