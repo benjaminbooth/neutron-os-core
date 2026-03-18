@@ -947,8 +947,11 @@ def cmd_push(args: argparse.Namespace) -> None:
         return
 
     # ── Single file with browser storage ──────────────────────────────
-    if args.path and storage in ("onedrive", "onedrive-graph", "box-browser"):
-        _cmd_push_batch(args, engine, draft, storage, headed, force)
+    # Route through batch path when storage is browser-based (explicit or from config)
+    configured_provider = engine.config.storage.provider if hasattr(engine, "config") else None
+    effective_storage = storage or configured_provider
+    if args.path and effective_storage in ("onedrive", "onedrive-graph", "box-browser"):
+        _cmd_push_batch(args, engine, draft, storage or effective_storage, headed, force)
         return
 
     # ── Single file / directory push (original behavior) ──────────────────

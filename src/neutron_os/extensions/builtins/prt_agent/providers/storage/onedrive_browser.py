@@ -373,9 +373,20 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             else:
                 # All folders exist — upload file directly
                 page.click("text=Create or upload", timeout=5000)
-                page.wait_for_timeout(1000)
-                with page.expect_file_chooser(timeout=10000) as fc_info:
-                    page.click("text=Files upload", timeout=5000)
+                page.wait_for_timeout(2000)  # Wait for dropdown flyout
+
+                # Try multiple label variants for the upload menu item
+                with page.expect_file_chooser(timeout=15000) as fc_info:
+                    uploaded = False
+                    for label in ["Files upload", "File upload", "Upload files", "Upload"]:
+                        btn = page.query_selector(f"text={label}")
+                        if btn:
+                            btn.click()
+                            uploaded = True
+                            break
+                    if not uploaded:
+                        # Fallback: click any menu item containing "upload" (case-insensitive)
+                        page.click("[role='menuitem'] >> text=/upload/i", timeout=5000)
                 fc = fc_info.value
                 fc.set_files(str(local_path))
 
