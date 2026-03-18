@@ -202,7 +202,8 @@ class OpenAIEmbeddings(EmbeddingProvider):
 
     def __init__(self, model: str = "text-embedding-3-small"):
         self.model = model
-        self.api_key = os.environ.get("OPENAI_API_KEY")
+        from neutron_os.infra.connections import get_credential
+        self.api_key = get_credential("openai") or os.environ.get("OPENAI_API_KEY")
 
     def is_available(self) -> bool:
         return bool(self.api_key)

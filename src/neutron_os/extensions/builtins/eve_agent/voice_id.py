@@ -131,10 +131,11 @@ class VoiceProfileStore:
                 import os
                 from pyannote.audio import Model
 
-                hf_token = os.environ.get("HF_TOKEN")
+                from neutron_os.infra.connections import get_credential
+                hf_token = get_credential("huggingface") or os.environ.get("HF_TOKEN")
                 if not hf_token:
                     raise RuntimeError(
-                        "HF_TOKEN environment variable required for speaker embedding. "
+                        "HF_TOKEN required for speaker embedding — run: neut connect huggingface\n"
                         "Get one at https://huggingface.co/settings/tokens"
                     )
 
@@ -299,9 +300,10 @@ class SpeakerIdentifier:
             import os
             from pyannote.audio import Pipeline
 
-            hf_token = os.environ.get("HF_TOKEN")
+            from neutron_os.infra.connections import get_credential
+            hf_token = get_credential("huggingface") or os.environ.get("HF_TOKEN")
             if not hf_token:
-                raise RuntimeError("HF_TOKEN required for speaker diarization")
+                raise RuntimeError("HF_TOKEN required — run: neut connect huggingface")
 
             print("Loading diarization pipeline...", flush=True)
             self._diarization_pipeline = Pipeline.from_pretrained(

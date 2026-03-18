@@ -65,10 +65,11 @@ class PRDCommentsExtractor(BaseExtractor):
         signals: list[Signal] = []
         errors: list[str] = []
 
-        # Check for required credentials
-        client_id = os.environ.get("AZURE_CLIENT_ID")
-        tenant_id = os.environ.get("AZURE_TENANT_ID")
-        client_secret = os.environ.get("AZURE_CLIENT_SECRET")
+        # Check for required credentials (try connections first, fall back to env)
+        from neutron_os.infra.connections import get_credential
+        client_id = get_credential("ms_graph") or os.environ.get("AZURE_CLIENT_ID") or os.environ.get("MS_GRAPH_CLIENT_ID")
+        tenant_id = os.environ.get("AZURE_TENANT_ID") or os.environ.get("MS_GRAPH_TENANT_ID")
+        client_secret = os.environ.get("AZURE_CLIENT_SECRET") or os.environ.get("MS_GRAPH_CLIENT_SECRET")
 
         if not client_id or not tenant_id:
             return Extraction(

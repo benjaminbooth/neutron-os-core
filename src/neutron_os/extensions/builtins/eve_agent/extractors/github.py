@@ -24,7 +24,6 @@ Usage:
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -92,7 +91,10 @@ class GitHubExtractor(BaseExtractor):
         return "github"
 
     def __init__(self, token: Optional[str] = None):
-        self.token = token or os.environ.get("GITHUB_TOKEN")
+        if token is None:
+            from neutron_os.infra.connections import get_credential
+            token = get_credential("github")
+        self.token = token
         self._client = None
 
     @property

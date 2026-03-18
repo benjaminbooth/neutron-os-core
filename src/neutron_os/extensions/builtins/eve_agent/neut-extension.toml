@@ -59,3 +59,12 @@ credential_env_var = "OPENAI_API_KEY"
 category = "llm"
 capabilities = ["read"]
 docs_url = "https://platform.openai.com/api-keys"
+
+[[connections]]
+name = "huggingface"
+display_name = "Hugging Face"
+kind = "api"
+credential_env_var = "HF_TOKEN"
+category = "llm"
+capabilities = ["read"]
+docs_url = "https://huggingface.co/settings/tokens"

@@ -163,7 +163,8 @@ class TeamsChatExtractor(BaseExtractor):
         tenant_id: Optional[str] = None,
         token_path: Optional[Path] = None,
     ):
-        self.client_id = client_id or os.environ.get("MS_GRAPH_CLIENT_ID")
+        from neutron_os.infra.connections import get_credential
+        self.client_id = client_id or get_credential("ms_graph") or os.environ.get("MS_GRAPH_CLIENT_ID")
         self.client_secret = client_secret or os.environ.get("MS_GRAPH_CLIENT_SECRET")
         self.tenant_id = tenant_id or os.environ.get("MS_GRAPH_TENANT_ID", "common")
         self.token_path = token_path or TOKEN_PATH
