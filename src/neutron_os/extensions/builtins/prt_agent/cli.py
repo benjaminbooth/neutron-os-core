@@ -1493,9 +1493,16 @@ def _generate_docx(md_path: Path) -> Path:
     if "```mermaid" in md_content:
         try:
             from .mermaid_renderer import render_mermaid_blocks
-            processed_content = render_mermaid_blocks(md_content, output_dir)
+            mermaid_result = render_mermaid_blocks(md_content, output_dir)
             processed_path = output_dir / f"{md_path.stem}.processed.md"
-            processed_path.write_text(processed_content, encoding="utf-8")
+            processed_path.write_text(mermaid_result.content, encoding="utf-8")
+
+            if not mermaid_result.all_succeeded:
+                print(f"\n  \u2717 {md_path.name}: {mermaid_result.failed}/{mermaid_result.total} diagram(s) failed to render:")
+                for idx, first_line in mermaid_result.failures:
+                    print(f"      diagram {idx}: {first_line}...")
+                print("    Fix the Mermaid syntax and retry. Skipping publish for this doc.\n")
+                return None
         except Exception as e:
             logger.warning("Mermaid pre-processing failed: %s", e)
 

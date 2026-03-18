@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import base64
+from dataclasses import dataclass
 import hashlib
 import json
 import logging
@@ -152,7 +153,25 @@ def _sanitize_mermaid(code: str) -> str:
     return "\n".join(lines)
 
 
-def render_mermaid_blocks(md_content: str, output_dir: Path) -> str:
+@dataclass
+class MermaidResult:
+    """Result of rendering all mermaid blocks in a document."""
+    content: str  # Processed markdown
+    total: int = 0  # Total mermaid blocks found
+    rendered: int = 0  # Successfully rendered
+    failed: int = 0  # Failed to render
+    failures: list = None  # List of (index, first_line, error) tuples
+
+    def __post_init__(self):
+        if self.failures is None:
+            self.failures = []
+
+    @property
+    def all_succeeded(self) -> bool:
+        return self.failed == 0
+
+
+def render_mermaid_blocks(md_content: str, output_dir: Path) -> MermaidResult:
     """Replace ```mermaid``` code blocks with rendered PNG image references.
 
     Args:
@@ -160,21 +179,39 @@ def render_mermaid_blocks(md_content: str, output_dir: Path) -> str:
         output_dir: Directory to save rendered images
 
     Returns:
-        Processed markdown with mermaid blocks replaced by image references
+        MermaidResult with processed content and render status.
+        Caller should check result.all_succeeded before publishing.
     """
     pattern = re.compile(r"```mermaid\n(.*?)```", re.DOTALL)
+    result = MermaidResult(content=md_content)
+
+    blocks = list(pattern.finditer(md_content))
+    result.total = len(blocks)
+
+    if not blocks:
+        return result
+
+    failures = []
 
     def replace_block(match, _counter=[0]):
         code = match.group(1).strip()
         _counter[0] += 1
         idx = _counter[0]
+        first_line = code.split("\n")[0][:60]
 
         img_path = _render_diagram(code, output_dir, idx)
         if img_path:
-            # No alt text caption — just the image
+            result.rendered += 1
             return f"![]({img_path})"
         else:
-            # Fallback: keep as code block
+            result.failed += 1
+            failures.append((idx, first_line))
+            # Keep as code block (not published — caller will block)
             return f"```\n{code}\n```"
 
-    return pattern.sub(replace_block, md_content)
+    # Reset counter for each call
+    replace_block.__defaults__ = ([0],)
+    result.content = pattern.sub(replace_block, md_content)
+    result.failures = failures
+
+    return result
