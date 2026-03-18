@@ -236,47 +236,77 @@ When a Houston cancer clinic needs isotopes:
 
 > Updated 2026-03-18. Order reflects dependency chain and stakeholder value.
 
-### v0.4.2: Connections (in progress — feat/connections branch)
+### v0.4.2: Connections ✅ SHIPPED
 
 - [x] Connection registry + credential resolution (env → settings → file)
 - [x] `neut connect` CLI with tab completion, health checks, JSON
-- [x] Declare `[[connections]]` in all builtin extension manifests
+- [x] Declare `[[connections]]` in all builtin extension manifests (11 connections)
 - [x] Integrate connections into `neut status`
 - [x] Capabilities (read/write), usage tracking, throttle detection
 - [x] Adaptive rate limiter (learns from API response headers)
 - [x] Managed service lifecycle (launchd/systemd/Windows)
 - [x] D-FIB self-healing for connection failures
 - [x] Embedding provider fallback (OpenAI → Ollama → skip)
-- [ ] Test `neut connect ollama` end-to-end
-- [ ] Migrate extractors to `get_credential()`
-- [ ] Cut v0.4.2 release
+- [x] Migrate extractors to `get_credential()` (8 files)
+- [x] Auth method negotiation (browser, graph_api, manual)
+- [x] Playwright browser auth with session persistence
+- [x] Provider preference chain (`routing.prefer_provider`)
+- [x] VPN failure guidance (configurable per connection)
+- [x] `neut connect qwen-rascal` configures EC routing
+- [x] Extension metadata fully documented (ConnectionDef docstring, contract docs, scaffold)
 
-### v0.5.0: Security + Routing Profiles
+### v0.5.0: Security — Credential Providers + Routing Profiles
 
-- Per-agent routing profiles (chat, extraction, diagnosis, embedding, classification)
 - OS Keychain credential provider (macOS/Linux/Windows)
 - Credential metadata (saved_at, expires_at, last_verified)
 - `neut connect --migrate` (.env → Keychain)
 - M-O credential expiry watch
 - EVE secret leak scanning
+- Per-agent routing profiles (chat, extraction, diagnosis, embedding, classification)
 
-### v0.5.x: Identity (Ory Kratos)
+### v0.5.x: Security — Identity (Ory Kratos)
 
 - Deploy Kratos as managed service
 - `neut login` / `neut logout` / `neut whoami`
 - Local registration + TOTP MFA
-- Session management
-- Identity in agent context + audit logs
+- OAuth (Google, Microsoft, GitHub, GitLab) via Kratos
+- Session management + identity in agent context
 
-### v0.6.0: OAuth + SSO + Authorization (OpenFGA)
+### v0.6.0: Security — Authorization (OpenFGA) + Connections Phase 3
 
-- Google, Microsoft, GitHub, GitLab OAuth via Kratos
-- LDAP/AD, OIDC, SAML via Kratos
 - Deploy OpenFGA as managed service
 - Kratos → OpenFGA webhook bridge
-- Connection-level + document-level access control
+- Connection-level access control (who can use which provider)
+- Document/corpus-level access control (who can query which RAG corpus)
+- LDAP/AD, OIDC, SAML via Kratos
+- `neut connect` shows authorization status per user
+
+### v0.6.x: Security — EC Defense Layers
+
+- Chunk sanitization, response scanning, prompt hardening
+- Security audit log (PostgreSQL + HMAC)
+- `neut doctor --security` + red-team suite (promptfoo)
+
+### v0.7.0: Security — Vault + Rotation
+
+- VaultProvider for production deployments
+- `neut connect --migrate --target vault`
+- Automatic credential rotation
 
 ### Then: Original Roadmap Resumes
+
+### v0.7.x+: Reactor Operations (Nick & Cole focus)
+
+- Reactor Ops Log (console checks, shift handoffs)
+- Compliance Tracking (30-min check enforcement, NRC evidence)
+- Data Platform (Iceberg, dbt, Bronze/Silver layers)
+- Scheduling System
+
+### v0.8.0: Digital Twin Foundation
+
+- Model Corral (`neut model` CLI)
+- DT run tracking schema
+- Shadow automation for TRIGA
 
 ---
 
