@@ -154,12 +154,36 @@ class PublisherEngine:
         Returns True if:
         - No previous publication exists
         - Source content differs from last published
+        - Cooldown has elapsed since last publish (prevents churn during active editing)
 
-        Returns False if source is identical to last published version.
+        Returns False if source is identical to last published version,
+        or if the doc was published within the cooldown window.
         """
         existing = self.state_store.get(doc_id)
         if not existing or not existing.published:
             return True  # First publish, always changes
+
+        # Cooldown: skip if published recently (prevents churn during active editing)
+        if existing.published.published_at:
+            try:
+                from datetime import datetime, timezone
+                published_at = datetime.fromisoformat(existing.published.published_at)
+                if published_at.tzinfo is None:
+                    published_at = published_at.replace(tzinfo=timezone.utc)
+                age_seconds = (datetime.now(timezone.utc) - published_at).total_seconds()
+
+                # Read cooldown from settings (default: 5 minutes)
+                cooldown = 300
+                try:
+                    from neutron_os.extensions.builtins.settings.store import SettingsStore
+                    cooldown = int(SettingsStore().get("publisher.cooldown_seconds", 300))
+                except Exception:
+                    pass
+
+                if age_seconds < cooldown:
+                    return False  # Published recently — wait for edits to settle
+            except Exception:
+                pass
 
         # If we have a previous source hash stored, compare it
         if not existing.published.artifact_hash:

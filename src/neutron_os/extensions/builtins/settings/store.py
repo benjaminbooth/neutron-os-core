@@ -44,6 +44,9 @@ _DEFAULTS: dict[str, Any] = {
     "interface.stream": True,
     "interface.theme": "dark",
 
+    # Publisher
+    "publisher.cooldown_seconds": 300,  # 5 min debounce — skip republish during active editing
+
     # RAG
     "rag.database_url": "",  # empty = RAG disabled; set to postgresql:// to enable
 }
