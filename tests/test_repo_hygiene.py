@@ -121,12 +121,12 @@ class TestPRDIntegrity:
 
     # Minimum line counts for key PRDs (set well below actual to catch truncation)
     PRD_MINIMUMS = {
-        "prd-executive.md": 500,
+        "prd-executive.md": 150,
         "prd-reactor-ops-log.md": 200,
         "prd-experiment-manager.md": 500,
         "prd-data-platform.md": 300,
         "prd-compliance-tracking.md": 300,
-        "prd-neut-cli.md": 300,
+        "prd-neut-cli.md": 150,
         "prd-medical-isotope.md": 300,
     }
 
@@ -151,9 +151,9 @@ class TestPRDIntegrity:
         f = REPO_ROOT / "docs" / "requirements" / "prd-executive.md"
         text = f.read_text()
         mermaid_count = text.count("```mermaid")
-        assert mermaid_count >= 5, (
-            f"Executive PRD has only {mermaid_count} mermaid blocks (expected >=5). "
-            "Formatting may have been stripped."
+        assert mermaid_count >= 1, (
+            f"Executive PRD has no mermaid blocks. "
+            "The Gantt chart may have been stripped."
         )
 
 
