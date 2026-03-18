@@ -311,8 +311,15 @@ Examples:
 
 
 def main(argv: list[str] | None = None) -> int:
+    import shutil
+
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if not shutil.which("git"):
+        print("\n  neut release requires git, but git was not found on PATH.")
+        print("  Install git and try again.\n")
+        return 1
 
     mgr = ReleaseManager(dry_run=args.dry_run)
 
