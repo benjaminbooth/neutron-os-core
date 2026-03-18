@@ -183,55 +183,218 @@ def _setup_connection(name: str, registry: ConnectionRegistry) -> int:
     print("  " + "\u2500" * len(conn.display_name))
 
     if conn.kind == "cli":
-        from neutron_os.infra.connections import get_cli_tool
-        tool = get_cli_tool(conn.name, registry=registry)
-        if tool:
-            print(f"  \u2713 Installed at {tool.path}")
-            if tool.version:
-                print(f"    Version: {tool.version}")
-        else:
-            print("  \u2717 Not found on PATH")
-            if conn.docs_url:
-                print(f"    Install: {conn.docs_url}")
-        print()
-        return 0
+        return _setup_cli_tool(conn, registry)
 
     if conn.credential_type == "none":
         print("  No credentials needed for this connection.")
         print()
         return 0
 
-    # Check current state
+    return _setup_api_credential(conn, registry)
+
+
+def _setup_cli_tool(conn: Connection, registry: ConnectionRegistry) -> int:
+    """Set up a CLI tool connection — install, configure, verify."""
+    import platform
+    import shutil
+    import subprocess
+
+    from neutron_os.infra.connections import get_cli_tool
+
+    binary = conn.endpoint or conn.name
+    tool = get_cli_tool(conn.name, registry=registry)
+
+    if tool:
+        print(f"  \u2713 Installed at {tool.path}")
+        if tool.version:
+            print(f"    Version: {tool.version}")
+    else:
+        print(f"  \u2717 {binary} not found on PATH\n")
+
+        # Try to install automatically on macOS
+        if platform.system() == "Darwin" and shutil.which("brew"):
+            try:
+                answer = input("  Install via Homebrew? [Y/n] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print("\n  Skipped")
+                return 0
+
+            if answer in ("", "y", "yes"):
+                print(f"  Installing {binary}...")
+                try:
+                    subprocess.run(
+                        ["brew", "install", binary],
+                        check=True, timeout=120,
+                    )
+                    print("  \u2713 Installed")
+                    tool = get_cli_tool(conn.name, registry=registry)
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+                    print(f"  \u2717 Install failed: {e}")
+                    if conn.docs_url:
+                        print(f"  Manual install: {conn.docs_url}")
+                    print()
+                    return 1
+            else:
+                if conn.docs_url:
+                    print(f"  Install manually: {conn.docs_url}")
+                print()
+                return 0
+        else:
+            if conn.docs_url:
+                print(f"  Install: {conn.docs_url}")
+            print()
+            return 0
+
+    # Post-install hooks for specific tools
+    if binary == "ollama" and tool:
+        return _setup_ollama_post_install()
+
+    print()
+    return 0
+
+
+def _setup_ollama_post_install() -> int:
+    """Ollama-specific post-install: ensure serving + model pulled."""
+    import subprocess
+    import urllib.request
+
+    from neutron_os.extensions.builtins.settings.store import SettingsStore
+    settings = SettingsStore()
+    model = settings.get("routing.ollama_model", "llama3.2:1b")
+
+    # Check if serving
+    serving = False
+    try:
+        urllib.request.urlopen("http://localhost:11434", timeout=2)
+        serving = True
+    except Exception:
+        pass
+
+    if not serving:
+        print("\n  Ollama is installed but not running.")
+        try:
+            answer = input("  Start Ollama now? [Y/n] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Skipped")
+            return 0
+
+        if answer in ("", "y", "yes"):
+            print("  Starting ollama serve...")
+            # Start in background
+            subprocess.Popen(
+                ["ollama", "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            # Wait briefly for it to come up
+            import time
+            for _ in range(5):
+                time.sleep(1)
+                try:
+                    urllib.request.urlopen("http://localhost:11434", timeout=1)
+                    serving = True
+                    print("  \u2713 Ollama serving")
+                    break
+                except Exception:
+                    pass
+            if not serving:
+                print("  \u26a0 Ollama didn't start — try `ollama serve` manually")
+                return 1
+        else:
+            print("  Start later with: ollama serve")
+            print()
+            return 0
+
+    # Check if model is pulled
+    try:
+        result = subprocess.run(
+            ["ollama", "list"], capture_output=True, text=True, timeout=10,
+        )
+        if model in result.stdout:
+            print(f"  \u2713 Model {model} ready")
+            print()
+            return 0
+    except Exception:
+        pass
+
+    print(f"\n  Routing model ({model}) not yet pulled.")
+    try:
+        answer = input(f"  Pull {model} now? [Y/n] ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print("\n  Skipped")
+        return 0
+
+    if answer in ("", "y", "yes"):
+        print(f"  Pulling {model} (this may take a minute)...")
+        try:
+            subprocess.run(
+                ["ollama", "pull", model],
+                check=True, timeout=300,
+            )
+            print(f"  \u2713 Model {model} ready")
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            print(f"  \u2717 Pull failed — try manually: ollama pull {model}")
+            return 1
+    else:
+        print(f"  Pull later with: ollama pull {model}")
+
+    print()
+    return 0
+
+
+def _setup_api_credential(conn: Connection, registry: ConnectionRegistry) -> int:
+    """Set up an API credential — check, prompt, save, verify."""
     current = get_credential(conn.name, registry=registry)
     if current:
         masked = current[:4] + "..." + current[-4:] if len(current) > 10 else "****"
-        print(f"  Current credential: {masked}")
+        print(f"  \u2713 Credential: {masked}")
+
+        # Offer to health-check
+        if conn.health_check:
+            health = check_health(conn.name, registry=registry)
+            latency = f" ({health.latency_ms:.0f}ms)" if health.latency_ms else ""
+            if health.status == HealthStatus.HEALTHY:
+                print(f"  \u2713 Verified{latency}")
+            else:
+                print(f"  \u26a0 Health check: {health.message}")
         print()
         return 0
 
-    # Show setup instructions
+    # No credential — prompt for one
     if conn.docs_url:
-        print(f"  Get your credential: {conn.docs_url}")
-
-    if conn.credential_env_var:
-        print("\n  Set via environment variable:")
-        print(f"    export {conn.credential_env_var}=<your-token>")
-
-    print("\n  Or store permanently:")
-    print("    Paste your token and it will be saved securely.\n")
+        print(f"  Get your key: {conn.docs_url}\n")
 
     try:
-        value = input(f"  {conn.display_name} token (Enter to skip): ").strip()
+        value = input(f"  Paste {conn.display_name} key (Enter to skip): ").strip()
     except (EOFError, KeyboardInterrupt):
         print("\n  Skipped")
         return 0
 
     if not value:
-        print("  Skipped")
+        if conn.credential_env_var:
+            print(f"  Or set: export {conn.credential_env_var}=<key>")
+        print()
         return 0
 
+    # Save it
     store_credential(conn.name, value)
-    print(f"  \u2713 Saved to ~/.neut/credentials/{conn.name}/token")
+    print("  \u2713 Saved")
+
+    # Also set in current process for immediate use
+    if conn.credential_env_var:
+        import os
+        os.environ[conn.credential_env_var] = value
+
+    # Verify if possible
+    if conn.health_check:
+        from neutron_os.infra.connections import reset_registry
+        reset_registry()  # re-discover so new cred is picked up
+        health = check_health(conn.name, registry=get_registry())
+        if health.status == HealthStatus.HEALTHY:
+            print("  \u2713 Verified")
+        else:
+            print(f"  \u26a0 Could not verify: {health.message}")
+            print("    (credential saved — it may still work)")
     print()
     return 0
 
