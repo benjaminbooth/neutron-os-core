@@ -465,6 +465,25 @@ def cmd_providers(args: argparse.Namespace) -> None:
     print("=" * 80 + "\n")
 
 
+def cmd_watch(args: argparse.Namespace) -> None:
+    """Watch source directories and auto-publish on save."""
+    from .watcher import PublishWatcher
+
+    cooldown = args.cooldown
+    if not cooldown:
+        try:
+            from neutron_os.extensions.builtins.settings.store import SettingsStore
+            cooldown = int(SettingsStore().get("publisher.cooldown_seconds", 300))
+        except Exception:
+            cooldown = 300
+
+    watcher = PublishWatcher(
+        poll_interval=args.interval,
+        cooldown=cooldown,
+    )
+    watcher.run()
+
+
 def cmd_scan(args: argparse.Namespace) -> None:
     """Scan folders for markdown files and compare against manifests."""
     from .engine import PublisherEngine
@@ -839,6 +858,11 @@ def get_parser() -> argparse.ArgumentParser:
     onboard_parser.add_argument("file", help="Path to .md file")
     onboard_parser.add_argument("--folder", help="Manifest folder (default: inferred from file)")
     onboard_parser.add_argument("--url", help="SharePoint URL (optional)")
+
+    # watch
+    watch_parser = subparsers.add_parser("watch", help="Watch source dirs, auto-publish on save")
+    watch_parser.add_argument("--interval", type=int, default=10, help="Poll interval in seconds (default: 10)")
+    watch_parser.add_argument("--cooldown", type=int, default=0, help="Override cooldown seconds (default: from settings)")
 
     # providers
     subparsers.add_parser("providers", help="List available providers")
@@ -1535,6 +1559,8 @@ def main():
         cmd_onboard(args)
     elif args.command == "providers":
         cmd_providers(args)
+    elif args.command == "watch":
+        cmd_watch(args)
     elif args.command == "push":
         cmd_push(args)
     elif args.command == "assemble":
