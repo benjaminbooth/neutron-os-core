@@ -226,7 +226,33 @@ bus.publish("cli.command", {"user_id": session.user_id, ...})
 # Audit logs trace to real people, not "neut"
 ```
 
-### FR-ID-005: Kratos as Managed Service
+### FR-ID-005: Identity Feeds the Signal Correlator
+
+The Kratos user registry replaces the static `people.md` correlator
+config. When EVE extracts a signal mentioning a person, it resolves
+against Kratos identities — not a hand-maintained markdown file.
+
+**Migration path:**
+- v0.4.x: Static `people.md` (bootstrap seed)
+- v0.5.x: Correlator queries Kratos identity store; `people.md` deprecated
+- v0.6.x: Correlator enriches with OpenFGA roles and team memberships
+
+**Correlator integration:**
+```python
+# Current (static):
+people = parse_markdown("runtime/config/people.md")
+
+# Future (Kratos):
+people = kratos.list_identities(traits=["email", "name", "organization"])
+# Each person carries roles from OpenFGA:
+# { "email": "ben@utexas.edu", "roles": ["admin", "ec_access"], "team": "NETL" }
+```
+
+This ensures the people list is always current, new team members are
+automatically discoverable by EVE, and departed members are removed
+when their Kratos identity is deactivated.
+
+### FR-ID-006: Kratos as Managed Service
 
 Kratos is deployed like Ollama — declared in an extension manifest and
 managed by `ServiceManager`:

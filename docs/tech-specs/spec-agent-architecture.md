@@ -337,6 +337,27 @@ plugin = "plugin-triga"    # same plugin, different config
 They fill in their own `people.md` and `initiatives.md`. The extractors,
 synthesizer, publisher, and CLI are all identical. The config is theirs.
 
+> **Design Note (v0.5.x):** Both `people.md` and `initiatives.md` are
+> static bootstrap files that should be replaced by dynamic sources:
+>
+> **People:** Once Ory Kratos ships (Security PRD FR-ID-005), the
+> correlator reads from the Kratos identity store instead of a markdown
+> file. People are added/removed through `neut login`, not file edits.
+>
+> **Initiatives:** Static lists are unsustainable — new initiatives
+> emerge, old ones retire, and nobody maintains the file. Initiatives
+> should be derived dynamically from:
+> 1. PRD files (`docs/requirements/prd-*.md`) — each PRD is an initiative with lifecycle status
+> 2. OKR key results (`prd-okrs-2026.md`) — measurable targets with timelines
+> 3. GitLab milestones/epics (via connection) — tracked project work
+> 4. Active git branches (`feat/*`) — in-progress development initiatives
+> 5. Extension manifests (`neut-extension.toml`) — each extension is an initiative
+>
+> The correlator would query these sources at ingest time, building a
+> live initiative graph with relationships (depends-on, enables, blocks).
+> This is a significant design effort — needs ideation before implementation.
+> See: [GitHub Discussion TBD] or [ADR TBD]
+
 ---
 
 ## LLM Gateway (Model + IDE Agnostic)
