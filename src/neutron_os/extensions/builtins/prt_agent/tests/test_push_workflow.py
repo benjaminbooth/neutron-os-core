@@ -14,7 +14,6 @@ import argparse
 from pathlib import Path
 from unittest import mock
 
-import pytest
 
 
 class TestPushParser:
@@ -108,11 +107,6 @@ class TestPushAllWorkflow:
             '    pattern: "prd_*.md"\n'
         )
 
-        # Mock the push function to just collect files
-        collected = []
-
-        from neutron_os.extensions.builtins.prt_agent.cli import cmd_push
-
         with mock.patch("neutron_os.REPO_ROOT", tmp_path), \
              mock.patch("neutron_os.extensions.builtins.prt_agent.cli._generate_docx") as mock_gen, \
              mock.patch("neutron_os.extensions.builtins.prt_agent.cli.OneDriveBrowserStorageProvider", create=True) as MockProvider:
@@ -133,7 +127,7 @@ class TestPushAllWorkflow:
             ]
             MockProvider.return_value = mock_instance
 
-            args = argparse.Namespace(
+            _args = argparse.Namespace(
                 all=True, path=None, draft=False, endpoint=None,
                 headed=False, force=False, command="push",
             )

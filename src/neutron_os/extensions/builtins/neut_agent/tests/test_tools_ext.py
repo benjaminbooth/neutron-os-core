@@ -11,7 +11,7 @@ class TestExtensionDiscovery:
     def test_builtin_tools_always_present(self):
         tools = get_all_tools()
         assert "query_docs" in tools
-        assert "sense_status" in tools
+        assert "signal_status" in tools
         assert "list_providers" in tools
 
     def test_read_file_discovered(self):

@@ -228,7 +228,6 @@ def _cmd_clean(args) -> int:
         findings = scan_repo_hygiene(REPO_ROOT)
 
         if findings["clutter"]:
-            label = "Would clean" if dry_run else "Cleaning"
             print(f"Repo clutter ({len(findings['clutter'])} items):")
             for path, item_type, desc in findings["clutter"][:20]:
                 print(f"  {path} ({desc})")

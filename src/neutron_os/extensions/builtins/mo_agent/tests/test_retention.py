@@ -14,12 +14,10 @@ from __future__ import annotations
 import json
 import os
 import time
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
-from neutron_os.infra.state import STATE_LOCATIONS
 
 try:
     import yaml

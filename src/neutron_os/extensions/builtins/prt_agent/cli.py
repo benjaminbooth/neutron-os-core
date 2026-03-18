@@ -856,7 +856,7 @@ def _assemble_from_manifest(manifest_path: Path, output_path: Optional[Path] = N
         try:
             import tomllib
         except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
+            import tomli as tomllib  # type: ignore[no-redef]  # noqa: F401
         # .compile.yaml is YAML, not TOML
         import yaml as _yaml  # type: ignore[import]
         with open(manifest_path) as f:
@@ -1110,7 +1110,6 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             "folder": onedrive_root,
             "headless": not headed,
         })
-        dest_label = f"Box/{onedrive_root}"
         if not provider.has_session() and not headed:
             print("\n  No saved session. Run with --headed for first-time login:")
             print("    neut pub push --all --endpoint box-browser --headed\n")
@@ -1120,14 +1119,12 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         provider = OneDriveGraphStorageProvider({
             "folder": onedrive_root,
         })
-        dest_label = f"OneDrive/{onedrive_root} (Graph API)"
     elif storage == "onedrive":
         provider = OneDriveBrowserStorageProvider({
             "folder": onedrive_root,
             "site_url": site_url,
             "headless": not headed,
         })
-        dest_label = f"OneDrive/{onedrive_root}"
         if not provider.has_session() and not headed:
             print("\n  No saved session. Run with --headed for first-time login:")
             print("    neut pub push --all --endpoint onedrive --headed\n")
@@ -1139,7 +1136,6 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
             "site_url": site_url,
             "headless": not headed,
         })
-        dest_label = f"OneDrive/{onedrive_root}"
         if not provider.has_session() and not headed:
             print("\n  No saved session. Run with --headed for first-time login:")
             print("    neut pub push --all --headed\n")
@@ -1226,7 +1222,7 @@ def _postprocess_docx(docx_path: Path) -> None:
         from docx import Document
         from docx.oxml.ns import qn
         from docx.oxml import OxmlElement
-        from docx.shared import Inches, Emu
+        from docx.shared import Inches  # noqa: F401 (Emu removed)
 
         doc = Document(str(docx_path))
 
@@ -1283,9 +1279,9 @@ def _postprocess_docx(docx_path: Path) -> None:
                             max_lens[j] = max(max_lens[j], content_len)
 
                 # Ensure minimum width and calculate proportions
-                max_lens = [max(l, 3) for l in max_lens]
+                max_lens = [max(w, 3) for w in max_lens]
                 total_len = sum(max_lens)
-                col_widths = [int(total_twips * l / total_len) for l in max_lens]
+                col_widths = [int(total_twips * w / total_len) for w in max_lens]
 
                 # Apply widths to all cells
                 for row in table.rows:

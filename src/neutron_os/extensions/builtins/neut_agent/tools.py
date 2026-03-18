@@ -61,9 +61,9 @@ def _build_tool_defs() -> dict[str, ToolDef]:
         },
     )
 
-    tools["sense_status"] = ToolDef(
-        name="sense_status",
-        description="Show inbox/processed/draft counts for the sense pipeline.",
+    tools["signal_status"] = ToolDef(
+        name="signal_status",
+        description="Show inbox/processed/draft counts for the signal pipeline.",
         category=ActionCategory.READ,
         parameters={"type": "object", "properties": {}},
     )
@@ -91,8 +91,8 @@ def _build_tool_defs() -> dict[str, ToolDef]:
 
     # --- Write tools ---
 
-    tools["sense_ingest"] = ToolDef(
-        name="sense_ingest",
+    tools["signal_ingest"] = ToolDef(
+        name="signal_ingest",
         description="Run extractors on inbox data to extract signals.",
         category=ActionCategory.WRITE,
         parameters={
@@ -329,7 +329,7 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
             ]
         }
 
-    elif name == "sense_status":
+    elif name == "signal_status":
         from neutron_os.extensions.builtins.eve_agent.cli import INBOX_RAW, INBOX_PROCESSED, DRAFTS_DIR
         counts: dict[str, int] = {}
         if INBOX_RAW.exists():
@@ -383,8 +383,16 @@ def execute_tool(name: str, params: dict[str, Any]) -> dict[str, Any]:
             return record.to_dict()
         return {"error": "Publishing blocked by branch policy or dirty state."}
 
-    elif name == "sense_ingest":
-        return {"message": "Ingestion triggered.", "source": params.get("source", "all")}
+    elif name == "signal_ingest":
+        import argparse as _argparse
+        from neutron_os.extensions.builtins.eve_agent.cli import cmd_ingest
+        source = params.get("source", "all")
+        ingest_args = _argparse.Namespace(source=source, file=None, reprocess_from=None, correct=False)
+        try:
+            cmd_ingest(ingest_args)
+            return {"message": f"Ingestion complete for source={source}.", "source": source}
+        except Exception as e:
+            return {"error": f"Ingestion failed: {e}", "source": source}
 
     elif name == "write_inbox_note":
         from neutron_os.extensions.builtins.eve_agent.cli import INBOX_RAW

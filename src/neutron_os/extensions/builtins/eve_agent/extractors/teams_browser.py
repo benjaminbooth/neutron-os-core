@@ -33,12 +33,10 @@ Requires: pip install playwright && playwright install chromium
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
 import time
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -249,7 +247,7 @@ class TeamsBrowserExtractor(BaseExtractor):
     def _fetch_via_graph_api(self, days: int) -> list[Path]:
         """Delegate to the existing TeamsChatExtractor for Graph API auth."""
         try:
-            from .teams_chat import TeamsChatExtractor, export_teams_chat
+            from .teams_chat import export_teams_chat
             output = export_teams_chat(days=days, output_dir=self.download_dir)
             return [output] if output.exists() else []
         except Exception as e:

@@ -118,7 +118,7 @@ def cmd_note(args: argparse.Namespace) -> None:
             return
         content = tmp_path.read_text(encoding="utf-8").strip()
         # Strip the comment header we injected
-        lines = [l for l in content.splitlines() if not l.startswith("<!--")]
+        lines = [line for line in content.splitlines() if not line.startswith("<!--")]
         text = "\n".join(lines).strip()
         if not text:
             print("Empty note — nothing saved.")

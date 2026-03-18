@@ -41,7 +41,7 @@ def cmd_help() -> str:
         doc_cmds = [(k, v) for k, v in cli_commands.items() if k.startswith("/doc")]
 
         if sense_cmds:
-            lines.append(f"  {_c(_Colors.BOLD, 'Neut Sense:')}")
+            lines.append(f"  {_c(_Colors.BOLD, 'Neut Signal:')}")
             for cmd, help_text in sorted(sense_cmds)[:8]:  # Show top 8
                 display = cmd.replace("/sense ", "/sense ")
                 lines.append(f"  {_c(_Colors.CYAN, display)}  {help_text[:40]}")
@@ -125,12 +125,12 @@ def cmd_usage(agent: ChatAgent) -> str:
     return "\n".join(lines)
 
 
-def cmd_sense() -> str:
-    """Return sense pipeline status."""
+def cmd_signal() -> str:
+    """Return signal pipeline status."""
     from .tools import execute_tool
-    result = execute_tool("sense_status", {})
+    result = execute_tool("signal_status", {})
     lines = [""]
-    lines.append(f"  {_c(_Colors.BOLD, 'Neut Sense Status')}")
+    lines.append(f"  {_c(_Colors.BOLD, 'Neut Signal Status')}")
     inbox = result.get("inbox_raw", {})
     if inbox:
         for source, count in inbox.items():

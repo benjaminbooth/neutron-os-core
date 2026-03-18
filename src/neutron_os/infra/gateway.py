@@ -10,13 +10,20 @@ Both neut signal and neut pub (Phase 2) share this gateway.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+
+log = logging.getLogger(__name__)
+
+_RATE_LIMIT_MAX_RETRIES = 3
+_RATE_LIMIT_BACKOFF_BASE = 2.0
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CONFIG_DIR = _RUNTIME_DIR / "config"
@@ -117,6 +124,23 @@ class CompletionResponse:
     input_tokens: int = 0
     output_tokens: int = 0
     cache_read_tokens: int = 0
+
+
+def _post_with_rate_limit_retry(requests_mod, url, payload, headers, timeout=60, **kwargs):
+    """POST with exponential backoff on HTTP 429 (rate limit)."""
+    for attempt in range(_RATE_LIMIT_MAX_RETRIES):
+        response = requests_mod.post(url, json=payload, headers=headers, timeout=timeout, **kwargs)
+        if response.status_code == 429:
+            wait = _RATE_LIMIT_BACKOFF_BASE * (2 ** attempt)
+            log.warning("Rate limited (429) from %s, retrying in %.1fs", url, wait)
+            time.sleep(wait)
+            continue
+        response.raise_for_status()
+        return response
+    # Final attempt — let it raise on any error
+    response = requests_mod.post(url, json=payload, headers=headers, timeout=timeout, **kwargs)
+    response.raise_for_status()
+    return response
 
 
 class Gateway:
@@ -328,8 +352,7 @@ class Gateway:
                 payload["system"] = system
 
             url = provider.endpoint.rstrip("/") + "/messages"
-            response = requests.post(url, json=payload, headers=headers, timeout=60)
-            response.raise_for_status()
+            response = _post_with_rate_limit_retry(requests, url, payload, headers)
             data = response.json()
             text = data.get("content", [{}])[0].get("text", "")
         else:
@@ -341,8 +364,7 @@ class Gateway:
             }
 
             url = provider.endpoint.rstrip("/") + "/chat/completions"
-            response = requests.post(url, json=payload, headers=headers, timeout=60)
-            response.raise_for_status()
+            response = _post_with_rate_limit_retry(requests, url, payload, headers)
             data = response.json()
             text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
@@ -502,17 +524,13 @@ class Gateway:
         url = provider.endpoint.rstrip("/") + "/messages"
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=120)
-            response.raise_for_status()
+            response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=120)
         except Exception as e:
             # Fall back to no-tools call if tools param rejected
             if tools:
                 payload.pop("tools", None)
                 try:
-                    response = requests.post(
-                        url, json=payload, headers=headers, timeout=120
-                    )
-                    response.raise_for_status()
+                    response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=120)
                 except Exception:
                     raise e
             else:
@@ -575,17 +593,13 @@ class Gateway:
         url = provider.endpoint.rstrip("/") + "/chat/completions"
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=120)
-            response.raise_for_status()
+            response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=120)
         except Exception as e:
             # Fall back to no-tools call if tools param rejected
             if tools:
                 payload.pop("tools", None)
                 try:
-                    response = requests.post(
-                        url, json=payload, headers=headers, timeout=120
-                    )
-                    response.raise_for_status()
+                    response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=120)
                 except Exception:
                     raise e
             else:
@@ -712,10 +726,7 @@ class Gateway:
             payload["tools"] = _tools_to_anthropic_format(tools)
 
         url = provider.endpoint.rstrip("/") + "/messages"
-        response = requests.post(
-            url, json=payload, headers=headers, timeout=120, stream=True
-        )
-        response.raise_for_status()
+        response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=120, stream=True)
 
         current_tool_id = ""
         current_tool_name = ""
@@ -840,10 +851,7 @@ class Gateway:
             payload["tools"] = tools
 
         url = provider.endpoint.rstrip("/") + "/chat/completions"
-        response = requests.post(
-            url, json=payload, headers=headers, timeout=120, stream=True
-        )
-        response.raise_for_status()
+        response = _post_with_rate_limit_retry(requests, url, payload, headers, timeout=120, stream=True)
 
         # Track tool call state across deltas
         tool_calls_buf: dict[int, dict[str, str]] = {}  # index -> {id, name, args}

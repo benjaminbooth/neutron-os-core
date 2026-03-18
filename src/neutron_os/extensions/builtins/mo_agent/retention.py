@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from neutron_os.infra.state import STATE_LOCATIONS, StateLocation
+from neutron_os.infra.state import STATE_LOCATIONS
 
 logger = logging.getLogger(__name__)
 

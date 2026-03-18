@@ -17,7 +17,7 @@ class TestToolRegistry:
         assert len(reads) >= 4
         names = {t.name for t in reads}
         assert "query_docs" in names
-        assert "sense_status" in names
+        assert "signal_status" in names
         assert "list_providers" in names
 
     def test_write_tools_marked_write(self):
@@ -51,8 +51,8 @@ class TestToolExecution:
         result = execute_tool("query_docs", {})
         assert "documents" in result
 
-    def test_sense_status(self):
-        result = execute_tool("sense_status", {})
+    def test_signal_status(self):
+        result = execute_tool("signal_status", {})
         assert "processed" in result
         assert "drafts" in result
 

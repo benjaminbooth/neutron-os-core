@@ -288,7 +288,7 @@ def _ingest_gitlab(correlator) -> list:
 
     if not exports:
         print("  No gitlab export files found in tools/exports/")
-        print(f"  Run: python tools/gitlab_tracker_export.py --output-dir {EXPORTS_DIR}")
+        print("  Run: ./scripts/run_gitlab_export.sh")
         return []
 
     current = exports[0]

@@ -26,7 +26,6 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 
@@ -284,7 +283,7 @@ def watch_onedrive(
         callback: Function called with list of ChangeEvents on each detection
     """
     print(f"  Watching OneDrive/{folder_path} (polling every {interval_seconds}s)")
-    print(f"  Press Ctrl+C to stop.\n")
+    print("  Press Ctrl+C to stop.\n")
 
     while True:
         try:

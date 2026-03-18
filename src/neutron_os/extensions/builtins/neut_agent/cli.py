@@ -25,7 +25,7 @@ from .agent import ChatAgent
 from .commands import (
     cmd_help,
     cmd_status,
-    cmd_sense,
+    cmd_signal,
     cmd_doc,
     cmd_sessions,
     cmd_resume,
@@ -262,7 +262,7 @@ def _execute_cli_command(command: str) -> str:
     if not subcommand:
         # Show namespace status/help
         if namespace == "sense":
-            return cmd_sense()
+            return cmd_signal()
         elif namespace == "doc":
             return cmd_doc()
         return f"\n  Usage: /{namespace} <subcommand>\n"

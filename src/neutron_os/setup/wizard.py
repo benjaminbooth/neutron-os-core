@@ -234,7 +234,76 @@ class SetupWizard:
             renderer.text("You can complete setup later with: neut infra")
             self.state.infra_configured = False
 
+        # Check Ollama for local AI (export control routing)
+        self._check_ollama()
+
         renderer.blank()
+
+    def _check_ollama(self) -> None:
+        """Check Ollama installation and pull the routing model if needed."""
+        from neutron_os.extensions.builtins.settings.store import SettingsStore
+
+        settings = SettingsStore()
+        model = settings.get("routing.ollama_model", "llama3.2:1b")
+
+        # Check if ollama is installed
+        if not shutil.which("ollama"):
+            renderer.blank()
+            renderer.heading("Ollama (Local AI)")
+            renderer.text(
+                "Ollama runs a small local model for export-control classification.\n"
+                "It keeps sensitive routing decisions off the network.\n"
+            )
+            if platform.system() == "Darwin":
+                if renderer.prompt_yn("Install Ollama via Homebrew?", default=True):
+                    renderer.text("  Installing...")
+                    try:
+                        subprocess.run(
+                            ["brew", "install", "ollama"],
+                            check=True, capture_output=True, timeout=120,
+                        )
+                        renderer.success("Ollama installed")
+                    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                        renderer.warning("Could not install Ollama automatically.")
+                        renderer.text("  Install manually: https://ollama.com/download")
+                        return
+                else:
+                    renderer.info("Skipped — install later: brew install ollama")
+                    return
+            else:
+                renderer.warning("Ollama not found. Install from: https://ollama.com/download")
+                return
+
+        # Check if ollama is serving
+        try:
+            import urllib.request
+            urllib.request.urlopen("http://localhost:11434", timeout=2)
+        except Exception:
+            renderer.blank()
+            renderer.warning("Ollama is installed but not running.")
+            renderer.text("  Start it with: ollama serve")
+            return
+
+        # Check if routing model is pulled
+        try:
+            result = subprocess.run(
+                ["ollama", "list"], capture_output=True, text=True, timeout=10,
+            )
+            if model not in result.stdout:
+                renderer.blank()
+                renderer.text(f"  Pulling routing model ({model})...")
+                try:
+                    subprocess.run(
+                        ["ollama", "pull", model],
+                        check=True, timeout=300,
+                    )
+                    renderer.success(f"Routing model {model} ready")
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    renderer.warning(f"Could not pull {model}. Run manually: ollama pull {model}")
+            else:
+                renderer.success(f"Ollama ready ({model})")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
 
     # ------------------------------------------------------------------
     # Phase: CREDENTIALS

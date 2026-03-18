@@ -238,7 +238,7 @@ class OneDriveGraphStorageProvider(StorageProvider):
             # Check if folder exists
             check_path = f"/me/drive/root:/{parent_path}/{part}" if parent_path else f"/me/drive/root:/{part}"
             try:
-                result = self._graph_request(check_path)
+                self._graph_request(check_path)
                 parent_path = f"{parent_path}/{part}" if parent_path else part
                 continue
             except urllib.error.HTTPError as e:

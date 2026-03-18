@@ -111,7 +111,7 @@ class TestChatAgent:
 
     def test_legacy_empty_params(self, agent):
         """Legacy tool call with no params."""
-        calls = agent._parse_legacy_tool_calls("[tool: sense_status]")
+        calls = agent._parse_legacy_tool_calls("[tool: signal_status]")
         assert len(calls) == 1
         assert calls[0].input == {}
 

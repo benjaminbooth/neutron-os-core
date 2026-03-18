@@ -24,9 +24,8 @@ from __future__ import annotations
 import logging
 import os
 import re
-import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ...factory import PublisherFactory
 from ..base import StorageProvider, UploadResult, StorageEntry
@@ -218,13 +217,13 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                     )
                     results.append(result)
                     if result.success:
-                        print(f"✓", flush=True)
+                        print("✓", flush=True)
                     else:
                         print(f"✗ {result.error[:80]}", flush=True)
                         # Fail fast: if first upload fails, stop trying
                         if i == 0:
                             print("\n    First upload failed. Stopping batch.", flush=True)
-                            print(f"    Debug: take a screenshot with --headed to see the page.",
+                            print("    Debug: take a screenshot with --headed to see the page.",
                                   flush=True)
                             # Fill remaining with same error
                             for remaining in files[i+1:]:
@@ -293,9 +292,6 @@ class OneDriveBrowserStorageProvider(StorageProvider):
         2. Extract the access token from the browser's cookies/localStorage
         3. Use the Graph API directly for file upload (reliable, no CSS selectors)
         """
-        import json as _json
-        import urllib.request
-        import urllib.error
 
         # Skip full navigation if we're already in the target folder (batch optimization)
         already_in_folder = (self._current_folder == target_folder)

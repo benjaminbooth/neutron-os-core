@@ -7,7 +7,7 @@ from neutron_os.setup.renderer import set_color_enabled
 from neutron_os.extensions.builtins.neut_agent.commands import (
     cmd_help,
     cmd_status,
-    cmd_sense,
+    cmd_signal,
     cmd_sessions,
     cmd_resume,
     cmd_new,
@@ -77,9 +77,9 @@ class TestSlashCommands:
         assert "anthropic" in result
         assert "claude-sonnet" in result
 
-    def test_cmd_sense(self):
-        result = cmd_sense()
-        assert "Neut Sense Status" in result
+    def test_cmd_signal(self):
+        result = cmd_signal()
+        assert "Neut Signal Status" in result
 
     def test_cmd_sessions_empty(self):
         from neutron_os.infra.orchestrator.session import SessionStore

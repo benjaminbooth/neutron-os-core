@@ -91,7 +91,7 @@ def main():
     if args.cmd == "get":
         val = store.get(args.key)
         if val is None:
-            print(f"  (not set — no default)", file=sys.stderr)
+            print("  (not set — no default)", file=sys.stderr)
             sys.exit(1)
         print(_fmt_value(val))
         return

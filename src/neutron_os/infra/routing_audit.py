@@ -15,7 +15,6 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
