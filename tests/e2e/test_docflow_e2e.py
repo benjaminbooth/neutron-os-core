@@ -175,19 +175,15 @@ class TestDocflowFullPipeline:
         assert record.storage_provider == "local"
         assert record.url.startswith("file://")
 
-        # 2. State file updated (in .neut/ when no .git/ present)
-        state_file = workspace / ".neut" / ".publisher-state.json"
-        if not state_file.exists():
-            state_file = workspace / ".publisher-state.json"
+        # 2. State file updated (always under .neut/publisher/)
+        state_file = workspace / ".neut" / "publisher" / "publisher-state.json"
         assert state_file.exists()
         state_data = json.loads(state_file.read_text())
         doc_ids = [d["doc_id"] for d in state_data.get("documents", [])]
         assert "spec-a" in doc_ids
 
         # 3. Registry file updated
-        registry_file = workspace / ".neut" / ".publisher-registry.json"
-        if not registry_file.exists():
-            registry_file = workspace / ".publisher-registry.json"
+        registry_file = workspace / ".neut" / "publisher" / "publisher-registry.json"
         assert registry_file.exists()
         registry_data = json.loads(registry_file.read_text())
         registry_ids = [e.get("doc_id", "") for e in registry_data.get("documents", [])]
