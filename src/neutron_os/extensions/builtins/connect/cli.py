@@ -13,7 +13,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Optional
 
 from neutron_os.infra.connections import (
     Connection,
@@ -22,88 +21,20 @@ from neutron_os.infra.connections import (
     HealthStatus,
     check_health,
     clear_credential,
+    format_status_section,
     get_credential,
+    get_install_command,
     get_registry,
     has_credential,
+    run_post_setup_hook,
     store_credential,
 )
 
 
-# ---------------------------------------------------------------------------
-# Status formatting (for neut status integration)
-# ---------------------------------------------------------------------------
+# format_status_section and _connection_status_info are in infra/connections.py
+# (shared platform layer, not extension-specific)
 
-_STATUS_SYMBOLS = {
-    "configured": "\u2713",    # ✓
-    "expired": "\u26a0",       # ⚠
-    "missing": "\u25cb",       # ○
-    "unhealthy": "\u2717",     # ✗
-    "healthy": "\u2713",       # ✓
-}
-
-
-def _connection_status_line(conn: Connection, registry: ConnectionRegistry) -> dict:
-    """Get status info for a single connection."""
-    has_cred = has_credential(conn.name, registry=registry)
-
-    if conn.kind == "cli":
-        from neutron_os.infra.connections import get_cli_tool
-        tool = get_cli_tool(conn.name, registry=registry)
-        if tool:
-            return {
-                "name": conn.name,
-                "display_name": conn.display_name,
-                "status": "healthy",
-                "message": f"v{tool.version}" if tool.version else "installed",
-                "kind": conn.kind,
-                "category": conn.category,
-            }
-        return {
-            "name": conn.name,
-            "display_name": conn.display_name,
-            "status": "missing",
-            "message": f"Not found — {conn.docs_url}" if conn.docs_url else "Not found",
-            "kind": conn.kind,
-            "category": conn.category,
-        }
-
-    if conn.credential_type == "none":
-        status = "healthy"
-        message = "No credentials needed"
-    elif has_cred:
-        status = "configured"
-        message = "Credential set"
-    else:
-        tag = "required" if conn.required else "optional"
-        status = "missing"
-        message = f"Not configured ({tag})"
-
-    return {
-        "name": conn.name,
-        "display_name": conn.display_name,
-        "status": status,
-        "message": message,
-        "kind": conn.kind,
-        "category": conn.category,
-    }
-
-
-def format_status_section(*, registry: Optional[ConnectionRegistry] = None) -> str:
-    """Format connections for neut status display."""
-    if registry is None:
-        registry = get_registry()
-
-    connections = registry.all()
-    if not connections:
-        return "  No connections registered"
-
-    lines = []
-    for conn in sorted(connections, key=lambda c: (c.category, c.name)):
-        info = _connection_status_line(conn, registry)
-        symbol = _STATUS_SYMBOLS.get(info["status"], "?")
-        lines.append(f"  {symbol} {info['display_name']:25s} {info['message']}")
-
-    return "\n".join(lines)
+from neutron_os.infra.connections import _connection_status_info
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +99,7 @@ def _check_all(registry: ConnectionRegistry, as_json: bool = False) -> int:
 # Setup flow
 # ---------------------------------------------------------------------------
 
-def _setup_connection(name: str, registry: ConnectionRegistry) -> int:
+def setup_connection(name: str, registry: ConnectionRegistry) -> int:
     """Interactive setup for a single connection."""
     conn = registry.get(name)
     if conn is None:
@@ -194,9 +125,11 @@ def _setup_connection(name: str, registry: ConnectionRegistry) -> int:
 
 
 def _setup_cli_tool(conn: Connection, registry: ConnectionRegistry) -> int:
-    """Set up a CLI tool connection — install, configure, verify."""
-    import platform
-    import shutil
+    """Set up a CLI tool connection — install, configure, verify.
+
+    Uses declarative install_commands from TOML and extensible
+    post_setup hooks from the owning extension.
+    """
     import subprocess
 
     from neutron_os.infra.connections import get_cli_tool
@@ -211,19 +144,20 @@ def _setup_cli_tool(conn: Connection, registry: ConnectionRegistry) -> int:
     else:
         print(f"  \u2717 {binary} not found on PATH\n")
 
-        # Try to install automatically on macOS
-        if platform.system() == "Darwin" and shutil.which("brew"):
+        # Use declarative install_commands from TOML
+        install_cmd = get_install_command(conn)
+        if install_cmd:
             try:
-                answer = input("  Install via Homebrew? [Y/n] ").strip().lower()
+                answer = input(f"  Install with `{install_cmd}`? [Y/n] ").strip().lower()
             except (EOFError, KeyboardInterrupt):
                 print("\n  Skipped")
                 return 0
 
             if answer in ("", "y", "yes"):
-                print(f"  Installing {binary}...")
+                print("  Installing...")
                 try:
                     subprocess.run(
-                        ["brew", "install", binary],
+                        install_cmd, shell=True,
                         check=True, timeout=120,
                     )
                     print("  \u2713 Installed")
@@ -245,98 +179,10 @@ def _setup_cli_tool(conn: Connection, registry: ConnectionRegistry) -> int:
             print()
             return 0
 
-    # Post-install hooks for specific tools
-    if binary == "ollama" and tool:
-        return _setup_ollama_post_install()
-
-    print()
-    return 0
-
-
-def _setup_ollama_post_install() -> int:
-    """Ollama-specific post-install: ensure serving + model pulled."""
-    import subprocess
-    import urllib.request
-
-    from neutron_os.extensions.builtins.settings.store import SettingsStore
-    settings = SettingsStore()
-    model = settings.get("routing.ollama_model", "llama3.2:1b")
-
-    # Check if serving
-    serving = False
-    try:
-        urllib.request.urlopen("http://localhost:11434", timeout=2)
-        serving = True
-    except Exception:
-        pass
-
-    if not serving:
-        print("\n  Ollama is installed but not running.")
-        try:
-            answer = input("  Start Ollama now? [Y/n] ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print("\n  Skipped")
-            return 0
-
-        if answer in ("", "y", "yes"):
-            print("  Starting ollama serve...")
-            # Start in background
-            subprocess.Popen(
-                ["ollama", "serve"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            # Wait briefly for it to come up
-            import time
-            for _ in range(5):
-                time.sleep(1)
-                try:
-                    urllib.request.urlopen("http://localhost:11434", timeout=1)
-                    serving = True
-                    print("  \u2713 Ollama serving")
-                    break
-                except Exception:
-                    pass
-            if not serving:
-                print("  \u26a0 Ollama didn't start — try `ollama serve` manually")
-                return 1
-        else:
-            print("  Start later with: ollama serve")
-            print()
-            return 0
-
-    # Check if model is pulled
-    try:
-        result = subprocess.run(
-            ["ollama", "list"], capture_output=True, text=True, timeout=10,
-        )
-        if model in result.stdout:
-            print(f"  \u2713 Model {model} ready")
-            print()
-            return 0
-    except Exception:
-        pass
-
-    print(f"\n  Routing model ({model}) not yet pulled.")
-    try:
-        answer = input(f"  Pull {model} now? [Y/n] ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        print("\n  Skipped")
-        return 0
-
-    if answer in ("", "y", "yes"):
-        print(f"  Pulling {model} (this may take a minute)...")
-        try:
-            subprocess.run(
-                ["ollama", "pull", model],
-                check=True, timeout=300,
-            )
-            print(f"  \u2713 Model {model} ready")
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            print(f"  \u2717 Pull failed — try manually: ollama pull {model}")
-            return 1
-    else:
-        print(f"  Pull later with: ollama pull {model}")
+    # Run extension-provided post-setup hook if declared
+    hook_result = run_post_setup_hook(conn)
+    if hook_result >= 0:
+        return hook_result
 
     print()
     return 0
@@ -473,13 +319,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # neut connect <name> (setup)
     if args.name:
-        return _setup_connection(args.name, registry)
+        return setup_connection(args.name, registry)
 
     # neut connect (list all)
     connections = registry.all()
 
     if args.json:
-        data = [_connection_status_line(c, registry) for c in connections]
+        data = [_connection_status_info(c, registry) for c in connections]
         print(json.dumps(data, indent=2))
         return 0
 

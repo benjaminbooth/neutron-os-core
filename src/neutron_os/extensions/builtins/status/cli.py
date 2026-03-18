@@ -596,7 +596,7 @@ def format_health_table(health: SystemHealth, use_color: bool = True) -> str:
 
     # Connections section
     try:
-        from neutron_os.extensions.builtins.connect.cli import format_status_section
+        from neutron_os.infra.connections import format_status_section
         conn_output = format_status_section()
         if conn_output and "No connections" not in conn_output:
             lines.append("-" * 50)

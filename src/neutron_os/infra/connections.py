@@ -85,12 +85,44 @@ class Connection:
     extension: str = ""
     docs_url: str = ""
 
+    # Extensible setup hooks
+    post_setup_module: str = ""
+    post_setup_function: str = ""
+    install_commands: dict[str, str] = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        if self.install_commands is None:
+            self.install_commands = {}
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Connection:
         """Create a Connection from a dict (e.g., parsed TOML)."""
         known_fields = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in data.items() if k in known_fields}
         return cls(**filtered)
+
+    @classmethod
+    def from_connection_def(cls, cdef) -> Connection:
+        """Create from a contracts.ConnectionDef."""
+        return cls(
+            name=cdef.name,
+            display_name=cdef.display_name,
+            kind=cdef.kind,
+            category=cdef.category,
+            endpoint=cdef.endpoint,
+            transport=cdef.transport,
+            credential_type=cdef.credential_type,
+            credential_env_var=cdef.credential_env_var,
+            credential_file=cdef.credential_file,
+            required=cdef.required,
+            health_check=cdef.health_check,
+            health_endpoint=cdef.health_endpoint,
+            auto_refresh=cdef.auto_refresh,
+            docs_url=cdef.docs_url,
+            post_setup_module=cdef.post_setup_module,
+            post_setup_function=cdef.post_setup_function,
+            install_commands=dict(cdef.install_commands) if cdef.install_commands else {},
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +151,11 @@ class ConnectionRegistry:
         return [c for c in self._connections.values() if c.kind == kind]
 
     def discover_from_directory(self, search_dir: Path) -> None:
-        """Parse [[connections]] from neut-extension.toml files under search_dir."""
+        """Parse [[connections]] from neut-extension.toml files under search_dir.
+
+        Legacy method — prefer discover_from_extensions() which uses
+        the proper 3-tier extension discovery system.
+        """
         try:
             import tomllib
         except ImportError:
@@ -141,6 +177,22 @@ class ConnectionRegistry:
                     self.register(conn)
                 except Exception as e:
                     log.warning("Invalid connection in %s: %s", manifest_path, e)
+
+    def discover_from_extensions(self) -> None:
+        """Discover connections via the 3-tier extension system.
+
+        Uses extensions.discovery.discover_connections() which scans:
+        1. .neut/extensions/ (project-local, highest priority)
+        2. ~/.neut/extensions/ (user-global)
+        3. builtins/ (shipped with neut)
+        """
+        try:
+            from neutron_os.extensions.discovery import discover_connections
+            for cdef in discover_connections():
+                conn = Connection.from_connection_def(cdef)
+                self.register(conn)
+        except Exception as e:
+            log.debug("3-tier discovery failed, falling back: %s", e)
 
 
 # ---------------------------------------------------------------------------
@@ -446,17 +498,11 @@ _global_registry: Optional[ConnectionRegistry] = None
 
 
 def _get_global_registry() -> ConnectionRegistry:
-    """Lazy-init global registry from builtin extensions."""
+    """Lazy-init global registry via 3-tier extension discovery."""
     global _global_registry
     if _global_registry is None:
         _global_registry = ConnectionRegistry()
-        try:
-            from neutron_os import REPO_ROOT
-            builtins_dir = REPO_ROOT / "src" / "neutron_os" / "extensions" / "builtins"
-            if builtins_dir.exists():
-                _global_registry.discover_from_directory(builtins_dir)
-        except Exception:
-            pass
+        _global_registry.discover_from_extensions()
     return _global_registry
 
 
@@ -469,3 +515,112 @@ def reset_registry() -> None:
     """Reset the global registry (for testing)."""
     global _global_registry
     _global_registry = None
+
+
+# ---------------------------------------------------------------------------
+# Extensible setup hooks
+# ---------------------------------------------------------------------------
+
+def run_post_setup_hook(conn: Connection) -> int:
+    """Run an extension-provided post-setup hook if declared.
+
+    Returns 0 on success, 1 on failure, -1 if no hook declared.
+    """
+    if not conn.post_setup_module or not conn.post_setup_function:
+        return -1
+
+    try:
+        import importlib
+        mod = importlib.import_module(conn.post_setup_module)
+        func = getattr(mod, conn.post_setup_function)
+        return func()
+    except Exception as e:
+        log.warning("Post-setup hook %s.%s failed: %s",
+                    conn.post_setup_module, conn.post_setup_function, e)
+        return 1
+
+
+def get_install_command(conn: Connection) -> Optional[str]:
+    """Get the platform-appropriate install command from TOML declaration."""
+    import platform as _platform
+    system = _platform.system().lower()
+
+    platform_map = {
+        "darwin": "macos",
+        "linux": "linux",
+        "windows": "windows",
+    }
+    key = platform_map.get(system, system)
+    return conn.install_commands.get(key) or conn.install_commands.get("default")
+
+
+# ---------------------------------------------------------------------------
+# Status formatting (shared by neut status + neut connect)
+# ---------------------------------------------------------------------------
+
+_STATUS_SYMBOLS = {
+    "configured": "\u2713",
+    "healthy": "\u2713",
+    "expired": "\u26a0",
+    "missing": "\u25cb",
+    "unhealthy": "\u2717",
+}
+
+
+def format_status_section(*, registry: Optional[ConnectionRegistry] = None) -> str:
+    """Format connections for display in neut status."""
+    if registry is None:
+        registry = _get_global_registry()
+
+    connections = registry.all()
+    if not connections:
+        return "  No connections registered"
+
+    lines = []
+    for conn in sorted(connections, key=lambda c: (c.category, c.name)):
+        info = _connection_status_info(conn, registry)
+        symbol = _STATUS_SYMBOLS.get(info["status"], "?")
+        lines.append(f"  {symbol} {info['display_name']:25s} {info['message']}")
+
+    return "\n".join(lines)
+
+
+def _connection_status_info(conn: Connection, registry: ConnectionRegistry) -> dict:
+    """Get status info for a single connection."""
+    if conn.kind == "cli":
+        tool = get_cli_tool(conn.name, registry=registry)
+        if tool:
+            return {
+                "name": conn.name,
+                "display_name": conn.display_name,
+                "status": "healthy",
+                "message": f"v{tool.version}" if tool.version else "installed",
+                "kind": conn.kind,
+                "category": conn.category,
+            }
+        return {
+            "name": conn.name,
+            "display_name": conn.display_name,
+            "status": "missing",
+            "message": f"Not found — {conn.docs_url}" if conn.docs_url else "Not found",
+            "kind": conn.kind,
+            "category": conn.category,
+        }
+
+    has_cred = has_credential(conn.name, registry=registry)
+    if conn.credential_type == "none":
+        status, message = "healthy", "No credentials needed"
+    elif has_cred:
+        status, message = "configured", "Credential set"
+    else:
+        tag = "required" if conn.required else "optional"
+        status, message = "missing", f"Not configured ({tag})"
+
+    return {
+        "name": conn.name,
+        "display_name": conn.display_name,
+        "status": status,
+        "message": message,
+        "kind": conn.kind,
+        "category": conn.category,
+    }

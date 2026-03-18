@@ -35,6 +35,12 @@ credential_type = "none"
 health_check = "cli_version"
 category = "llm"
 docs_url = "https://ollama.com/download"
+post_setup_module = "neutron_os.extensions.builtins.neut_agent.connections"
+post_setup_function = "setup_ollama"
+
+[connections.install_commands]
+macos = "brew install ollama"
+linux = "curl -fsSL https://ollama.com/install.sh | sh"
 
 [[connections]]
 name = "pandoc"
@@ -45,3 +51,7 @@ credential_type = "none"
 health_check = "cli_version"
 category = "tools"
 docs_url = "https://pandoc.org/installing.html"
+
+[connections.install_commands]
+macos = "brew install pandoc"
+linux = "sudo apt-get install -y pandoc"

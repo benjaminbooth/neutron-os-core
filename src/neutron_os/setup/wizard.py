@@ -246,7 +246,7 @@ class SetupWizard:
 
         try:
             from neutron_os.infra.connections import get_registry, has_credential, get_cli_tool
-            from neutron_os.extensions.builtins.connect.cli import _setup_connection
+            from neutron_os.extensions.builtins.connect.cli import setup_connection
 
             registry = get_registry()
             connections = registry.all()
@@ -277,7 +277,7 @@ class SetupWizard:
                         continue
 
                 # Delegate to neut connect's interactive setup
-                _setup_connection(conn.name, registry)
+                setup_connection(conn.name, registry)
                 self.state.credentials_configured[conn.name] = True
                 save_state(self.state, self.root)
 

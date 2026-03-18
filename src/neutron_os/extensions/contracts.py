@@ -59,6 +59,30 @@ class Skill:
 
 
 @dataclass
+class ConnectionDef:
+    """An external connection declared by an extension."""
+
+    name: str
+    display_name: str = ""
+    kind: str = "api"  # "api" | "browser" | "mcp" | "a2a" | "cli"
+    category: str = ""
+    endpoint: str = ""
+    transport: str = ""
+    credential_type: str = "api_key"
+    credential_env_var: str = ""
+    credential_file: str = ""
+    required: bool = False
+    health_check: str = ""
+    health_endpoint: str = ""
+    auto_refresh: bool = False
+    docs_url: str = ""
+    # Extensible setup hooks
+    post_setup_module: str = ""  # dotted module path
+    post_setup_function: str = ""  # function name in that module
+    install_commands: dict[str, str] = field(default_factory=dict)  # platform → command
+
+
+@dataclass
 class Extension:
     """A discovered extension with its parsed manifest."""
 
@@ -75,6 +99,7 @@ class Extension:
     providers: list[ProviderDef] = field(default_factory=list)
     extractors: list[ExtractorDef] = field(default_factory=list)
     mcp_servers: dict[str, MCPServerDef] = field(default_factory=dict)
+    connections: list[ConnectionDef] = field(default_factory=list)
 
     # Classification
     kind: str = "tool"  # "agent", "tool", or "utility"
@@ -105,6 +130,8 @@ class Extension:
             caps.append(f"{len(self.extractors)} extractor(s)")
         if self.mcp_servers:
             caps.append(f"{len(self.mcp_servers)} MCP server(s)")
+        if self.connections:
+            caps.append(f"{len(self.connections)} connection(s)")
         return caps
 
 
@@ -196,6 +223,32 @@ def parse_manifest(manifest_path: Path) -> Extension:
                 command=val.get("command", ""),
                 args=val.get("args", []),
                 env=val.get("env", {}),
+            )
+
+    # Connections
+    for conn_data in data.get("connections", []):
+        conn_name = conn_data.get("name", "")
+        if conn_name:
+            ext.connections.append(
+                ConnectionDef(
+                    name=conn_name,
+                    display_name=conn_data.get("display_name", conn_name),
+                    kind=conn_data.get("kind", "api"),
+                    category=conn_data.get("category", ""),
+                    endpoint=conn_data.get("endpoint", ""),
+                    transport=conn_data.get("transport", ""),
+                    credential_type=conn_data.get("credential_type", "api_key"),
+                    credential_env_var=conn_data.get("credential_env_var", ""),
+                    credential_file=conn_data.get("credential_file", ""),
+                    required=conn_data.get("required", False),
+                    health_check=conn_data.get("health_check", ""),
+                    health_endpoint=conn_data.get("health_endpoint", ""),
+                    auto_refresh=conn_data.get("auto_refresh", False),
+                    docs_url=conn_data.get("docs_url", ""),
+                    post_setup_module=conn_data.get("post_setup_module", ""),
+                    post_setup_function=conn_data.get("post_setup_function", ""),
+                    install_commands=conn_data.get("install_commands", {}),
+                )
             )
 
     # Scan for skills (SKILL.md files)

@@ -263,6 +263,24 @@ def discover_cli_commands(*search_dirs: Path) -> dict[str, dict[str, Any]]:
     return commands
 
 
+def discover_connections(*search_dirs: Path) -> list:
+    """Discover connection declarations from all extensions (3-tier).
+
+    Returns list of ConnectionDef objects from all enabled extensions.
+    Project-local overrides user-global overrides builtins.
+    """
+    seen_names: set[str] = set()
+    connections = []
+    for ext in discover_extensions(*search_dirs):
+        if not ext.enabled:
+            continue
+        for conn in ext.connections:
+            if conn.name not in seen_names:
+                seen_names.add(conn.name)
+                connections.append(conn)
+    return connections
+
+
 # ---------------------------------------------------------------------------
 # Skill loading
 # ---------------------------------------------------------------------------
