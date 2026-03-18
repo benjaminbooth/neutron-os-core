@@ -86,15 +86,14 @@ def _render_diagram(code: str, output_dir: Path, index: int) -> Path | None:
 
     except urllib.error.HTTPError as e:
         first_line = code.split("\n")[0][:60]
-        logger.warning(
-            "Mermaid render failed for diagram %d (%s...): %s — "
-            "diagram will be included as text",
+        logger.debug(
+            "Mermaid.ink fallback also failed for diagram %d (%s...): %s",
             index, first_line, e,
         )
         return None
     except Exception as e:
         first_line = code.split("\n")[0][:60]
-        logger.warning("Mermaid render failed for diagram %d (%s...): %s", index, first_line, e)
+        logger.debug("Mermaid render failed for diagram %d (%s...): %s", index, first_line, e)
         return None
 
 
@@ -128,11 +127,11 @@ def _render_with_mmdc(code: str, output_path: Path) -> Path | None:
             return output_path
 
         if result.stderr:
-            logger.debug("mmdc stderr: %s", result.stderr[:200])
+            logger.warning("mmdc failed for diagram → %s: %s", output_path.name, result.stderr.strip()[:150])
         return None
 
     except Exception as e:
-        logger.debug("mmdc render failed: %s", e)
+        logger.warning("mmdc exception: %s", e)
         return None
 
 

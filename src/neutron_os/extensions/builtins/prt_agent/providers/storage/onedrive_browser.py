@@ -217,21 +217,14 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                     )
                     results.append(result)
                     if result.success:
-                        print("✓", flush=True)
+                        print("\u2713", flush=True)
                     else:
-                        print(f"✗ {result.error[:80]}", flush=True)
-                        # Fail fast: if first upload fails, stop trying
-                        if i == 0:
-                            print("\n    First upload failed. Stopping batch.", flush=True)
-                            print("    Debug: take a screenshot with --headed to see the page.",
-                                  flush=True)
-                            # Fill remaining with same error
-                            for remaining in files[i+1:]:
-                                results.append(UploadResult(
-                                    success=False, url="",
-                                    error="Skipped (first upload failed)",
-                                ))
-                            break
+                        error_msg = result.error[:120]
+                        if "locked" in error_msg.lower():
+                            # File is open/locked — skip and continue with next file
+                            print("\u26a0 locked (skipping — close the file and retry)", flush=True)
+                        else:
+                            print(f"\u2717 {error_msg}", flush=True)
 
                 context.storage_state(path=str(self.session_dir / "state.json"))
                 os.chmod(str(self.session_dir / "state.json"), 0o600)
