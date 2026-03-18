@@ -714,8 +714,9 @@ The entire EC retrieval + generation loop stays server-side.
 |------|------|--------|
 | Add `access_tier` + `scope` columns to schema | `rag/store.py` | 🔲 |
 | Migrate `tier='institutional'` → `access_tier='public', scope='community'` | `rag/store.py` | 🔲 |
-| Embed provider abstraction (`access_tier` param) | `rag/embeddings.py` | 🔲 |
-| Local embedding via Ollama (nomic-embed-text) | `rag/embeddings.py` | 🔲 |
+| Embed provider fallback (OpenAI → Ollama → skip) | `rag/embeddings.py` | ✅ v0.4.x |
+| Adaptive rate limiter for embedding API | `infra/rate_limiter.py` | ✅ v0.4.x |
+| Local embedding via Ollama (blocked by Ollama 0.18.x Metal bug) | `rag/embeddings.py` | ⚠ upstream |
 | Ingest auto-classification using `router.py` | `rag/ingest.py` | 🔲 |
 | Retrieval scope + tier filtering | `rag/store.py` | 🔲 |
 | `neut rag index` / `neut rag status` CLI | `rag/cli.py` | 🔲 |
