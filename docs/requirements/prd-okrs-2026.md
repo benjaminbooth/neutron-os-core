@@ -1,8 +1,34 @@
 # NeutronOS 2026 OKRs
 
-> **Last Updated:** March 2026  
-> **Planning Horizon:** Q2-Q4 2026 (Q1 nearly complete)  
+> **Last Updated:** March 18, 2026
+> **Planning Horizon:** Q2-Q4 2026 (Q1 nearly complete)
 > **Aligned With:** [Executive PRD](prd-executive.md), [Digital Twin Hosting PRD](prd-digital-twin-hosting.md), [Model Corral PRD](prd-model-corral.md)
+
+---
+
+## PRD → OKR Linkage Matrix
+
+| PRD | OKR Objective | Implementation Status |
+|-----|---------------|----------------------|
+| [Executive PRD](prd-executive.md) | All | ✅ Platform shipped (v0.4.1) |
+| [CLI PRD](prd-neut-cli.md) | All | ✅ Shipped |
+| [Agent Platform PRD](prd-agents.md) | O1, O5, O6, O7 | ✅ Platform shipped; domain agents planned |
+| [Agent State Mgmt PRD](prd-agent-state-management.md) | O1, O5 | ✅ Shipped |
+| [Publisher PRD](prd-publisher.md) | O7 | ✅ Shipped |
+| [Connections PRD](prd-connections.md) | O1, O3, O7 | 📋 Spec'd |
+| [Digital Twin Hosting PRD](prd-digital-twin-hosting.md) | **O1**, O4, O8 | 📋 Spec'd |
+| [Model Corral PRD](prd-model-corral.md) | **O2** | 📋 Spec'd |
+| [Data Platform PRD](prd-data-platform.md) | **O3**, O1, O4 | 📋 Spec'd |
+| [Reactor Ops Log PRD](prd-reactor-ops-log.md) | **O5** | 🔲 Not started |
+| [Compliance Tracking PRD](prd-compliance-tracking.md) | **O5** | 🔲 Not started |
+| [Scheduling System PRD](prd-scheduling-system.md) | O5, O6 | 🔲 Not started |
+| [Experiment Manager PRD](prd-experiment-manager.md) | O5, O7 | 🔲 Not started |
+| [Analytics Dashboards PRD](prd-analytics-dashboards.md) | O1, O3, O5 | 🔲 Not started |
+| [Medical Isotope PRD](prd-medical-isotope.md) | **O6** | 🔲 Not started |
+| [Security & Access Control PRD](prd-security-access-control.md) | O7, O8 | 🔲 Not started |
+| [Media Library PRD](prd-media-library.md) | O7 | 🔲 Not started |
+
+**PRDs not linked to any OKR:** None — all PRDs map to at least one objective.
 
 ---
 
@@ -123,7 +149,7 @@
 ## Objective 5: Operations & Compliance
 > Reactor ops log and compliance reporting automated
 
-**Aligns with:** [Reactor Ops Log PRD](prd-reactor-ops-log.md), [Compliance Tracking PRD](prd-compliance-tracking.md)
+**Aligns with:** [Reactor Ops Log PRD](prd-reactor-ops-log.md), [Compliance Tracking PRD](prd-compliance-tracking.md), [Scheduling System PRD](prd-scheduling-system.md), [Experiment Manager PRD](prd-experiment-manager.md), [Analytics Dashboards PRD](prd-analytics-dashboards.md)
 
 | Key Result | Target | Timeline | Status |
 |------------|--------|----------|--------|
@@ -167,6 +193,8 @@ When a Houston cancer clinic needs isotopes:
 
 ## Objective 7: Community & Adoption
 > Researchers and students actively using NeutronOS
+
+**Aligns with:** [Publisher PRD](prd-publisher.md), [Security & Access Control PRD](prd-security-access-control.md), [Media Library PRD](prd-media-library.md), [Connections PRD](prd-connections.md)
 
 | Key Result | Target | Timeline | Status |
 |------------|--------|----------|--------|
@@ -262,8 +290,29 @@ When a Houston cancer clinic needs isotopes:
 
 ## Related Documents
 
+### PRDs
 - [Executive PRD](prd-executive.md) — Product vision
+- [CLI PRD](prd-neut-cli.md) — CLI architecture
+- [Agent Platform PRD](prd-agents.md) — Agent capabilities
+- [Agent State Mgmt PRD](prd-agent-state-management.md) — State store design
+- [Publisher PRD](prd-publisher.md) — Document lifecycle
+- [Connections PRD](prd-connections.md) — Credential resolution
 - [Digital Twin Hosting PRD](prd-digital-twin-hosting.md) — DT execution infrastructure
 - [Model Corral PRD](prd-model-corral.md) — Physics model registry
 - [Data Platform PRD](prd-data-platform.md) — Lakehouse architecture
+- [Reactor Ops Log PRD](prd-reactor-ops-log.md) — Console operations
+- [Compliance Tracking PRD](prd-compliance-tracking.md) — Regulatory monitoring
+- [Scheduling System PRD](prd-scheduling-system.md) — Resource scheduling
+- [Experiment Manager PRD](prd-experiment-manager.md) — Sample lifecycle
+- [Analytics Dashboards PRD](prd-analytics-dashboards.md) — Visualization
+- [Medical Isotope PRD](prd-medical-isotope.md) — Isotope production
+- [Security & Access Control PRD](prd-security-access-control.md) — Auth & permissions
+- [Media Library PRD](prd-media-library.md) — Media asset management
+
+### Tech Specs
 - [Executive Tech Spec](../tech-specs/spec-executive.md) — Implementation status
+- [Digital Twin Architecture](../tech-specs/spec-digital-twin-architecture.md)
+- [Model Corral Spec](../tech-specs/spec-model-corral.md)
+- [Data Architecture Spec](../tech-specs/spec-data-architecture.md)
+- [Agent Architecture Spec](../tech-specs/spec-agent-architecture.md)
+- [Connections Spec](../tech-specs/spec-connections.md)
