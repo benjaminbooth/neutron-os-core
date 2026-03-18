@@ -46,6 +46,22 @@ macos = "brew install ollama"
 linux = "curl -fsSL https://ollama.com/install.sh | sh"
 
 [[connections]]
+name = "qwen-rascal"
+display_name = "Qwen on Rascal (VPN)"
+kind = "api"
+endpoint = "https://10.159.142.118:41883/v1"
+credential_env_var = "QWEN_API_KEY"
+credential_type = "api_key"
+health_check = "tcp_connect"
+health_endpoint = "10.159.142.118:41883"
+category = "llm"
+capabilities = ["read", "write"]
+required = false
+docs_url = "https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core"
+post_setup_module = "neutron_os.extensions.builtins.neut_agent.connections"
+post_setup_function = "setup_qwen_rascal"
+
+[[connections]]
 name = "pandoc"
 display_name = "Pandoc"
 kind = "cli"

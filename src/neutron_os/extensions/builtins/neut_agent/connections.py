@@ -145,6 +145,88 @@ def ensure_ollama_running() -> bool:
     return False
 
 
+def setup_qwen_rascal() -> int:
+    """Post-setup hook for Qwen on Rascal: configure models.toml with EC routing."""
+    from neutron_os import REPO_ROOT
+    models_path = REPO_ROOT / "runtime" / "config" / "models.toml"
+
+    if not models_path.exists():
+        print("  \u2717 models.toml not found — run neut config first")
+        return 1
+
+    content = models_path.read_text(encoding="utf-8")
+
+    # Check if qwen-rascal is already properly configured
+    if 'routing_tier = "export_controlled"' in content and "qwen-rascal" in content:
+        print("  \u2713 Qwen on Rascal already configured for EC routing")
+
+        # Check VPN reachability
+        import socket
+        try:
+            sock = socket.create_connection(("10.159.142.118", 41883), timeout=2)
+            sock.close()
+            print("  \u2713 VPN connected — rascal is reachable")
+        except Exception:
+            print("  \u26a0 Rascal not reachable — connect to UT VPN first")
+
+        print()
+        return 0
+
+    # Update existing qwen entry or add new one
+    if "qwen-local" in content or "qwen-rascal" in content:
+        # Replace existing qwen provider with properly configured one
+        import re
+        # Remove old qwen provider block
+        content = re.sub(
+            r'\[\[gateway\.providers\]\]\s*\n'
+            r'name\s*=\s*"qwen-(?:local|rascal)".*?'
+            r'(?=\[\[gateway\.providers\]\]|\Z)',
+            '',
+            content,
+            flags=re.DOTALL,
+        )
+
+    # Add properly configured qwen-rascal provider
+    qwen_block = '''
+[[gateway.providers]]
+name = "qwen-rascal"
+endpoint = "https://10.159.142.118:41883/v1"
+model = "qwen"
+api_key_env = "QWEN_API_KEY"
+priority = 1
+routing_tier = "export_controlled"
+requires_vpn = true
+use_for = ["extraction", "synthesis", "fallback"]
+'''
+    content = content.rstrip() + "\n" + qwen_block
+
+    # Also ensure anthropic has routing_tier = "public"
+    if 'name = "anthropic"' in content and "routing_tier" not in content.split('name = "anthropic"')[1].split("[[")[0]:
+        content = content.replace(
+            'use_for = ["extraction", "synthesis", "correlation", "fallback"]',
+            'routing_tier = "public"\n'
+            'use_for = ["extraction", "synthesis", "correlation", "fallback"]',
+            1,
+        )
+
+    models_path.write_text(content, encoding="utf-8")
+    print("  \u2713 Configured Qwen on Rascal for export-controlled routing")
+    print("    Anthropic → public queries")
+    print("    Qwen/Rascal → export-controlled queries (VPN required)")
+
+    # Check VPN
+    import socket
+    try:
+        sock = socket.create_connection(("10.159.142.118", 41883), timeout=2)
+        sock.close()
+        print("  \u2713 VPN connected — rascal is reachable")
+    except Exception:
+        print("  \u26a0 Rascal not reachable — connect to UT VPN to use EC routing")
+
+    print()
+    return 0
+
+
 def _is_ollama_serving() -> bool:
     """Check if Ollama API is responding."""
     try:
