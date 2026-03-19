@@ -95,13 +95,28 @@ class RoutingDecision:
     reason: str
     matched_terms: list[str] = field(default_factory=list)
     classifier: str = "keyword"  # "session" | "keyword" | "ollama" | "fallback"
+    tags: set[str] = field(default_factory=set)
+    """Facility-policy tags carried forward to gateway._select_provider.
+
+    The router sets tier for legal/compliance (export-control law).
+    Tags express facility routing policy on top: which specific private-network
+    LLM to use, workflow-level routing, etc.
+
+    Examples:
+      {"mcnp"}               → route to a provider tagged "mcnp"
+      {"private_network"}    → any private-network provider
+      {"internal_compute"}   → facility intranet provider, not EC
+    Tags are populated by the caller (e.g. session mode, CLI --tags flag) or
+    by future classifier extensions.  The base router sets them to empty set.
+    """
 
     def __str__(self) -> str:
+        tag_str = f" tags=[{','.join(sorted(self.tags))}]" if self.tags else ""
         if self.matched_terms:
             terms = ", ".join(self.matched_terms[:3])
             suffix = f" (+{len(self.matched_terms) - 3} more)" if len(self.matched_terms) > 3 else ""
-            return f"{self.tier.value} [{self.classifier}] — matched: {terms}{suffix}"
-        return f"{self.tier.value} [{self.classifier}] — {self.reason}"
+            return f"{self.tier.value} [{self.classifier}]{tag_str} — matched: {terms}{suffix}"
+        return f"{self.tier.value} [{self.classifier}]{tag_str} — {self.reason}"
 
 
 def _load_terms(path: Path) -> list[str]:

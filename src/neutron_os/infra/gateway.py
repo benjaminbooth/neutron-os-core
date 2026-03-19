@@ -60,8 +60,9 @@ class LLMProvider:
     api_key_env: str = ""
     priority: int = 99
     use_for: list[str] = field(default_factory=lambda: ["fallback"])
-    routing_tier: str = "any"   # "public" | "export_controlled" | "any"
-    requires_vpn: bool = False  # if True, TCP-check endpoint before calling
+    routing_tier: str = "any"      # "public" | "export_controlled" | "any" (legacy; still respected)
+    routing_tags: list[str] = field(default_factory=list)  # facility policy tags e.g. ["mcnp", "private_network"]
+    requires_vpn: bool = False     # if True, TCP-check endpoint before calling
 
     @property
     def api_key(self) -> Optional[str]:
@@ -226,15 +227,26 @@ class Gateway:
     # ------------------------------------------------------------------
 
     def _select_provider(
-        self, task: str, routing_tier: str = "any"
+        self,
+        task: str,
+        routing_tier: str = "any",
+        required_tags: Optional[set[str]] = None,
     ) -> Optional[LLMProvider]:
-        """Select the best available provider for a task + routing tier.
+        """Select the best available provider for a task + routing tier + tags.
 
         Priority order:
-          1. --provider CLI override (if set, use that provider regardless of tier)
-          2. If prefer_vpn_provider=true and VPN is reachable, prefer VPN provider
-          3. Providers matching routing_tier (or "any"), filtered by task + api_key
-          4. Sort by priority
+          1. --provider CLI override (if set, use that provider regardless of tier/tags)
+          2. prefer_provider chain (from settings) — tries each in order, skips VPN
+             providers whose endpoint is unreachable
+          3. Candidates matching routing_tier AND required_tags (if any), filtered
+             by task + api_key, sorted by priority
+          4. Relax constraints as last resort
+
+        Args:
+            routing_tier:  "public" | "export_controlled" | "any" (legacy binary)
+            required_tags: Facility-policy tags that must ALL appear in the
+                           provider's routing_tags list.  Empty set = no filter.
+                           Example: {"mcnp"} routes only to providers tagged "mcnp".
         """
         # CLI override: respect it unconditionally
         if self._provider_override:
@@ -274,14 +286,30 @@ class Gateway:
         except Exception:
             pass
 
+        def _tier_match(p: LLMProvider) -> bool:
+            return routing_tier == "any" or p.routing_tier in (routing_tier, "any")
+
+        def _tags_match(p: LLMProvider) -> bool:
+            if not required_tags:
+                return True
+            provider_tags = set(p.routing_tags)
+            return required_tags.issubset(provider_tags)
+
         candidates = [
             p for p in self.providers
             if (task in p.use_for or "fallback" in p.use_for)
-            and (routing_tier == "any" or p.routing_tier in (routing_tier, "any"))
+            and _tier_match(p)
+            and _tags_match(p)
             and p.api_key
         ]
         if not candidates:
-            # Relax routing_tier constraint as last resort
+            # Relax tag constraint, keep tier
+            candidates = [
+                p for p in self.providers
+                if _tier_match(p) and p.api_key
+            ]
+        if not candidates:
+            # Relax everything as last resort
             candidates = [p for p in self.providers if p.api_key]
 
         candidates.sort(key=lambda p: p.priority)
@@ -343,6 +371,7 @@ class Gateway:
                     priority=p.get("priority", 99),
                     use_for=p.get("use_for", ["fallback"]),
                     routing_tier=p.get("routing_tier", "any"),
+                    routing_tags=p.get("routing_tags", []),
                     requires_vpn=p.get("requires_vpn", False),
                 ))
 
@@ -473,6 +502,7 @@ class Gateway:
         max_tokens: int = 4096,
         task: str = "chat",
         routing_tier: str = "any",
+        routing_tags: Optional[set[str]] = None,
     ) -> CompletionResponse:
         """Send a completion request with native tool-use support.
 
@@ -482,12 +512,15 @@ class Gateway:
             tools: Tool definitions in OpenAI function-calling format.
             max_tokens: Maximum tokens to generate.
             task: Task type for provider selection.
-            routing_tier: "public" | "export_controlled" | "any"
+            routing_tier:  "public" | "export_controlled" | "any"
+            routing_tags:  Optional set of facility-policy tags that the selected
+                           provider must carry (e.g. {"mcnp"}, {"internal_compute"}).
+                           None = no tag filter.
 
         Returns:
             CompletionResponse with text and tool_use blocks separated.
         """
-        provider = self._select_provider(task, routing_tier)
+        provider = self._select_provider(task, routing_tier, routing_tags)
         if provider is None:
             return CompletionResponse(
                 text="LLM unavailable — no providers configured.",

@@ -1,45 +1,85 @@
 # LLM Provider Configuration
-# Copy to runtime/config/models.toml and fill in your keys.
+# Copy to runtime/config/llm-providers.toml and fill in your keys.
+# (legacy name models.toml is still accepted)
 #
 # The gateway tries providers in priority order with automatic fallback.
 # All providers must speak the OpenAI chat completions format.
+#
+# ── Routing fields ────────────────────────────────────────────────────────────
+#
+# routing_tier  (legacy binary — still honoured)
+#   "public"            → safe for cloud LLMs, no VPN needed
+#   "export_controlled" → VPN-gated, nuclear export-controlled queries only
+#   "any"               → no restriction (default)
+#
+# routing_tags  (facility policy — additive, multiple providers can share tags)
+#   A list of strings. The gateway matches providers whose tag set is a
+#   superset of the tags requested by the caller.  Use for:
+#     - routing to a specific private-network LLM by capability
+#     - routing internal-only (non-EC) traffic away from the cloud
+#     - any workflow-level policy beyond the binary EC tier
+#
+#   Common tags:
+#     "private_network"   → any provider behind a VPN/intranet
+#     "export_controlled" → mirrors routing_tier for tag-based callers
+#     "internal_compute"  → facility intranet only, not export-controlled
+#     "mcnp"              → provider tuned/vetted for MCNP-related work
+#     "relap"             → provider for thermal-hydraulics / RELAP work
+#     "multimodal"        → supports image inputs
+#
+# requires_vpn = true  → TCP reachability check before each call
+#
+# ─────────────────────────────────────────────────────────────────────────────
 
 [gateway]
 format = "openai"
 
-# Uncomment and configure providers you have access to:
-
-# routing_tier = "public"            → safe for cloud LLMs (no VPN needed)
-# routing_tier = "export_controlled" → VPN-gated, for nuclear export-controlled queries
-# routing_tier = "any"               → no restriction (default)
-# requires_vpn = true                → TCP reachability check before each call
-
-# Uncomment and configure providers you have access to:
+# ── Cloud / public providers ──────────────────────────────────────────────────
 
 # [[gateway.providers]]
 # name = "anthropic"
 # endpoint = "https://api.anthropic.com/v1"
 # model = "claude-sonnet-4-20250514"
-# api_key_env = "ANTHROPIC_API_KEY"    # reads from environment variable
-# priority = 1
-# routing_tier = "public"              # safe for cloud
+# api_key_env = "ANTHROPIC_API_KEY"
+# priority = 10
+# routing_tier = "public"
+# routing_tags = ["public"]
 # use_for = ["extraction", "synthesis", "correlation", "fallback"]
-
-# [[gateway.providers]]
-# name = "qwen-rascal"
-# endpoint = "https://10.159.142.118:41883/v1"   # UT rascal server (UT VPN required)
-# model = "qwen"
-# api_key_env = "QWEN_API_KEY"
-# priority = 2
-# routing_tier = "export_controlled"   # nuclear export-controlled content only
-# requires_vpn = true                  # check reachability before calling
-# use_for = ["extraction", "synthesis", "fallback"]
 
 # [[gateway.providers]]
 # name = "openai"
 # endpoint = "https://api.openai.com/v1"
 # model = "gpt-4o"
 # api_key_env = "OPENAI_API_KEY"
-# priority = 3
+# priority = 20
 # routing_tier = "public"
+# routing_tags = ["public", "multimodal"]
 # use_for = ["multimodal", "fallback"]
+
+# ── Private-network providers (VPN required) ─────────────────────────────────
+# Each private-network provider declares requires_vpn = true so the gateway
+# checks TCP reachability before attempting a call and falls back gracefully.
+# Use routing_tags to distinguish between multiple private-network LLMs.
+
+# [[gateway.providers]]
+# name = "qwen-rascal"
+# endpoint = "https://10.159.142.118:41883/v1"   # UT rascal server (UT VPN required)
+# model = "qwen2.5-coder:32b"
+# api_key_env = "QWEN_API_KEY"
+# priority = 1
+# routing_tier = "export_controlled"
+# routing_tags = ["export_controlled", "private_network", "mcnp"]
+# requires_vpn = true
+# use_for = ["extraction", "synthesis", "fallback"]
+
+# Second private-network provider example — different capability tag:
+# [[gateway.providers]]
+# name = "llama-internal"
+# endpoint = "http://compute-01.facility.internal:8080/v1"
+# model = "llama3.1:70b"
+# api_key_env = "LLAMA_INTERNAL_API_KEY"
+# priority = 5
+# routing_tier = "any"
+# routing_tags = ["private_network", "internal_compute"]
+# requires_vpn = true
+# use_for = ["synthesis", "fallback"]
