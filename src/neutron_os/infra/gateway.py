@@ -276,20 +276,33 @@ class Gateway:
                 condition = settings.get("routing.prefer_when", "reachable")
                 for pref_name in chain:
                     for p in self.providers:
-                        if p.name == pref_name and p.api_key:
-                            if condition == "always":
-                                return self._apply_model_override(p)
-                            elif condition == "reachable":
-                                if p.requires_vpn:
-                                    if self._check_vpn(p):
-                                        return self._apply_model_override(p)
-                                else:
+                        if p.name != pref_name or not p.api_key:
+                            continue
+                        # Never route EC content to a non-EC provider via the
+                        # prefer chain — tier must match exactly for EC requests.
+                        if routing_tier == "export_controlled" and p.routing_tier != "export_controlled":
+                            continue
+                        if condition == "always":
+                            return self._apply_model_override(p)
+                        elif condition == "reachable":
+                            if p.requires_vpn:
+                                if self._check_vpn(p):
                                     return self._apply_model_override(p)
+                            else:
+                                return self._apply_model_override(p)
         except Exception:
             pass
 
         def _tier_match(p: LLMProvider) -> bool:
-            return routing_tier == "any" or p.routing_tier in (routing_tier, "any")
+            if routing_tier == "any":
+                return True
+            if routing_tier == "export_controlled":
+                # EC requests must go to an explicitly EC-cleared provider.
+                # A provider tagged "any" is NOT EC-cleared — it means
+                # "no restriction on my side" which only applies to public content.
+                return p.routing_tier == "export_controlled"
+            # public or other tiers: accept exact match or "any"
+            return p.routing_tier in (routing_tier, "any")
 
         def _tags_match(p: LLMProvider) -> bool:
             if not required_tags:
@@ -310,8 +323,10 @@ class Gateway:
                 p for p in self.providers
                 if _tier_match(p) and p.api_key
             ]
-        if not candidates:
-            # Relax everything as last resort
+        if not candidates and routing_tier != "export_controlled":
+            # Relax tier as last resort — but NEVER for export_controlled.
+            # Sending EC content to a public cloud provider is a compliance
+            # violation; return None so the caller can surface a clear message.
             candidates = [p for p in self.providers if p.api_key]
 
         candidates.sort(key=lambda p: p.priority)
@@ -526,6 +541,21 @@ class Gateway:
         """
         provider = self._select_provider(task, routing_tier, routing_tags)
         if provider is None:
+            if routing_tier == "export_controlled":
+                return CompletionResponse(
+                    text=(
+                        "No export-controlled LLM is configured.\n\n"
+                        "This query was classified as export-controlled content and cannot be\n"
+                        "sent to a public cloud provider (Anthropic, OpenAI, etc.).\n\n"
+                        "To enable EC routing, configure a private-network LLM with\n"
+                        "routing_tier = \"export_controlled\" in llm-providers.toml.\n\n"
+                        "Contact your facility administrator or see:\n"
+                        "  neut connect --help"
+                    ),
+                    provider="stub",
+                    success=False,
+                    error="EC_PROVIDER_NOT_CONFIGURED",
+                )
             return CompletionResponse(
                 text="LLM unavailable — no providers configured.",
                 provider="stub",

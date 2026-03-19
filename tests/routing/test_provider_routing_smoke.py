@@ -97,7 +97,12 @@ def _make_provider(
 
 @pytest.fixture()
 def gateway_with_providers(monkeypatch):
-    """Gateway pre-loaded with three providers (rascal VPN, anthropic, openai)."""
+    """Gateway pre-loaded with three providers (rascal VPN, anthropic, openai).
+
+    qwen-rascal is on UT VPN — routing_tier="any" (NOT export_controlled).
+    There is no EC provider in this fixture by default; use
+    gateway_with_ec_provider for tests that need one.
+    """
     gw = Gateway.__new__(Gateway)
     gw._provider_override = None
     gw._model_override = None
@@ -107,7 +112,7 @@ def gateway_with_providers(monkeypatch):
             endpoint="http://rascal.tacc.utexas.edu:11434",
             model="qwen2.5-coder:32b",
             priority=10,
-            routing_tier="export_controlled",
+            routing_tier="any",   # UT VPN only — NOT export-controlled
             requires_vpn=True,
         ),
         _make_provider(
@@ -182,33 +187,108 @@ class TestRouterECPrompts:
 # 3. Gateway: Qwen/rascal selected when VPN is reachable
 # ---------------------------------------------------------------------------
 
+@pytest.fixture()
+def gateway_with_ec_provider(monkeypatch):
+    """Gateway with a dedicated EC provider (simulates future TACC Qwen deployment)."""
+    gw = Gateway.__new__(Gateway)
+    gw._provider_override = None
+    gw._model_override = None
+    gw.providers = [
+        _make_provider(
+            name="qwen-tacc-ec",
+            endpoint="http://qwen-ec.tacc.utexas.edu:11434",
+            model="qwen2.5-coder:32b",
+            priority=1,
+            routing_tier="export_controlled",
+            requires_vpn=True,
+        ),
+        _make_provider(
+            name="qwen-rascal",
+            endpoint="http://rascal.tacc.utexas.edu:11434",
+            model="qwen2.5-coder:32b",
+            priority=10,
+            routing_tier="any",
+            requires_vpn=True,
+        ),
+        _make_provider(
+            name="anthropic",
+            endpoint="https://api.anthropic.com/v1/messages",
+            model="claude-sonnet-4-6",
+            priority=20,
+            routing_tier="public",
+        ),
+    ]
+    return gw
+
+
 class TestGatewayRascalSelected:
-    def test_rascal_selected_when_vpn_reachable(self, gateway_with_providers):
-        """_select_provider picks rascal for export_controlled tier when VPN up."""
+    def test_rascal_selected_for_public_tier_when_vpn_up(self, gateway_with_providers):
+        """qwen-rascal (priority 10, routing_tier=any) wins for public/any when VPN up."""
+        with patch.object(gateway_with_providers, "_check_vpn", return_value=True):
+            provider = gateway_with_providers._select_provider("chat", routing_tier="any")
+        assert provider is not None
+        assert provider.name == "qwen-rascal"
+
+    def test_ec_provider_selected_when_configured(self, gateway_with_ec_provider):
+        """Dedicated EC provider wins for export_controlled tier when VPN up."""
+        with patch.object(gateway_with_ec_provider, "_check_vpn", return_value=True):
+            provider = gateway_with_ec_provider._select_provider(
+                "chat", routing_tier="export_controlled"
+            )
+        assert provider is not None
+        assert provider.name == "qwen-tacc-ec"
+
+    def test_non_ec_provider_not_selected_for_ec_requests(self, gateway_with_providers):
+        """qwen-rascal (routing_tier=any) must NOT be selected for EC requests."""
         with patch.object(gateway_with_providers, "_check_vpn", return_value=True):
             provider = gateway_with_providers._select_provider(
                 "chat", routing_tier="export_controlled"
             )
-        assert provider is not None
-        assert provider.name == "qwen-rascal"
-        assert "qwen" in provider.model.lower()
+        # No EC provider in this fixture — must return None, not qwen-rascal or anthropic
+        assert provider is None
 
-    def test_response_carries_rascal_provider_name(self, gateway_with_providers):
-        """CompletionResponse.provider == 'rascal' after a successful call."""
+    def test_response_carries_provider_name(self, gateway_with_ec_provider):
+        """CompletionResponse.provider reflects the actual selected provider."""
         expected = CompletionResponse(
-            text="Qwen answer here.",
-            provider="qwen-rascal",
+            text="Qwen EC answer here.",
+            provider="qwen-tacc-ec",
             model="qwen2.5-coder:32b",
             success=True,
         )
-        with patch.object(gateway_with_providers, "_check_vpn", return_value=True), \
-             patch.object(gateway_with_providers, "_call_provider_with_tools", return_value=expected):
-            result = gateway_with_providers.complete_with_tools(
+        with patch.object(gateway_with_ec_provider, "_check_vpn", return_value=True), \
+             patch.object(gateway_with_ec_provider, "_call_provider_with_tools", return_value=expected):
+            result = gateway_with_ec_provider.complete_with_tools(
                 messages=[{"role": "user", "content": "Explain MCNP geometry."}],
                 routing_tier="export_controlled",
             )
-        assert result.provider == "qwen-rascal"
+        assert result.provider == "qwen-tacc-ec"
         assert result.model == "qwen2.5-coder:32b"
+
+
+class TestECNotConfigured:
+    def test_ec_request_blocked_with_clear_message(self, gateway_with_providers):
+        """No EC provider → CompletionResponse with EC_PROVIDER_NOT_CONFIGURED error."""
+        with patch.object(gateway_with_providers, "_check_vpn", return_value=True):
+            result = gateway_with_providers.complete_with_tools(
+                messages=[{"role": "user", "content": "Help with MCNP geometry."}],
+                routing_tier="export_controlled",
+            )
+        assert result.success is False
+        assert result.error == "EC_PROVIDER_NOT_CONFIGURED"
+        assert result.provider == "stub"
+        # Message must be clear and actionable — not a generic "unavailable" error
+        assert "export-controlled" in result.text.lower()
+        assert "llm-providers.toml" in result.text or "neut connect" in result.text
+
+    def test_ec_does_not_fall_back_to_anthropic(self, gateway_with_providers):
+        """EC request must NEVER silently route to a public cloud provider."""
+        with patch.object(gateway_with_providers, "_check_vpn", return_value=True):
+            result = gateway_with_providers.complete_with_tools(
+                messages=[{"role": "user", "content": "Help with MCNP geometry."}],
+                routing_tier="export_controlled",
+            )
+        assert result.provider != "anthropic"
+        assert result.provider != "openai"
 
 
 # ---------------------------------------------------------------------------
@@ -217,30 +297,36 @@ class TestGatewayRascalSelected:
 
 class TestGatewayRascalFallback:
     def test_rascal_skipped_vpn_down_falls_to_anthropic(self, gateway_with_providers):
-        """VPN unreachable → rascal skipped → next available provider returned."""
+        """VPN unreachable → rascal skipped → anthropic handles public/any requests."""
         with patch.object(gateway_with_providers, "_check_vpn", return_value=False):
-            # routing_tier="any" so frontier providers are eligible
             provider = gateway_with_providers._select_provider("chat", routing_tier="any")
-        # rascal requires VPN and it's down, so should land on anthropic (priority 20)
         assert provider is not None
         assert provider.name == "anthropic"
 
+    def test_rascal_skipped_vpn_down_ec_still_blocked(self, gateway_with_providers):
+        """VPN down does not cause EC to fall back to Anthropic — still blocked."""
+        with patch.object(gateway_with_providers, "_check_vpn", return_value=False):
+            result = gateway_with_providers.complete_with_tools(
+                messages=[{"role": "user", "content": "MCNP geometry help."}],
+                routing_tier="export_controlled",
+            )
+        assert result.success is False
+        assert result.error == "EC_PROVIDER_NOT_CONFIGURED"
+
     def test_vpn_unavailable_response_contains_guidance(self, gateway_with_providers):
-        """complete_with_tools returns a clear guidance message when VPN is down."""
+        """VPN-gated provider unreachable → clear VPN guidance message."""
         with patch.object(gateway_with_providers, "_check_vpn", return_value=False), \
              patch.object(
                  gateway_with_providers, "_call_provider_with_tools",
                  side_effect=AssertionError("should not reach real call"),
              ):
-            # Force rascal to be selected (override) to exercise the VPN-unavailable path
             gateway_with_providers.set_provider_override("qwen-rascal")
             response = gateway_with_providers.complete_with_tools(
                 messages=[{"role": "user", "content": "Test prompt."}],
-                routing_tier="export_controlled",
+                routing_tier="any",
             )
-        # Should contain VPN guidance, not a raw exception
         assert "VPN" in response.text or "vpn" in response.text.lower() or not response.success
-        gateway_with_providers._provider_override = None  # reset
+        gateway_with_providers._provider_override = None
 
 
 # ---------------------------------------------------------------------------
@@ -255,10 +341,11 @@ class TestFrontierFallbackOrder:
         assert provider is not None
         assert provider.name == "anthropic"
 
-    def test_openai_selected_when_anthropic_missing_key(self, gateway_with_providers, monkeypatch):
-        """If Anthropic key absent, gateway moves to next provider (OpenAI)."""
-        anthropic_env = gateway_with_providers.providers[1].api_key_env
-        monkeypatch.delenv(anthropic_env, raising=False)
+    def test_openai_selected_when_anthropic_and_rascal_keys_absent(self, gateway_with_providers, monkeypatch):
+        """Anthropic + qwen-rascal keys absent → OpenAI is next frontier provider."""
+        for p in gateway_with_providers.providers:
+            if p.name in ("anthropic", "qwen-rascal"):
+                monkeypatch.delenv(p.api_key_env, raising=False)
         with patch.object(gateway_with_providers, "_check_vpn", return_value=False):
             provider = gateway_with_providers._select_provider("chat", routing_tier="public")
         assert provider is not None
