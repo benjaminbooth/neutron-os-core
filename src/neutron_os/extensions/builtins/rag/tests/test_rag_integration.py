@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import os
 import textwrap
-from pathlib import Path
 
 import pytest
 
@@ -414,7 +413,6 @@ def test_search_across_all_three_corpora(store):
 @pytest.mark.integration
 def test_search_filtered_to_single_corpus(store):
     """Passing corpora=['rag-internal'] restricts results to that corpus only."""
-    from neutron_os.rag.chunker import Chunk
     from neutron_os.rag.store import CORPUS_INTERNAL
 
     results = store.search(

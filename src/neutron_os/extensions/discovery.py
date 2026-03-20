@@ -263,6 +263,24 @@ def discover_cli_commands(*search_dirs: Path) -> dict[str, dict[str, Any]]:
     return commands
 
 
+def discover_connections(*search_dirs: Path) -> list:
+    """Discover connection declarations from all extensions (3-tier).
+
+    Returns list of ConnectionDef objects from all enabled extensions.
+    Project-local overrides user-global overrides builtins.
+    """
+    seen_names: set[str] = set()
+    connections = []
+    for ext in discover_extensions(*search_dirs):
+        if not ext.enabled:
+            continue
+        for conn in ext.connections:
+            if conn.name not in seen_names:
+                seen_names.add(conn.name)
+                connections.append(conn)
+    return connections
+
+
 # ---------------------------------------------------------------------------
 # Skill loading
 # ---------------------------------------------------------------------------
@@ -352,6 +370,30 @@ type = "stdio"
 command = "python"
 args = ["-m", "my_mcp_server"]
 env = { API_KEY = "${MY_API_KEY}" }
+
+# External connections (APIs, CLI tools, browser sessions)
+[[connections]]
+name = "my_service"
+display_name = "My Service"
+kind = "api"                              # "api" | "browser" | "mcp" | "a2a" | "cli"
+category = "data"                         # Logical grouping for UI
+credential_env_var = "MY_SERVICE_TOKEN"   # Primary credential source
+docs_url = "https://example.com/api-keys" # Where to get credentials
+
+# Optional: health checking
+health_check = "http_get"                 # "http_get" | "tcp_connect" | "cli_version" | "custom"
+health_endpoint = "https://api.example.com/health"
+
+# Optional: declarative installation
+[connections.install_commands]
+macos = "brew install my-service"
+linux = "sudo apt-get install -y my-service"
+
+# Optional: lifecycle hooks (for services that need to be running)
+# ensure_module = "my_extension.connections"
+# ensure_function = "ensure_my_service_running"  # () -> bool, silent, no prompts
+# post_setup_module = "my_extension.connections"
+# post_setup_function = "setup_my_service"        # () -> int, interactive, runs once
 ```
 
 ---
@@ -363,7 +405,7 @@ Each `.py` file in the `tools_ext/` directory exports:
 - `execute(name: str, params: dict) -> dict`: handler function
 
 ```python
-from neutron_os.extensions.builtins.chat_agent.tools import ToolDef
+from neutron_os.extensions.builtins.neut_agent.tools import ToolDef
 from neutron_os.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [
@@ -468,13 +510,13 @@ def main():
 
 ## 4. Docflow Provider Contracts
 
-Providers implement abstract base classes from `tools.extensions.builtins.docflow.providers.base`:
+Providers implement abstract base classes from `tools.extensions.builtins.prt_agent.providers.base`:
 
 ### GenerationProvider
 
 ```python
 from pathlib import Path
-from neutron_os.extensions.builtins.docflow.providers.base import (
+from neutron_os.extensions.builtins.prt_agent.providers.base import (
     GenerationProvider,
     GenerationOptions,
     GenerationResult,
@@ -502,18 +544,18 @@ class PptxGenerationProvider(GenerationProvider):
 
 ### StorageProvider, NotificationProvider
 
-See `tools/docflow/providers/base.py` for all five provider ABCs.
+See `tools/publisher/providers/base.py` for all five provider ABCs.
 
 ---
 
 ## 5. Extractor Contract
 
-Extractors inherit from `tools.extensions.builtins.sense_agent.extractors.base.BaseExtractor`:
+Extractors inherit from `tools.extensions.builtins.eve_agent.extractors.base.BaseExtractor`:
 
 ```python
 from pathlib import Path
-from neutron_os.extensions.builtins.sense_agent.extractors.base import BaseExtractor
-from neutron_os.extensions.builtins.sense_agent.models import Extraction, Signal
+from neutron_os.extensions.builtins.eve_agent.extractors.base import BaseExtractor
+from neutron_os.extensions.builtins.eve_agent.models import Extraction, Signal
 
 class ReactorLogExtractor(BaseExtractor):
     @property
@@ -552,7 +594,73 @@ Supports `${VAR}` and `${VAR:-default}` expansion for credentials.
 
 ---
 
-## 7. Persistence Guidelines
+## 7. Connection Contract
+
+Connections declare external dependencies. The platform handles credential
+resolution, health checks, installation, and service lifecycle.
+
+### Declaration (TOML)
+
+```toml
+[[connections]]
+name = "redis"                            # Unique identifier
+display_name = "Redis"                    # Shown in `neut connect` and `neut status`
+kind = "cli"                              # Type: "api" | "browser" | "mcp" | "a2a" | "cli"
+category = "data"                         # Grouping: "llm", "code", "data", "storage", "tools", etc.
+endpoint = "redis-server"                 # URL, host:port, or binary name (for CLI tools)
+credential_type = "none"                  # "api_key" | "none" | "browser_session" | "oauth_token"
+credential_env_var = ""                   # Env var for credential (e.g., "REDIS_TOKEN")
+required = false                          # If true, neut warns on missing
+health_check = "tcp_connect"              # How to verify: "http_get", "tcp_connect", "cli_version", "custom"
+health_endpoint = "localhost:6379"        # Target for health check (if different from endpoint)
+docs_url = "https://redis.io/docs"        # Where users get credentials or install info
+
+# Capabilities (read/write/admin)
+capabilities = ["read", "write"]          # What this connection supports
+
+[connections.install_commands]             # Platform-specific install commands
+macos = "brew install redis"
+linux = "sudo apt-get install -y redis-server"
+
+# Lifecycle hooks — keep tool-specific logic in YOUR extension, not the platform
+# ensure_module/ensure_function: called silently before first use (auto-start)
+# post_setup_module/post_setup_function: called interactively by `neut connect`
+```
+
+### Usage (Python)
+
+```python
+from neutron_os.infra.connections import get_credential, get_cli_tool, ensure_available
+
+# API connections — get the credential (returns None if missing, never throws)
+token = get_credential("my_service")
+if token is None:
+    return []  # Graceful degradation
+
+# CLI tools — resolve binary path and version
+tool = get_cli_tool("redis")
+if tool:
+    subprocess.run([tool.path, "ping"])
+
+# Services — ensure running before use (calls declared ensure hook)
+if ensure_available("redis"):
+    # Redis is guaranteed to be serving
+    ...
+```
+
+### Rules for Extension Builders
+
+1. **Never hardcode credentials** — use `get_credential()`
+2. **Never store credentials in runtime/** — platform handles `~/.neut/credentials/`
+3. **Always degrade gracefully** — `get_credential()` returns `None`, handle it
+4. **Declare connections in the manifest** — platform discovers and health-checks them
+5. **Provide `docs_url`** — tells users where to get credentials
+6. **Keep lifecycle logic in your extension** — use `ensure_module`, not platform code
+7. **Use `install_commands`** — let the platform handle installation prompts
+
+---
+
+## 8. Persistence Guidelines
 
 **Default: file-based** (JSON/TOML in extension directory)
 - Human-readable, easy backup, git-friendly

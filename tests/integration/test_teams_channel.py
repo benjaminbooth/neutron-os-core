@@ -41,7 +41,7 @@ class TestTeamsTranscriptProcessing:
 
     def test_vtt_file_recognized(self, tmp_path):
         """Transcript extractor recognizes .vtt files in a teams directory."""
-        from neutron_os.extensions.builtins.sense_agent.extractors.transcript import TranscriptExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.transcript import TranscriptExtractor
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -58,7 +58,7 @@ class TestTeamsTranscriptProcessing:
 
     def test_extract_signals_from_transcript(self, tmp_path):
         """Extract signals from a meeting transcript without LLM."""
-        from neutron_os.extensions.builtins.sense_agent.extractors.transcript import TranscriptExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.transcript import TranscriptExtractor
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -80,7 +80,7 @@ class TestTeamsTranscriptProcessing:
         import json
         import threading
         import urllib.request
-        from neutron_os.extensions.builtins.sense_agent.serve import create_server
+        from neutron_os.extensions.builtins.eve_agent.serve import create_server
 
         inbox = tmp_path / "inbox" / "raw"
         inbox.mkdir(parents=True)
@@ -130,5 +130,5 @@ class TestTeamsChannelsText:
         pytest.skip(
             "Teams channel text extractor not yet implemented. "
             "Needs: MS Graph API + Teams.Read scope + new extractor in "
-            "src/neutron_os/extensions/builtins/sense_agent/extractors/teams_chat.py"
+            "src/neutron_os/extensions/builtins/eve_agent/extractors/teams_chat.py"
         )

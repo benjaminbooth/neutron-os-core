@@ -6,7 +6,6 @@ Integration tests (marked integration) require DATABASE_URL.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -172,9 +171,9 @@ def test_settings_rag_database_url_default():
 # Chat agent — RAG context wiring
 # ---------------------------------------------------------------------------
 
-def test_chat_agent_rag_context_no_url(monkeypatch):
+def test_neut_agent_rag_context_no_url(monkeypatch):
     """ChatAgent._rag_context returns '' when no database_url configured."""
-    from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+    from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
 
     monkeypatch.setenv("DATABASE_URL", "")
     agent = ChatAgent.__new__(ChatAgent)
@@ -190,9 +189,9 @@ def test_chat_agent_rag_context_no_url(monkeypatch):
     assert result == ""
 
 
-def test_chat_agent_rag_context_returns_formatted_chunks():
+def test_neut_agent_rag_context_returns_formatted_chunks():
     """ChatAgent._rag_context formats results correctly when store is available."""
-    from neutron_os.extensions.builtins.chat_agent.agent import ChatAgent
+    from neutron_os.extensions.builtins.neut_agent.agent import ChatAgent
     from neutron_os.rag.store import SearchResult
 
     agent = ChatAgent.__new__(ChatAgent)
@@ -200,7 +199,7 @@ def test_chat_agent_rag_context_returns_formatted_chunks():
     agent._rag_store = MagicMock()
     agent._rag_store.search.return_value = [
         SearchResult(
-            source_path="docs/specs/xenon.md",
+            source_path="docs/tech-specs/xenon.md",
             source_title="Xenon Poisoning",
             chunk_text="Xenon-135 is a strong neutron absorber produced during fission.",
             chunk_index=0,

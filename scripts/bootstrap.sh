@@ -400,79 +400,62 @@ if [[ -f "$PROJECT_ROOT/requirements-dev.txt" ]]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 5. Infrastructure (Docker, K3D, PostgreSQL)
+# 5. Environment Setup (deferred to neut install)
 # ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "Step 5: Infrastructure"
-echo "----------------------"
+# Infrastructure (Docker/k3d/PostgreSQL), LLM credentials, and RAG indexing
+# are handled by `neut install`, which reads runtime/config/install.toml and
+# runs the right steps for the detected environment (local, rascal, tacc, ...).
+#
+# bootstrap.sh's job ends here: Python toolchain + shell integration only.
+# ═══════════════════════════════════════════════════════════════════════════
 
-# Check if Docker is available
-if command -v docker &>/dev/null; then
-    # Check if Docker daemon is running
-    if docker info &>/dev/null 2>&1; then
-        echo "✓ Docker running"
-        
-        # Check K3D
-        if command -v k3d &>/dev/null; then
-            echo "✓ K3D installed"
-            
-            # Check if neut-local cluster exists and is running
-            if k3d cluster list -o json 2>/dev/null | grep -q '"neut-local"'; then
-                if k3d cluster list -o json 2>/dev/null | grep -A5 '"neut-local"' | grep -q '"serversRunning":1'; then
-                    echo "✓ neut-local cluster running"
-                else
-                    echo "○ neut-local cluster stopped, starting..."
-                    k3d cluster start neut-local 2>/dev/null || true
-                fi
-            else
-                echo "○ Creating neut-local cluster with PostgreSQL..."
-                # Run neut infra to set up the cluster
-                neut infra --no-cluster 2>/dev/null || {
-                    echo "  (Run 'neut infra' to complete setup)"
-                }
-            fi
-        else
-            echo "○ K3D not installed, installing..."
-            if command -v brew &>/dev/null; then
-                brew install k3d 2>/dev/null && echo "✓ K3D installed" || echo "  (Run 'neut infra' to install)"
-            else
-                curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash 2>/dev/null && echo "✓ K3D installed" || echo "  (Run 'neut infra' to install)"
-            fi
-        fi
-    else
-        echo "○ Docker not running"
-        echo "  Starting Docker Desktop..."
-        if [[ "$(uname)" == "Darwin" ]]; then
-            open -a Docker 2>/dev/null || true
-            echo "  (Waiting for Docker to start, then run bootstrap again)"
-        else
-            echo "  (Start Docker, then run bootstrap again)"
-        fi
-    fi
-else
-    echo "○ Docker not installed"
-    echo "  Docker Desktop is required for local PostgreSQL."
-    echo "  Download: https://www.docker.com/products/docker-desktop/"
-    if [[ "$(uname)" == "Darwin" ]]; then
-        read -r -p "  Open download page? [Y/n] " response
-        if [[ "$response" =~ ^[Yy]?$ ]]; then
-            open "https://www.docker.com/products/docker-desktop/" 2>/dev/null || true
-        fi
-    fi
+# ═══════════════════════════════════════════════════════════════════════════
+# 6. Git hooks
+# ═══════════════════════════════════════════════════════════════════════════
+HOOKS_SRC="$PROJECT_ROOT/scripts/hooks"
+HOOKS_DST="$PROJECT_ROOT/.git/hooks"
+if [ -d "$HOOKS_SRC" ] && [ -d "$HOOKS_DST" ]; then
+    for hook in "$HOOKS_SRC"/*; do
+        name="$(basename "$hook")"
+        cp "$hook" "$HOOKS_DST/$name"
+        chmod +x "$HOOKS_DST/$name"
+    done
+    echo "✓ Git hooks installed (pre-push: runs unit tests before every push)"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 6. Summary
+# 7. Summary
 # ═══════════════════════════════════════════════════════════════════════════
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "✅ Bootstrap Complete!"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
-echo "Try:"
-echo "  neut status                 # Check system health"
-echo "  neut sense brief            # Catch up on what happened"
+
+# ── Auto-run neut install if environment is detected ──────────────────────
+# neut install is idempotent — safe to call every time. It detects the
+# environment by hostname (or NEUT_ENV), runs only pending steps, and
+# skips completed ones. First run is interactive; reruns are silent.
+if command -v neut &>/dev/null; then
+    echo "Running environment setup..."
+    echo ""
+    neut install 2>/dev/null || {
+        echo ""
+        echo "  ○ No environment auto-detected."
+        echo "  Run one of:"
+        echo "    neut install --env local    # developer laptop"
+        echo "    neut install --env rascal   # UT Rascal server"
+        echo "    neut install --list         # see all environments"
+    }
+else
+    echo "Next steps:"
+    echo "  neut install               # set up credentials, infra, and RAG"
+fi
+
+echo ""
+echo "Then:"
 echo "  neut chat                   # Interactive agent"
+echo "  neut status                 # Check what's ready"
 echo ""
 
 # Clear shell command cache so 'neut' resolves to the new script

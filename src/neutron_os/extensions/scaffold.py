@@ -122,6 +122,17 @@ module = "providers.pptx_generation"
 name = "reactor_log"
 module = "extractors.reactor_log"
 file_patterns = ["*.rlog", "*.csv"]
+
+# External connections — uncomment and customize
+# [[connections]]
+# name = "my_api"
+# display_name = "My API"
+# kind = "api"
+# credential_env_var = "MY_API_TOKEN"
+# category = "data"
+# health_check = "http_get"
+# health_endpoint = "https://api.example.com/health"
+# docs_url = "https://example.com/docs/api-keys"
 '''
 
 
@@ -131,7 +142,7 @@ def _chat_tool_template(ext_name: str) -> str:
 Example chat tool — modify this for your own data sources.
 """
 
-from neutron_os.extensions.builtins.chat_agent.tools import ToolDef
+from neutron_os.extensions.builtins.neut_agent.tools import ToolDef
 from neutron_os.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [
@@ -215,7 +226,7 @@ Generate weekly slides for 2026-03-04
 
 
 def _provider_template() -> str:
-    return '''"""PowerPoint generation provider for docflow.
+    return '''"""PowerPoint generation provider for publisher.
 
 Converts markdown source files to .pptx presentations.
 Requires python-pptx: pip install python-pptx
@@ -233,7 +244,7 @@ from typing import Any
 class PptxGenerationProvider:
     """Docflow GenerationProvider for PowerPoint output.
 
-    Implements the same contract as tools.extensions.builtins.docflow.providers.base.GenerationProvider
+    Implements the same contract as tools.extensions.builtins.prt_agent.providers.base.GenerationProvider
     without importing it (keeps extension dependency-free).
     """
 
@@ -339,7 +350,7 @@ from pathlib import Path
 class ReactorLogExtractor:
     """Sense extractor for reactor operation logs.
 
-    Implements the same contract as tools.extensions.builtins.sense_agent.extractors.base.BaseExtractor
+    Implements the same contract as tools.extensions.builtins.eve_agent.extractors.base.BaseExtractor
     without importing it (keeps extension dependency-free).
     """
 

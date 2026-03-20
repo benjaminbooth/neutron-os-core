@@ -1,6 +1,6 @@
 """MoAgent — Layer 3 LLM-powered diagnosis, procurement, and escalation.
 
-Follows the DoctorAgent pattern (extensions/builtins/doctor_agent/agent.py):
+Follows the DoctorAgent pattern (extensions/builtins/dfib_agent/agent.py):
 structured signal in, multi-turn tool loop via gateway.complete_with_tools(),
 actionable result out.
 """

@@ -10,7 +10,8 @@ format = "openai"
 # Uncomment and configure providers you have access to:
 
 # routing_tier = "public"            → safe for cloud LLMs (no VPN needed)
-# routing_tier = "export_controlled" → VPN-gated, for nuclear export-controlled queries
+# routing_tier = "restricted"        → private network LLM (VPN-gated; e.g. Rascal/Qwen)
+# routing_tier = "export_controlled" → TACC or equivalent EC-authorized environment (future)
 # routing_tier = "any"               → no restriction (default)
 # requires_vpn = true                → TCP reachability check before each call
 
@@ -26,13 +27,13 @@ format = "openai"
 # use_for = ["extraction", "synthesis", "correlation", "fallback"]
 
 # [[gateway.providers]]
-# name = "qwen-tacc"
-# endpoint = "https://10.159.142.118:41883/v1"   # UT TACC rascal (VPN required)
-# model = "qwen"
-# api_key_env = "QWEN_API_KEY"
+# name = "qwen-rascal"
+# endpoint = "https://rascal.austin.utexas.edu:41883/v1"   # UT rascal server (UT VPN required)
+# model = "unsloth/Qwen3.5-122B-A10B-GGUF:Q4_K_M"         # Qwen3.5 MoE 122B/10B active, 256K ctx
+# api_key_env = "RASCAL_API_KEY"                           # set to: rascal-llm700
 # priority = 2
-# routing_tier = "export_controlled"   # nuclear export-controlled content only
-# requires_vpn = true                  # check reachability before calling
+# routing_tier = "restricted"          # private server, no cloud — restricted tier (not EC)
+# requires_vpn = true                  # UT VPN required (vpn_profile = "ut-rascal")
 # use_for = ["extraction", "synthesis", "fallback"]
 
 # [[gateway.providers]]

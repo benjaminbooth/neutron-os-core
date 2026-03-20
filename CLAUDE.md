@@ -16,9 +16,9 @@ data management, operations tracking, experiment scheduling, and analytics. It
 replaces fragmented workflows (paper logs, spreadsheets, phone calls) with
 integrated digital tools.
 
-- **Executive PRD:** `docs/requirements/prd_neutron-os-executive.md`
-- **Master Tech Spec:** `docs/specs/neutron-os-master-tech-spec.md`
-- **CLI Design:** `docs/requirements/prd_neut-cli.md` + `docs/specs/neut-cli-spec.md`
+- **Executive PRD:** `docs/requirements/prd-executive.md`
+- **Master Tech Spec:** `docs/tech-specs/spec-executive.md`
+- **CLI Design:** `docs/requirements/prd-neut-cli.md` + `docs/tech-specs/spec-neut-cli.md`
 
 ### Key Design Principles
 
@@ -38,11 +38,11 @@ Neutron_OS/
     infra/                     #   Shared infra (gateway, orchestrator, auth)
     extensions/                #   Extension system
       builtins/                #   Domain-agnostic builtin extensions
-        sense_agent/           #     Signal ingestion agent
-        chat_agent/            #     Interactive LLM assistant agent
+        eve_agent/           #     Signal ingestion agent
+        neut_agent/            #     Interactive LLM assistant agent
         mo_agent/              #     M-O resource steward agent
         doctor_agent/          #     AI diagnostics agent
-        docflow/               #     Document lifecycle tool
+        publisher/               #     Document lifecycle tool
         db/                    #     Database management tool
         demo/                  #     Guided walkthroughs
         repo/                  #     Repository analytics
@@ -110,8 +110,8 @@ separate repo, installed to `.neut/extensions/`).
 ### Extension Kinds
 
 - `agent` — Has LLM autonomy. **Directory name MUST end with `_agent`.**
-  Examples: `sense_agent`, `chat_agent`, `mo_agent`, `doctor_agent`
-- `tool` — Capability invoked by agents or CLI (docflow, db, demo)
+  Examples: `eve_agent`, `neut_agent`, `mo_agent`, `doctor_agent`
+- `tool` — Capability invoked by agents or CLI (publisher, db, demo)
 - `utility` — Platform plumbing (status, test, update)
 
 ### Extension Layout
@@ -149,11 +149,15 @@ to the appropriate doc and link from others.
 
 - **Word docs (.docx)** go to `docs/_tools/generated/`, NOT alongside source markdown
 - **Mermaid diagrams** only (never ASCII art). Subgraph titles <16 chars, TB flow.
+- **Mermaid color contrast**: Light backgrounds (e.g., `#e3f2fd`, `#c8e6c9`, `#fff3e0`) need dark text (`color:#000000`). Dark backgrounds (e.g., `#1976d2`, `#388e3c`) need light text (`color:#ffffff`). Always include `color:` in style statements. See `docs/_tools/README_QUALITY.md` for full color list.
+- **Mermaid sizing**: Diagrams must fit cleanly on portrait 8.5×11" Word docs. Prefer `TB` (top-bottom) flow over `LR` (left-right) for complex diagrams. Avoid wide horizontal layouts that shrink to illegible text when exported.
 - **Extension-specific docs** live in `src/neutron_os/extensions/builtins/{ext}/docs/`
 
 ---
 
 ## Terminology Standards
+
+For the full glossary (especially the digital twin model ecosystem), see `docs/glossary.md`.
 
 | Use This | Not This | Why |
 |----------|----------|-----|
@@ -161,6 +165,55 @@ to the appropriate doc and link from others.
 | Extension | Plugin | Everything is an extension in NeutronOS |
 | Extension Point | Plugin hook | Consistency with extension terminology |
 | DataTransformer | Transformer | Avoids collision with ML transformer terminology |
+| `neut model` | `neut corral` | CLI nouns are generic English, not brand names |
+| Model (physics) | Model (ML/LLM) | "Model" in NeutronOS means physics input deck or ROM. LLMs are always "LLM" |
+| `llm-providers.toml` | `models.toml` | "models" is ambiguous — could mean physics input models |
+| LLM provider | LLM model | Config refers to providers (Anthropic, Ollama, etc.), not models |
+| Private network LLM | "Qwen/rascal" or instance name | Generalise: any provider with `requires_vpn=true` on a private network |
+
+---
+
+## Concurrent File Write Safety
+
+**Never use bare `open(..., "a")` or `open(..., "w")` for shared runtime files.**
+Multiple processes (CLI + daemon + web API + agents) write to the same files.
+Unprotected writes produce corrupted JSONL and lost state entries.
+
+Always use the helpers in `neutron_os.infra.state`:
+
+| Pattern | Use for |
+|---|---|
+| `locked_append_jsonl(path, record)` | Append-only JSONL: logs, queues, audit files, event streams |
+| `LockedJsonFile(path, exclusive=True)` as context manager | Read-modify-write JSON state files |
+| `atomic_write(path, data)` | One-shot full-file JSON writes |
+
+See [ADR-011](docs/requirements/adr-011-concurrent-file-writes.md) for rationale and the full inventory of locations.
+
+## Provider Identity
+
+Every configurable provider in NeutronOS (LLM providers, log sinks, storage
+providers, signal sources, etc.) has a **three-layer identity** via
+`ProviderBase` / `ProviderIdentityMixin` in `neutron_os.infra.provider_base`
+(see [ADR-012](docs/requirements/adr-012-provider-identity.md)):
+
+| Field | Set by | Stable? | Use for |
+|---|---|---|---|
+| `provider.name` | User config (required, unique) | Yes | Primary key in all log/audit/signal records |
+| `provider.config_hash` | Computed at load (SHA-256 of fingerprint fields) | While config unchanged | Detect silent config drift in audit records |
+| `provider.instance_id` | UUID4 at load time | No (intentional) | Distinguish reloads within a forensic timeline |
+
+In log records, always use the **type-specific prefix** — never the bare `"provider"` field:
+
+| Provider type | Log field name | Example |
+|---|---|---|
+| LLM providers | `llm_provider` | `{"llm_provider": "qwen-tacc-ec"}` |
+| Log sinks | `log_sink` | `{"log_sink": "system-log-file"}` |
+| Storage providers | `storage_provider` | `{"storage_provider": "s3-primary"}` |
+| Signal sources | `signal_source` | `{"signal_source": "teams-webhook"}` |
+
+Use `extra={"llm_provider": provider.name}` for routine events, or `extra=provider.identity`
+(full dict with hash + instance) for audit and routing records. Never use `"provider1"`,
+`"test"`, or bare technology names — use descriptive stable names like `"qwen-tacc-ec"`.
 
 ---
 
@@ -187,11 +240,11 @@ neut <noun> <verb> [args] [--flags]
 ```
 
 Each noun is registered by an extension via `neut-extension.toml`.
-See `docs/requirements/prd_neut-cli.md` for full spec.
+See `docs/requirements/prd-neut-cli.md` for full spec.
 
 ---
 
-## Sense Pipeline (`neut sense`)
+## Signal Pipeline (`neut signal`)
 
 Proactive program awareness — ingesting signals from multiple sources,
 extracting structured information, and maintaining program state.
@@ -199,34 +252,34 @@ extracting structured information, and maintaining program state.
 ```
 Sources (voice memos, Teams, GitLab, Linear, freetext)
   → Inbox (runtime/inbox/raw/)
-  → Extractors (src/neutron_os/extensions/builtins/sense_agent/extractors/)
+  → Extractors (src/neutron_os/extensions/builtins/eve_agent/extractors/)
   → Correlator → Synthesizer → Review gate → Publisher
 ```
 
 ### Key Files
 
 - `src/neutron_os/infra/gateway.py` — Model-agnostic LLM routing
-- `src/neutron_os/extensions/builtins/sense_agent/extractors/` — Source-specific extraction
-- `src/neutron_os/extensions/builtins/sense_agent/correlator.py` — Entity resolution
-- `src/neutron_os/extensions/builtins/sense_agent/synthesizer.py` — Cross-source merging
+- `src/neutron_os/extensions/builtins/eve_agent/extractors/` — Source-specific extraction
+- `src/neutron_os/extensions/builtins/eve_agent/correlator.py` — Entity resolution
+- `src/neutron_os/extensions/builtins/eve_agent/synthesizer.py` — Cross-source merging
 
-Full design: `docs/specs/neutron-os-agent-architecture.md`
+Full design: `docs/tech-specs/spec-agent-architecture.md`
 
 ---
 
 ## Document Lifecycle (`neut pub`)
 
-DocFlow extension manages document lifecycle: markdown → docx → published.
+Publisher extension manages document lifecycle: markdown → docx → published.
 
 ### Key Files
 
-- `src/neutron_os/extensions/builtins/docflow/engine.py` — Core engine
-- `src/neutron_os/extensions/builtins/docflow/factory.py` — Provider factory
-- `src/neutron_os/extensions/builtins/docflow/providers/` — Generation, storage, feedback
+- `src/neutron_os/extensions/builtins/prt_agent/engine.py` — Core engine
+- `src/neutron_os/extensions/builtins/prt_agent/factory.py` — Provider factory
+- `src/neutron_os/extensions/builtins/prt_agent/providers/` — Generation, storage, feedback
 
 ### Configuration
 
-Copy `.docflow/workflow.yaml.example` to `.docflow/workflow.yaml` (gitignored).
+Copy `.publisher/workflow.yaml.example` to `.publisher/workflow.yaml` (gitignored).
 
 ---
 
@@ -264,17 +317,30 @@ cd /path/to/Neutron_OS && direnv allow
 # All tests
 pytest tests/ src/neutron_os/extensions/builtins/ -v --tb=short
 
-# Unit only
+# Unit only (runs as pre-push git hook)
 pytest -m "not integration"
 
 # Single extension
-pytest src/neutron_os/extensions/builtins/sense_agent/tests/ -v
+pytest src/neutron_os/extensions/builtins/eve_agent/tests/ -v
+
+# Export control classifier red-team suite
+pytest tests/routing/test_classifier_accuracy.py -v
+```
+
+### Prompt Evals (promptfoo)
+
+```bash
+cd tests/promptfoo
+npx promptfoo eval                                      # chat quality (Ollama judge, no API cost)
+npx promptfoo eval -c rag-evals.yaml                   # RAG grounding (requires running DB + indexed)
+npx promptfoo redteam run -c redteam-export-control.yaml  # adversarial EC safety sweep
+npx promptfoo view                                      # open results dashboard
 ```
 
 ### Direct Module Execution
 
 ```bash
-python -m neutron_os.neut_cli sense status
+python -m neutron_os.neut_cli signal status
 ```
 
 ---

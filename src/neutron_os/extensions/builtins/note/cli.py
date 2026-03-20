@@ -45,11 +45,31 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%H:%M UTC")
 
 
+def _inbox_dir() -> Path:
+    from neutron_os import REPO_ROOT
+    d = REPO_ROOT / "runtime" / "inbox" / "raw"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def _append_note(note_file: Path, text: str) -> None:
-    """Append *text* to *note_file* with a timestamp header."""
+    """Append *text* to *note_file* with a timestamp header.
+
+    Also drops a copy into runtime/inbox/raw/ so EVE can ingest it
+    as a freetext signal. This bridges knowledge capture → signal pipeline.
+    """
     header = f"\n## {_timestamp()}\n\n"
     with note_file.open("a", encoding="utf-8") as f:
         f.write(header + text.strip() + "\n")
+
+    # Copy to signal inbox for EVE ingestion
+    try:
+        inbox = _inbox_dir()
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+        inbox_file = inbox / f"note_{ts}.md"
+        inbox_file.write_text(f"# Note — {ts}\n\n{text.strip()}\n", encoding="utf-8")
+    except Exception:
+        pass  # Inbox copy is best-effort
 
 
 def _index_file_background(note_file: Path) -> None:
@@ -118,7 +138,7 @@ def cmd_note(args: argparse.Namespace) -> None:
             return
         content = tmp_path.read_text(encoding="utf-8").strip()
         # Strip the comment header we injected
-        lines = [l for l in content.splitlines() if not l.startswith("<!--")]
+        lines = [line for line in content.splitlines() if not line.startswith("<!--")]
         text = "\n".join(lines).strip()
         if not text:
             print("Empty note — nothing saved.")

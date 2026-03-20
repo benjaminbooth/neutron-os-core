@@ -46,7 +46,7 @@ class TestOneDriveUpload:
 
     def test_provider_initializes(self, ms_graph_creds):
         """OneDriveStorageProvider accepts credentials and authenticates."""
-        from neutron_os.extensions.builtins.docflow.providers.storage.onedrive import OneDriveStorageProvider
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.onedrive import OneDriveStorageProvider
 
         provider = OneDriveStorageProvider(config=ms_graph_creds)
         # Trigger authentication
@@ -59,7 +59,7 @@ class TestOneDriveUpload:
 
     def test_upload_and_cleanup(self, ms_graph_creds, tmp_path):
         """Upload a test doc, verify it arrives, then delete it."""
-        from neutron_os.extensions.builtins.docflow.providers.storage.onedrive import OneDriveStorageProvider
+        from neutron_os.extensions.builtins.prt_agent.providers.storage.onedrive import OneDriveStorageProvider
 
         provider = OneDriveStorageProvider(config=ms_graph_creds)
 
@@ -86,22 +86,22 @@ class TestOneDriveUpload:
             pytest.skip(f"OneDrive operation failed (permissions?): {e}")
 
 
-class TestDocFlowPublishToOneDrive:
-    """Test the full docflow publish pipeline to OneDrive."""
+class TestPublisherPublishToOneDrive:
+    """Test the full publisher publish pipeline to OneDrive."""
 
     def test_generate_and_publish(self, ms_graph_creds, tmp_path):
         """Full pipeline: .md → .docx → OneDrive upload."""
-        from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
-        from neutron_os.extensions.builtins.docflow.engine import DocFlowEngine
+        from neutron_os.extensions.builtins.prt_agent.config import PublisherConfig, GitPolicy, ProviderConfig
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
 
-        config = DocFlowConfig(
+        config = PublisherConfig(
             git=GitPolicy(require_clean=False, publish_branches=["*"]),
             generation=ProviderConfig(provider="pandoc-docx"),
             storage=ProviderConfig(provider="onedrive", settings=ms_graph_creds),
             notification=ProviderConfig(provider="terminal"),
             repo_root=tmp_path,
         )
-        engine = DocFlowEngine(config)
+        engine = PublisherEngine(config)
 
         source = tmp_path / "docs" / "ci-test.md"
         source.parent.mkdir(parents=True)

@@ -1,0 +1,110 @@
+{{- if .Values.signal.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "neutron-os.fullname" . }}-signal
+  labels:
+    {{- include "neutron-os.labels" . | nindent 4 }}
+    app.kubernetes.io/component: signal
+spec:
+  replicas: {{ .Values.signal.replicas }}
+  selector:
+    matchLabels:
+      {{- include "neutron-os.signalSelectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "neutron-os.signalSelectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "neutron-os.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: signal
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.signal.image.repository }}:{{ .Values.signal.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.signal.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "neutron-os.fullname" . }}-config
+          env:
+            {{- if .Values.secrets.database }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.database }}
+                  key: url
+            {{- else }}
+            - name: DATABASE_URL
+              value: {{ include "neutron-os.databaseUrl" . | quote }}
+            {{- end }}
+            {{- if .Values.secrets.llm }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.llm }}
+                  key: api_key
+                  optional: true
+            {{- end }}
+            {{- range $key, $value := .Values.signal.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.signal.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.signal.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.signal.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.persistence.inbox.enabled }}
+            - name: inbox
+              mountPath: /app/runtime/inbox
+            {{- end }}
+            {{- if .Values.persistence.media.enabled }}
+            - name: media
+              mountPath: /app/runtime/inbox/raw
+            {{- end }}
+      volumes:
+        {{- if .Values.persistence.inbox.enabled }}
+        - name: inbox
+          persistentVolumeClaim:
+            claimName: {{ include "neutron-os.fullname" . }}-inbox
+        {{- end }}
+        {{- if .Values.persistence.media.enabled }}
+        - name: media
+          persistentVolumeClaim:
+            claimName: {{ include "neutron-os.fullname" . }}-media
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

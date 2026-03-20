@@ -23,6 +23,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from neutron_os.infra.state import locked_append_jsonl
+
 
 EventHandler = Callable[[str, dict[str, Any]], None]
 
@@ -145,9 +147,7 @@ class EventBus:
                     pass  # Subscriber errors don't break the bus
 
     def _log_event(self, event: Event) -> None:
-        """Append event to the .jsonl log file."""
+        """Append event to the .jsonl log file (multi-process safe)."""
         if self._log_path is None:
             return
-        self._log_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event.to_dict()) + "\n")
+        locked_append_jsonl(self._log_path, event.to_dict())

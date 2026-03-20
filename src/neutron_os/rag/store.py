@@ -327,18 +327,35 @@ class RAGStore:
             cur.execute(sql, params)
             rows = cur.fetchall()
 
-        return [
-            SearchResult(
+        results = []
+        for r in rows:
+            chunk_text = r["chunk_text"]
+            try:
+                from neutron_os.rag.sanitizer import get_sanitizer
+                from neutron_os.infra.security_log import SecurityLog
+                from neutron_os.infra.trace import current_session
+                clean_text, hits = get_sanitizer().sanitize(chunk_text)
+                if hits:
+                    SecurityLog.get().chunk_injection(
+                        chunk_source=r["source_path"],
+                        patterns_matched=hits,
+                        session_id=current_session(),
+                        corpus=r["corpus"],
+                        sanitized=True,
+                    )
+                    chunk_text = clean_text
+            except Exception:
+                pass  # sanitization never blocks retrieval
+            results.append(SearchResult(
                 source_path=r["source_path"],
                 source_title=r["source_title"],
-                chunk_text=r["chunk_text"],
+                chunk_text=chunk_text,
                 chunk_index=r["chunk_index"],
                 similarity=float(r["similarity"]),
                 combined_score=float(r["combined_score"]),
                 corpus=r["corpus"],
-            )
-            for r in rows
-        ]
+            ))
+        return results
 
     def stats(self) -> dict:
         """Return index statistics including per-corpus breakdown."""

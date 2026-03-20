@@ -1,0 +1,70 @@
+[extension]
+name = "eve"
+version = "0.4.0"
+description = "EVE (Event Evaluator) — signal detection and intelligence extraction"
+author = "NeutronOS"
+builtin = true
+kind = "agent"
+module = "platform"
+agent_identity = "AGENT.md"
+
+[[cli.commands]]
+noun = "signal"
+module = "neutron_os.extensions.builtins.eve_agent.cli"
+description = "Agentic signal ingestion pipeline"
+
+# Agent lifecycle configuration
+[agent]
+heartbeat_interval = 30      # seconds between polling cycles
+startup = "lazy"             # "lazy" (on first use) | "eager" (on neut start) | "daemon" (background service)
+
+# Watched sources — each source is polled on the heartbeat interval
+[[agent.watchers]]
+name = "onedrive"
+enabled = true
+interval = 30                # seconds (< 1 min SLA)
+folder = "NeutronOS"
+
+[[agent.watchers]]
+name = "inbox"
+enabled = true
+interval = 10                # seconds
+path = "runtime/inbox/raw"
+
+[[connections]]
+name = "github"
+display_name = "GitHub"
+kind = "api"
+credential_env_var = "GITHUB_TOKEN"
+health_check = "http_get"
+health_endpoint = "https://api.github.com"
+category = "code"
+capabilities = ["read", "write"]
+docs_url = "https://github.com/settings/tokens"
+
+[[connections]]
+name = "gitlab"
+display_name = "GitLab (TACC)"
+kind = "api"
+credential_env_var = "GITLAB_TOKEN"
+category = "code"
+capabilities = ["read", "write"]
+docs_url = "https://rsicc-gitlab.tacc.utexas.edu/-/user_settings/personal_access_tokens"
+
+[[connections]]
+name = "openai"
+display_name = "OpenAI (Embeddings)"
+kind = "api"
+credential_env_var = "OPENAI_API_KEY"
+category = "llm"
+capabilities = ["read"]
+docs_url = "https://platform.openai.com/api-keys"
+
+[[connections]]
+name = "huggingface"
+display_name = "Hugging Face"
+kind = "api"
+credential_env_var = "HF_TOKEN"
+category = "llm"
+capabilities = ["read"]
+docs_url = "https://huggingface.co/settings/tokens"

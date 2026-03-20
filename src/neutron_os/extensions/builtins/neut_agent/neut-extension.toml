@@ -1,0 +1,101 @@
+[extension]
+name = "chat"
+version = "0.3.0"
+description = "Interactive agent with tool calling"
+author = "NeutronOS"
+builtin = true
+kind = "agent"
+module = "platform"
+
+[[cli.commands]]
+noun = "chat"
+module = "neutron_os.extensions.builtins.neut_agent.cli"
+description = "Interactive agent with tool calling"
+
+[[cli.commands]]
+noun = "code"
+module = "neutron_os.extensions.builtins.neut_agent.cli"
+description = "Interactive agent with tool calling (alias for chat)"
+
+[[connections]]
+name = "anthropic"
+display_name = "Anthropic Claude"
+kind = "api"
+credential_env_var = "ANTHROPIC_API_KEY"
+category = "llm"
+capabilities = ["read", "write"]
+required = false
+docs_url = "https://console.anthropic.com/settings/keys"
+
+[[connections]]
+name = "openai"
+display_name = "OpenAI"
+kind = "api"
+credential_env_var = "OPENAI_API_KEY"
+category = "llm"
+capabilities = ["read", "write"]
+required = false
+docs_url = "https://platform.openai.com/api-keys"
+
+[[connections]]
+name = "llm-provider"
+display_name = "LLM Provider (cloud)"
+kind = "api"
+credential_type = "none"           # no single credential — delegates to provider choice
+category = "llm"
+description = "Interactive setup: choose Anthropic, OpenAI, or other cloud LLM"
+post_setup_module = "neutron_os.extensions.builtins.neut_agent.connections"
+post_setup_function = "setup_llm_provider"
+
+[[connections]]
+name = "ollama"
+display_name = "Ollama"
+kind = "cli"
+endpoint = "ollama"
+credential_type = "none"
+health_check = "cli_version"
+category = "llm"
+docs_url = "https://ollama.com/download"
+post_setup_module = "neutron_os.extensions.builtins.neut_agent.connections"
+post_setup_function = "setup_ollama"
+ensure_module = "neutron_os.extensions.builtins.neut_agent.connections"
+ensure_function = "ensure_ollama_running"
+
+[connections.install_commands]
+macos = "brew install ollama"
+linux = "curl -fsSL https://ollama.com/install.sh | sh"
+
+[[connections]]
+name = "qwen-rascal"
+display_name = "Qwen 3.5 on Rascal (UT VPN)"
+kind = "api"
+endpoint = "https://rascal.austin.utexas.edu:41883/v1"
+model = "unsloth/Qwen3.5-122B-A10B-GGUF:Q4_K_M"
+credential_env_var = "RASCAL_API_KEY"
+credential_type = "api_key"
+health_check = "tcp_connect"
+health_endpoint = "rascal.austin.utexas.edu:41883"
+routing_tier = "restricted"
+verify_ssl = false
+category = "llm"
+capabilities = ["read", "write"]
+required = false
+docs_url = "https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core"
+post_setup_module = "neutron_os.extensions.builtins.neut_agent.connections"
+post_setup_function = "setup_qwen_rascal"
+vpn_name = "UT VPN"
+vpn_connect_guide = "Open Cisco AnyConnect → connect to vpn.utexas.edu → authenticate with UT EID + Duo MFA"
+
+[[connections]]
+name = "pandoc"
+display_name = "Pandoc"
+kind = "cli"
+endpoint = "pandoc"
+credential_type = "none"
+health_check = "cli_version"
+category = "tools"
+docs_url = "https://pandoc.org/installing.html"
+
+[connections.install_commands]
+macos = "brew install pandoc"
+linux = "sudo apt-get install -y pandoc"

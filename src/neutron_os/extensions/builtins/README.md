@@ -11,11 +11,11 @@ extensions with LLM autonomy from passive tools and utilities.
 
 | Directory | Kind | Description |
 |-----------|------|-------------|
-| `sense_agent/` | agent | Signal ingestion, extraction, synthesis |
-| `chat_agent/` | agent | Interactive LLM assistant |
+| `eve_agent/` | agent | Signal ingestion, extraction, synthesis |
+| `neut_agent/` | agent | Interactive LLM assistant |
 | `mo_agent/` | agent | M-O resource steward |
-| `doctor_agent/` | agent | AI-powered diagnostics and self-healing |
-| `docflow/` | tool | Document lifecycle (md → docx → publish) |
+| `dfib_agent/` | agent | AI-powered diagnostics and self-healing |
+| `publisher/` | tool | Document lifecycle (md → docx → publish) |
 | `db/` | tool | Database management |
 | `demo/` | tool | Guided walkthroughs |
 | `repo_sensing/` | tool | Multi-source repository analytics |

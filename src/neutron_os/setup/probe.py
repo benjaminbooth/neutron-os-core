@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 
 def _find_project_root() -> Path:
-    """Find the project root (reuses strategy from docflow/config.py)."""
+    """Find the project root (reuses strategy from publisher/config.py)."""
     env_root = os.environ.get("NEUT_ROOT")
     if env_root:
         return Path(env_root).resolve()
@@ -252,6 +252,7 @@ def _probe_dependencies(result: ProbeResult) -> None:
         ("docker", ["docker", "--version"], False, "Runs local PostgreSQL database"),
         ("k3d", ["k3d", "version"], False, "Local Kubernetes for database"),
         ("kubectl", ["kubectl", "version", "--client"], False, "Kubernetes CLI"),
+        ("ollama", ["ollama", "--version"], False, "Local AI for export-control classification"),
     ]
     for name, cmd, required, purpose in tool_checks:
         found, version = _check_tool(name, cmd)
@@ -304,7 +305,7 @@ _CONFIG_FILES = [
     "runtime/config/models.toml",
     "runtime/config/people.md",
     "runtime/config/initiatives.md",
-    ".doc-workflow.yaml",
+    ".publisher.yaml",
     ".claude/context.md",
 ]
 

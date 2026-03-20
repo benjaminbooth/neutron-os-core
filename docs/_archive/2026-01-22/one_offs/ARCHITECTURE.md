@@ -37,7 +37,7 @@ When creating diagrams for Word document inclusion:
 
 ### Step 1: Validate Existing Diagrams
 ```bash
-python md_to_docx.py ./Neutron_OS/docs/specs/neutron-os-master-tech-spec.md --check-diagrams
+python md_to_docx.py ./Neutron_OS/docs/tech-specs/spec-executive.md --check-diagrams
 ```
 This will show which diagrams are oversized and by how much.
 
@@ -49,7 +49,7 @@ For any diagram exceeding 7.2":
 
 ### Step 3: Convert to Word
 ```bash
-python md_to_docx.py ./Neutron_OS/docs/specs/neutron-os-master-tech-spec.md ./generated/neutron-os-master-tech-spec.docx --draft
+python md_to_docx.py ./Neutron_OS/docs/tech-specs/spec-executive.md ./generated/neutron-os-master-tech-spec.docx --draft
 ```
 Expected time: ~10-30 seconds (depends on diagram count and complexity)
 

@@ -1,0 +1,74 @@
+# DocFlow Configuration — Neutron OS
+# Copy to .doc-workflow.yaml and customize for your environment.
+# See docs/specs/docflow-spec.md for full schema reference.
+#
+# Environment profiles:
+#   Microsoft 365:  pandoc-docx + onedrive + docx-comments + teams
+#   Google:         pandoc-docx + google-drive + google-docs + smtp
+#   Self-Hosted:    pandoc-html + s3 (MinIO) + gitlab-issues + slack
+#   Air-Gapped:     pandoc-pdf + local + email + terminal
+#   Developer:      pandoc-docx + local + docx-comments + terminal
+
+# --- Source directories for `neut pub push --all` ---
+source_dirs:
+  - path: docs/requirements
+    pattern: "*.md"
+  - path: docs/tech-specs
+    pattern: "*.md"
+
+# --- Git policies (provider-agnostic) ---
+git:
+  publish_branches: [main, release/*, feat/*]
+  draft_branches: [feature/*, dev]
+  require_clean: false      # Relaxed during active development
+  require_pushed: false
+
+# --- Provider selection ---
+generation:
+  provider: pandoc-docx          # or pandoc-pdf, pandoc-html, sphinx, mkdocs
+  pandoc-docx:
+    toc: true
+    toc_depth: 3
+    reference_doc: null           # Optional Word template
+    mermaid_renderer: mermaid.ink  # or mermaid-cli
+
+storage:
+  provider: onedrive               # Changed from 'local' for Microsoft 365
+  local:
+    base_dir: docs/_tools/generated
+  # onedrive:
+  #   client_id: ${MS_GRAPH_CLIENT_ID}
+  #   client_secret: ${MS_GRAPH_CLIENT_SECRET}
+  #   tenant_id: ${MS_GRAPH_TENANT_ID}
+  #   draft_folder: /Documents/Drafts/
+  #   published_folder: /Documents/Published/
+  #   archive_folder: /Documents/Published/Archive/
+  # s3:
+  #   bucket: neutronos-docs
+  #   prefix: published/
+  #   region: us-east-1
+  #   public_url_base: https://docs.facility.edu/
+
+feedback:
+  provider: docx-comments        # or google-docs, gitlab-issues, email
+  docx-comments: {}
+
+notifications:
+  provider: terminal             # or smtp, teams, slack, ntfy
+  # smtp:
+  #   host: smtp.utexas.edu
+  #   from_address: docflow@utexas.edu
+
+embedding:
+  enabled: false                 # Opt-in for RAG indexing
+  provider: chromadb
+  # chromadb:
+  #   collection: neutron_os_docs
+  #   persist_directory: .docflow/embeddings
+
+# --- Review defaults (provider-agnostic) ---
+review:
+  default_days: 7
+  reminders:
+    - days_before: 3
+    - days_before: 1

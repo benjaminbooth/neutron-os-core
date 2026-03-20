@@ -1,0 +1,207 @@
+# NeutronOS Domain Glossary
+#
+# Nuclear-domain terms that extend or specialise Axiom core concepts.
+# Terms here use extends = true to append to the Axiom definition where a
+# lower-layer definition already exists, or stand alone for nuclear-specific
+# concepts with no Axiom equivalent.
+#
+# Managed by: NeutronOS team
+# Queried via: neut glossary --layer domain
+# See: docs/tech-specs/spec-glossary-system.md
+
+# ---------------------------------------------------------------------------
+# Nuclear domain specialisations of Axiom tiers
+# ---------------------------------------------------------------------------
+
+[[terms]]
+id           = "export_controlled"
+layer        = "domain"
+term         = "Export-Controlled Tier"
+definition   = """
+The NeutronOS name for the classified tier. Content classified as
+export_controlled is subject to US Export Administration Regulations (EAR)
+and/or International Traffic in Arms Regulations (ITAR). Processing is
+gated to the TACC isolated enclave; no cloud embedding or external API
+calls are permitted.
+
+This tier maps to the Axiom 'classified' tier archetype with
+processing_boundary = isolated_enclave.
+"""
+properties   = ["cloud_embedding_allowed", "requires_isolated_store",
+                "processing_boundary", "itar_ear_applicable"]
+see_also     = ["tier", "restricted_tier", "rascal_store", "tacc_store",
+                "ec_keyword_classifier"]
+extends      = false
+
+[[terms]]
+id           = "restricted_tier"
+layer        = "domain"
+term         = "Restricted Tier"
+definition   = """
+The NeutronOS name for the restricted tier. Content that is facility-internal
+or sensitive but not subject to export control. Stored on the Rascal isolated
+store; no cloud embedding permitted.
+
+This tier maps to the Axiom 'restricted' tier archetype with
+processing_boundary = facility_network.
+"""
+see_also     = ["tier", "export_controlled", "rascal_store"]
+extends      = false
+
+# ---------------------------------------------------------------------------
+# Nuclear infrastructure
+# ---------------------------------------------------------------------------
+
+[[terms]]
+id         = "rascal_store"
+layer      = "domain"
+term       = "Rascal Store"
+definition = """
+The on-premise isolated vector and document store used for restricted-tier
+content in NeutronOS NETL deployments. Rascal is a K3d-hosted PostgreSQL +
+pgvector instance that is network-isolated from cloud services.
+"""
+see_also   = ["restricted_tier", "isolated_store", "tacc_store"]
+extends    = false
+
+[[terms]]
+id         = "tacc_store"
+layer      = "domain"
+term       = "TACC Store"
+definition = """
+The export-controlled isolated store hosted at the Texas Advanced Computing
+Center (TACC). All content classified as export_controlled is embedded and
+retrieved exclusively within the TACC enclave. Access requires TACC
+credentials and VPN connectivity.
+"""
+see_also   = ["export_controlled", "isolated_store", "rascal_store"]
+extends    = false
+
+# ---------------------------------------------------------------------------
+# Export control classification
+# ---------------------------------------------------------------------------
+
+[[terms]]
+id         = "ec_keyword_classifier"
+layer      = "domain"
+term       = "EC Keyword Classifier"
+definition = """
+The first-pass export control classification component. Scans ingest content,
+user queries, and LLM responses against a configurable keyword list. Matches
+trigger either tier elevation (ingest) or security log events (responses).
+Operates in conjunction with the SLM classifier for higher-confidence
+decisions.
+"""
+see_also   = ["export_controlled", "slm_classifier"]
+extends    = false
+
+[[terms]]
+id         = "slm_classifier"
+layer      = "domain"
+term       = "SLM Classifier"
+definition = """
+The secondary export control classifier. A small language model (SLM) that
+runs locally to provide context-aware classification for content that the
+keyword classifier has flagged. More accurate than keyword matching alone;
+slower. Used as a second-pass gate before routing to TACC.
+"""
+see_also   = ["ec_keyword_classifier", "export_controlled"]
+extends    = false
+
+# ---------------------------------------------------------------------------
+# Nuclear domain packs
+# ---------------------------------------------------------------------------
+
+[[terms]]
+id         = "domain_pack_procedures"
+layer      = "domain"
+term       = "Procedures Domain Pack"
+definition = """
+NeutronOS domain pack containing facility operating procedures, emergency
+procedures, surveillance check templates, and regulatory guidance. Scope is
+typically facility or community depending on classification.
+"""
+see_also   = ["domain_pack"]
+extends    = false
+
+[[terms]]
+id         = "domain_pack_simulation"
+layer      = "domain"
+term       = "Simulation Codes Domain Pack"
+definition = """
+NeutronOS domain pack containing simulation code documentation, input deck
+templates, verified benchmarks, and code-specific extraction rules for MCNP,
+SCALE, RELAP, OpenMC, and similar codes. Most content is export_controlled.
+"""
+see_also   = ["domain_pack", "export_controlled"]
+extends    = false
+
+[[terms]]
+id         = "domain_pack_nuclear_data"
+layer      = "domain"
+term       = "Nuclear Data Domain Pack"
+definition = """
+NeutronOS domain pack indexing nuclear data libraries (ENDF, JEFF, JENDL,
+cross-section sets) with structured metadata for retrieval by isotope,
+reaction type, and energy range.
+"""
+see_also   = ["domain_pack"]
+extends    = false
+
+[[terms]]
+id         = "domain_pack_rom"
+layer      = "domain"
+term       = "Reduced Order Models Domain Pack"
+definition = """
+NeutronOS domain pack for versioned reduced order models (ROMs): surrogate
+models trained on high-fidelity simulation outputs. Includes model cards,
+validation datasets, uncertainty quantification reports, and Model Corral
+registry entries.
+"""
+see_also   = ["domain_pack", "model_corral"]
+extends    = false
+
+[[terms]]
+id         = "model_corral"
+layer      = "domain"
+term       = "Model Corral"
+definition = """
+The NeutronOS physics model registry. Stores, versions, and validates
+reduced order models and physics input decks. Analogous to a model registry
+(e.g. MLflow) but domain-specific to nuclear simulation artefacts.
+
+See: docs/requirements/prd-model-corral.md
+"""
+see_also   = ["domain_pack_rom"]
+extends    = false
+
+# ---------------------------------------------------------------------------
+# Operations
+# ---------------------------------------------------------------------------
+
+[[terms]]
+id         = "surveillance_check"
+layer      = "domain"
+term       = "Surveillance Check"
+definition = """
+A scheduled reactor parameter verification performed by a licensed operator,
+typically every 30 minutes during reactor operation. Surveillance checks are
+the primary compliance event tracked by the Compliance Tracking module and
+the Reactor Ops Log.
+"""
+see_also   = ["reactor_ops_log"]
+extends    = false
+
+[[terms]]
+id         = "reactor_ops_log"
+layer      = "domain"
+term       = "Reactor Ops Log"
+definition = """
+The NeutronOS module that records console checks, shift handoffs, maintenance
+events, and surveillance check completions. Entries are tamper-evident via
+the append-only audit log. Replaces paper operator logs.
+
+See: docs/requirements/prd-reactor-ops-log.md
+"""
+see_also   = ["surveillance_check"]
+extends    = false

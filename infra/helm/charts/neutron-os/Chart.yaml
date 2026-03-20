@@ -2,12 +2,12 @@ apiVersion: v2
 name: neutron-os
 description: |
   NeutronOS - Unified digital platform for nuclear facilities.
-  Provides Sense (signal processing, RAG), DocFlow (document sync),
+  Provides Sense (signal processing, RAG), Publisher (document sync),
   and operations management capabilities.
 
 type: application
 version: 0.2.0
-appVersion: "0.3.2"
+appVersion: "0.4.0"
 
 keywords:
   - nuclear

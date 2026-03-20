@@ -37,6 +37,7 @@ fissile material inventory
 critical assembly
 critical experiment
 prompt criticality
+prompt critical
 neutron multiplication factor
 k-effective greater than
 supercritical configuration

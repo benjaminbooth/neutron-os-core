@@ -363,7 +363,7 @@ def create_cluster() -> bool:
     """Create and start the neut-local K3D cluster with PostgreSQL."""
     try:
         # Use the existing k3d_up function which handles everything
-        from neutron_os.extensions.builtins.sense_agent.pgvector_store import k3d_up
+        from neutron_os.extensions.builtins.eve_agent.pgvector_store import k3d_up
         return k3d_up()
     except ImportError:
         print("Error: Could not import k3d_up. Run from project root.")
@@ -718,7 +718,7 @@ def main(args: list[str] | None = None) -> int:
         renderer.text("\nYou can now use:")
         renderer.text("  neut db status    # Check database connection")
         renderer.text("  neut db migrate   # Run schema migrations")
-        renderer.text("  neut sense ...    # Run sense commands")
+        renderer.text("  neut signal ...    # Run sense commands")
         return 0
     else:
         renderer.warning(result.message)

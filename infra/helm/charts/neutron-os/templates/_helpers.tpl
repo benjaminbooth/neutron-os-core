@@ -1,6 +1,6 @@
 {{/*
 NeutronOS Helm Chart Helpers
-Extracted and adapted from docs/_tools/docflow/deploy/helm/docflow/
+Extracted and adapted from docs/_tools/publisher/deploy/helm/publisher/
 */}}
 
 {{/*
@@ -56,7 +56,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/*
 Sense selector labels
 */}}
-{{- define "neutron-os.senseSelectorLabels" -}}
+{{- define "neutron-os.signalSelectorLabels" -}}
 {{ include "neutron-os.selectorLabels" . }}
 app.kubernetes.io/component: sense
 {{- end }}

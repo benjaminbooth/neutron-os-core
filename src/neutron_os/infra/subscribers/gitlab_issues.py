@@ -70,6 +70,52 @@ class GitLabIssueProvider(IssueProvider):
             pass
         return None
 
+    def add_comment(self, issue_url: str, body: str) -> bool:
+        """Add a comment to an existing GitLab issue."""
+        if not self._connect():
+            return False
+        try:
+            # Extract issue IID from URL
+            # URL format: https://gitlab.example.com/group/project/-/issues/123
+            iid = int(issue_url.rstrip("/").split("/")[-1])
+            issue = self._project.issues.get(iid)
+            issue.notes.create({"body": body})
+            return True
+        except Exception:
+            return False
+
+    def update_issue_labels(self, issue_url: str, add_labels: list[str] = None,
+                           remove_labels: list[str] = None) -> bool:
+        """Add or remove labels on a GitLab issue."""
+        if not self._connect():
+            return False
+        try:
+            iid = int(issue_url.rstrip("/").split("/")[-1])
+            issue = self._project.issues.get(iid)
+            current = set(issue.labels)
+            if add_labels:
+                current.update(add_labels)
+            if remove_labels:
+                current -= set(remove_labels)
+            issue.labels = list(current)
+            issue.save()
+            return True
+        except Exception:
+            return False
+
+    def close_issue(self, issue_url: str) -> bool:
+        """Close a GitLab issue."""
+        if not self._connect():
+            return False
+        try:
+            iid = int(issue_url.rstrip("/").split("/")[-1])
+            issue = self._project.issues.get(iid)
+            issue.state_event = "close"
+            issue.save()
+            return True
+        except Exception:
+            return False
+
     def create_issue(self, title: str, body: str, labels: list[str]) -> str:
         """Create a GitLab issue with the given title, body, and labels."""
         if not self._connect():

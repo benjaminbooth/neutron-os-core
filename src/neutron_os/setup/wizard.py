@@ -237,21 +237,60 @@ class SetupWizard:
         renderer.blank()
 
     # ------------------------------------------------------------------
-    # Phase: CREDENTIALS
+    # Phase: CREDENTIALS (delegates to neut connect)
     # ------------------------------------------------------------------
 
     def _phase_credentials(self) -> None:
         renderer.heading("Connection Settings")
         renderer.text("Let's set up your connections. You can skip any for now.\n")
 
-        # Re-hydrate probe result if needed
+        try:
+            from neutron_os.infra.connections import get_registry, has_credential, get_cli_tool
+            from neutron_os.extensions.builtins.connect.cli import setup_connection
+
+            registry = get_registry()
+            connections = registry.all()
+
+            if not connections:
+                renderer.info("No connections registered yet.")
+                return
+
+            # Walk through each connection via neut connect's setup flow
+            # Required connections first, then by category
+            for conn in sorted(connections, key=lambda c: (not c.required, c.category, c.name)):
+                # Skip already-configured connections
+                if self.state.credentials_configured.get(conn.name):
+                    continue
+
+                if conn.kind == "cli":
+                    tool = get_cli_tool(conn.name, registry=registry)
+                    if tool:
+                        renderer.success(f"{conn.display_name} — {tool.version or 'installed'}")
+                        self.state.credentials_configured[conn.name] = True
+                        save_state(self.state, self.root)
+                        continue
+                elif conn.credential_type not in ("none", ""):
+                    if has_credential(conn.name, registry=registry):
+                        renderer.success(f"{conn.display_name} — already set")
+                        self.state.credentials_configured[conn.name] = True
+                        save_state(self.state, self.root)
+                        continue
+
+                # Delegate to neut connect's interactive setup
+                setup_connection(conn.name, registry)
+                self.state.credentials_configured[conn.name] = True
+                save_state(self.state, self.root)
+
+        except ImportError:
+            # Fallback to legacy credential guides if connect module unavailable
+            self._phase_credentials_legacy()
+
+    def _phase_credentials_legacy(self) -> None:
+        """Legacy credential setup — used if connections module is unavailable."""
         if self.probe_result is None:
             self.probe_result = ProbeResult.from_dict(self.state.probe_result)
 
-        # Group MS 365 credentials
         ms_vars = {"MS_GRAPH_CLIENT_ID", "MS_GRAPH_CLIENT_SECRET", "MS_GRAPH_TENANT_ID"}
-
-        # Process LLM guides first (enables chat-assisted mode), then the rest
         llm_envs = {g.env_var for g in get_llm_guides()}
         llm_guides = [g for g in CREDENTIAL_GUIDES if g.env_var in llm_envs]
         non_ms_guides = [
@@ -261,7 +300,6 @@ class SetupWizard:
         ms_guides = [g for g in CREDENTIAL_GUIDES if g.env_var in ms_vars]
 
         for guide in llm_guides + non_ms_guides:
-            # Skip already-configured credentials
             if self.state.credentials_configured.get(guide.env_var):
                 continue
             if self.probe_result.env_vars_set.get(guide.env_var):
@@ -269,10 +307,8 @@ class SetupWizard:
                 self.state.credentials_configured[guide.env_var] = True
                 save_state(self.state, self.root)
                 continue
-
             self._configure_credential(guide)
 
-        # Handle MS 365 as a group
         ms_all_set = all(
             self.state.credentials_configured.get(g.env_var)
             or self.probe_result.env_vars_set.get(g.env_var)
@@ -423,15 +459,15 @@ class SetupWizard:
         # Check which files already exist
         facility_exists = (self.root / "runtime" / "config" / "facility.toml").exists()
         models_exists = (self.root / "runtime" / "config" / "models.toml").exists()
-        docflow_exists = (self.root / ".doc-workflow.yaml").exists()
+        publisher_exists = (self.root / ".publisher.yaml").exists()
         claude_exists = (self.root / ".claude" / "context.md").exists()
 
-        all_exist = facility_exists and models_exists and docflow_exists and claude_exists
+        all_exist = facility_exists and models_exists and publisher_exists and claude_exists
         if all_exist:
             renderer.info("All configuration files already in place.")
             self.state.config_files_created["facility.toml"] = True
             self.state.config_files_created["models.toml"] = True
-            self.state.config_files_created[".doc-workflow.yaml"] = True
+            self.state.config_files_created[".publisher.yaml"] = True
             self.state.config_files_created[".claude/context.md"] = True
             renderer.blank()
             return
@@ -452,6 +488,7 @@ class SetupWizard:
         # Generate only missing config files
         self._generate_facility_toml(facility_name, facility_type)
         self._generate_models_toml()
+        self._generate_retention_yaml()
         self._generate_doc_workflow_yaml()
         self._generate_claude_context()
 
@@ -525,17 +562,35 @@ class SetupWizard:
         renderer.success("Created models.toml")
         self.state.config_files_created["models.toml"] = True
 
-    def _generate_doc_workflow_yaml(self) -> None:
-        """Generate .doc-workflow.yaml from template."""
-        dest = self.root / ".doc-workflow.yaml"
+    def _generate_retention_yaml(self) -> None:
+        """Generate retention.yaml from template for data lifecycle management."""
+        dest = self.root / "runtime" / "config" / "retention.yaml"
         if dest.exists():
-            renderer.info(".doc-workflow.yaml already exists — keeping current version")
-            self.state.config_files_created[".doc-workflow.yaml"] = True
+            renderer.info("retention.yaml already exists — keeping current version")
+            self.state.config_files_created["retention.yaml"] = True
             return
 
-        template = self.root / ".doc-workflow.yaml.example"
+        template = self.root / "runtime" / "config.example" / "retention.yaml"
         if not template.exists():
-            renderer.warning(".doc-workflow.yaml template not found — skipping")
+            renderer.warning("retention.yaml template not found — skipping")
+            return
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(template, dest)
+        renderer.success("Created retention.yaml — data retention policies for M-O")
+        self.state.config_files_created["retention.yaml"] = True
+
+    def _generate_doc_workflow_yaml(self) -> None:
+        """Generate .publisher.yaml from template."""
+        dest = self.root / ".publisher.yaml"
+        if dest.exists():
+            renderer.info(".publisher.yaml already exists — keeping current version")
+            self.state.config_files_created[".publisher.yaml"] = True
+            return
+
+        template = self.root / ".publisher.yaml.example"
+        if not template.exists():
+            renderer.warning(".publisher.yaml template not found — skipping")
             return
 
         content = template.read_text(encoding="utf-8")
@@ -550,8 +605,8 @@ class SetupWizard:
             content = content.replace("provider: onedrive", "provider: local")
 
         dest.write_text(content, encoding="utf-8")
-        renderer.success("Created .doc-workflow.yaml")
-        self.state.config_files_created[".doc-workflow.yaml"] = True
+        renderer.success("Created .publisher.yaml")
+        self.state.config_files_created[".publisher.yaml"] = True
 
     def _generate_claude_context(self) -> None:
         """Generate .claude/context.md from template."""

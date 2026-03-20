@@ -1,10 +1,21 @@
-"""Shared test fixtures for neut sense and docflow test suites."""
+"""Shared test fixtures for neut signal and publisher test suites."""
 
 import json
+import os
 import sys
 from pathlib import Path
 
 import pytest
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip @benchmark tests unless -m benchmark is explicitly requested."""
+    if config.option.markexpr and "benchmark" in config.option.markexpr:
+        return  # user asked for benchmarks — let them run
+    skip_benchmark = pytest.mark.skip(reason="benchmark — run with: pytest -m benchmark")
+    for item in items:
+        if item.get_closest_marker("benchmark"):
+            item.add_marker(skip_benchmark)
 
 # Ensure repo root is on path
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -213,11 +224,11 @@ def sample_gitlab_export_previous(tmp_path):
 
 
 @pytest.fixture
-def docflow_config(tmp_path):
-    """Create a minimal docflow config for testing."""
-    from neutron_os.extensions.builtins.docflow.config import DocFlowConfig, GitPolicy, ProviderConfig
+def publisher_config(tmp_path):
+    """Create a minimal publisher config for testing."""
+    from neutron_os.extensions.builtins.prt_agent.config import PublisherConfig, GitPolicy, ProviderConfig
 
-    return DocFlowConfig(
+    return PublisherConfig(
         git=GitPolicy(require_clean=False, require_pushed=False),
         generation=ProviderConfig(provider="pandoc-docx"),
         storage=ProviderConfig(

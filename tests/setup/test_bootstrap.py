@@ -159,12 +159,12 @@ class TestDevelopmentSetup:
 
     @pytest.mark.slow
     def test_neut_sense_status(self):
-        """neut sense status runs successfully."""
+        """neut signal status runs successfully."""
         venv_python = REPO_ROOT.parent / ".venv" / "bin" / "python"
 
         if venv_python.exists():
             result = subprocess.run(
-                [str(venv_python), "-m", "neutron_os.extensions.builtins.sense_agent.cli", "status"],
+                [str(venv_python), "-m", "neutron_os.extensions.builtins.eve_agent.cli", "status"],
                 capture_output=True,
                 text=True,
                 cwd=str(REPO_ROOT),
@@ -175,7 +175,7 @@ class TestDevelopmentSetup:
 
     @pytest.mark.slow
     def test_neut_doc_providers(self):
-        """neut doc providers runs successfully."""
+        """neut pub providers runs successfully."""
         venv_python = REPO_ROOT.parent / ".venv" / "bin" / "python"
 
         if venv_python.exists():

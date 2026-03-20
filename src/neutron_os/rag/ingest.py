@@ -16,7 +16,7 @@ from typing import Optional
 from .chunker import chunk_markdown
 from .embeddings import embed_texts
 from .extract import extract_text, SUPPORTED_EXTENSIONS
-from .store import CORPUS_INTERNAL, RAGStore
+from .store import CORPUS_INTERNAL, CORPUS_ORG, RAGStore
 
 log = logging.getLogger(__name__)
 
@@ -103,6 +103,51 @@ def ingest_file(
 
     stats.files_indexed = 1
     stats.chunks_created = len(chunks)
+    return stats
+
+
+def ingest_path(
+    path: Path,
+    store: RAGStore,
+    corpus: str = CORPUS_INTERNAL,
+    owner: Optional[str] = None,
+) -> IngestStats:
+    """Ingest all supported documents under *path* into *corpus*.
+
+    Unlike ingest_repo(), this function has no opinion about directory
+    structure — it walks the given path and indexes everything it can
+    extract text from. Useful for one-off warm-up ingests (e.g. Box
+    knowledge dumps, external doc collections).
+    """
+    stats = IngestStats()
+
+    if path.is_file():
+        file_stats = ingest_file(path, store, repo_root=path.parent, corpus=corpus, owner=owner)
+        stats.files_indexed += file_stats.files_indexed
+        stats.chunks_created += file_stats.chunks_created
+        stats.files_skipped += file_stats.files_skipped
+        return stats
+
+    files: list[Path] = []
+    for ext in SUPPORTED_EXTENSIONS:
+        files.extend(path.rglob(f"*{ext}"))
+    files = [f for f in files if "__MACOSX" not in str(f) and not f.name.startswith(".")]
+    files = sorted(files)
+
+    log.info("ingest_path: %d files under %s → corpus=%s", len(files), path, corpus)
+
+    for fpath in files:
+        file_stats = ingest_file(fpath, store, repo_root=path, corpus=corpus, owner=owner)
+        stats.files_indexed += file_stats.files_indexed
+        stats.chunks_created += file_stats.chunks_created
+        stats.files_skipped += file_stats.files_skipped
+
+    log.info(
+        "ingest_path complete: %d indexed, %d chunks, %d skipped",
+        stats.files_indexed,
+        stats.chunks_created,
+        stats.files_skipped,
+    )
     return stats
 
 

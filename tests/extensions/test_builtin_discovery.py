@@ -193,9 +193,9 @@ class TestBuiltinValidation:
             version="0.1.0",
             description="test",
             author="test",
-            root=_builtin_extensions_dir() / "sense_agent",
+            root=_builtin_extensions_dir() / "eve_agent",
             builtin=True,
-            cli_commands=[CLICommandDef(noun="sense", module="neutron_os.extensions.builtins.sense_agent.cli")],
+            cli_commands=[CLICommandDef(noun="signal", module="neutron_os.extensions.builtins.eve_agent.cli")],
         )
         issues = validate_extension(ext)
         assert issues == []
@@ -206,7 +206,7 @@ class TestBuiltinValidation:
             version="0.1.0",
             description="test",
             author="test",
-            root=_builtin_extensions_dir() / "sense_agent",
+            root=_builtin_extensions_dir() / "eve_agent",
             builtin=True,
             cli_commands=[CLICommandDef(noun="x", module="neutron_os.nonexistent.module")],
         )
@@ -248,10 +248,10 @@ class TestDiscoverCLICommandsBuiltinFlag:
         for noun, info in cmds.items():
             assert "builtin" in info, f"Command {noun} missing builtin flag"
 
-    def test_sense_is_builtin(self):
+    def test_signal_is_builtin(self):
         cmds = discover_cli_commands()
-        assert "sense" in cmds
-        assert cmds["sense"]["builtin"] is True
+        assert "signal" in cmds
+        assert cmds["signal"]["builtin"] is True
 
     def test_user_ext_not_builtin(self, tmp_path):
         """User extension commands have builtin=False."""
@@ -281,9 +281,9 @@ def _run_neut(*args: str, timeout: int = 15) -> subprocess.CompletedProcess:
 
 class TestCLIDispatch:
     def test_builtin_sense_status(self):
-        result = _run_neut("sense", "status")
+        result = _run_neut("signal", "status")
         assert result.returncode == 0
-        assert "Inbox" in result.stdout or "sense" in result.stdout.lower()
+        assert "Inbox" in result.stdout or "signal" in result.stdout.lower()
 
     def test_builtin_status_json(self):
         result = _run_neut("status", "--json")
@@ -323,7 +323,7 @@ class TestCLIDispatch:
     def test_unknown_command_still_suggests(self):
         result = _run_neut("senss")  # typo
         assert result.returncode != 0
-        assert "sense" in result.stdout.lower() or "did you mean" in result.stdout.lower()
+        assert "signal" in result.stdout.lower() or "did you mean" in result.stdout.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -336,7 +336,7 @@ class TestCLIRegistryIntegration:
         from neutron_os.cli_registry import _get_cli_modules
 
         modules = _get_cli_modules()
-        assert "sense" in modules
+        assert "signal" in modules
         assert "db" in modules
         assert "config" in modules  # core, always present
 
@@ -356,26 +356,26 @@ class TestCLIRegistryIntegration:
 class TestUserOverridesBuiltin:
     def test_user_ext_overrides_builtin_by_name(self, tmp_path):
         """User extension with same noun as builtin wins (higher precedence)."""
-        user_dir = tmp_path / "user-exts" / "sense"
+        user_dir = tmp_path / "user-exts" / "signal"
         user_dir.mkdir(parents=True)
         (user_dir / "neut-extension.toml").write_text(
             """\
 [extension]
-name = "sense"
+name = "signal"
 version = "99.0.0"
-description = "User override of sense"
+description = "User override of signal"
 [[cli.commands]]
-noun = "sense"
-module = "my_sense"
-description = "Custom sense"
+noun = "signal"
+module = "my_signal"
+description = "Custom signal"
 """
         )
-        (user_dir / "my_sense.py").write_text("def main(): pass")
+        (user_dir / "my_signal.py").write_text("def main(): pass")
 
         # User dir first, builtins last
         builtins = _builtin_extensions_dir()
         exts = discover_extensions(tmp_path / "user-exts", builtins)
 
-        sense_exts = [e for e in exts if e.name == "sense"]
-        assert len(sense_exts) == 1
-        assert sense_exts[0].version == "99.0.0"  # user version wins
+        signal_exts = [e for e in exts if e.name == "signal"]
+        assert len(signal_exts) == 1
+        assert signal_exts[0].version == "99.0.0"  # user version wins
