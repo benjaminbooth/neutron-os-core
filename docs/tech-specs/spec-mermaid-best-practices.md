@@ -47,10 +47,10 @@ flowchart LR
 - **Medium backgrounds** (yellow, orange): Use `color:#333` (dark gray usually works better)
 
 **Examples:**
-```mermaid
-style NODE1 fill:#e3f2fd,color:#333         # Light blue bg, dark text
-style NODE2 fill:#1565c0,color:#fff         # Dark blue bg, white text
-style NODE3 fill:#fff3e0,color:#333         # Light yellow bg, dark text
+```text
+style NODE1 fill:#e3f2fd,color:#333         %% Light blue bg, dark text
+style NODE2 fill:#1565c0,color:#fff         %% Dark blue bg, white text
+style NODE3 fill:#fff3e0,color:#333         %% Light yellow bg, dark text
 ```
 
 ## Permanent Pattern for This Workspace (REQUIRED)
@@ -70,15 +70,15 @@ When creating Mermaid diagrams:
 
 **Solution:** Add a minimal spacer node (single dot character) as the first element in the subgraph:
 
-```mermaid
+```text
 subgraph DL["🔷 LAYER 1: TITLE<br/>(Subtitle)"]
-    DL_SPACER["·"]           # Minimal spacer node (single dot)
+    DL_SPACER["·"]
     DL1["📐 Content 1"]
     DL2["📊 Content 2"]
-    DL_SPACER ~~~ DL1 ~~~ DL2 # Connect with invisible edges
+    DL_SPACER ~~~ DL1 ~~~ DL2
 end
 
-style DL_SPACER fill:none,stroke:none,color:#999,font-size:2px  # Standard spacing (2px - do not exceed)
+style DL_SPACER fill:none,stroke:none,color:#999,font-size:2px
 ```
 
 **Result:** The spacer takes minimal vertical space (just enough to prevent overlap) and is nearly invisible.

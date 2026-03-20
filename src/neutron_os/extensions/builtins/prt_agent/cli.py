@@ -1154,7 +1154,11 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         if docx_path is None:
             # Mermaid rendering failed — skip this file
             continue
-        # NOTE: Hash written AFTER successful upload, not here
+        # Write generation hash immediately so re-runs don't regenerate unchanged docs.
+        # A separate .uploaded marker is set after a successful upload.
+        import hashlib as _hl
+        _gen_hash = _hl.sha256(source_md.read_bytes()).hexdigest()
+        docx_path.with_suffix(".docx.sha256").write_text(_gen_hash, encoding="utf-8")
         print("\u2713")
         docx_files.append((source_md, docx_path, subfolder))
 
@@ -1259,13 +1263,10 @@ def _cmd_push_batch(args, engine, draft, storage, headed, force):
         print(f"    {icon} {f.name}  {msg}")
         if result.success:
             success += 1
-            # Write hash AFTER successful upload (not during generation)
-            # This ensures cancelled uploads don't mark files as "up to date"
             source_md, docx_path, subfolder = docx_files[i]
-            import hashlib
-            source_hash = hashlib.sha256(source_md.read_bytes()).hexdigest()
-            docx_path.with_suffix(".docx.sha256").write_text(source_hash, encoding="utf-8")
-            
+            # Mark this specific docx as successfully uploaded (separate from generated hash)
+            docx_path.with_suffix(".docx.uploaded").write_text(result.url, encoding="utf-8")
+
             # Record in registry so EVE knows the baseline
             doc_id = f.stem  # e.g., "prd-executive"
             folder = per_file_folders[i] if i < len(per_file_folders) else ""
@@ -1463,10 +1464,10 @@ def _docx_output_path(md_path: Path) -> Path:
 
 def _needs_regeneration(md_path: Path, docx_path: Path) -> bool:
     """Check if the docx needs to be regenerated based on content hash.
-    
-    Hash is written ONLY after successful upload. So if no hash exists,
-    either we never generated/uploaded, or we generated but cancelled.
-    Either way, we need to regenerate.
+
+    Hash (.docx.sha256) is written after successful generation so that
+    re-runs don't regenerate unchanged docs even if the upload failed.
+    A separate .uploaded marker is set after a successful upload.
     """
     import hashlib
 

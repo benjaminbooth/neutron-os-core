@@ -350,7 +350,7 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                 # Upload the top-level missing folder
                 upload_dir = tmp_root / remaining_parts[0]
 
-                page.click("text=Create or upload", timeout=5000)
+                self._click_create_or_upload(page)
                 page.wait_for_timeout(1000)
                 with page.expect_file_chooser(timeout=10000) as fc_info:
                     page.click("text=Folder upload", timeout=5000)
@@ -361,7 +361,7 @@ class OneDriveBrowserStorageProvider(StorageProvider):
                 shutil.rmtree(tmp_root, ignore_errors=True)
             else:
                 # All folders exist — upload file directly
-                page.click("text=Create or upload", timeout=5000)
+                self._click_create_or_upload(page)
                 page.wait_for_timeout(2000)  # Wait for dropdown flyout
 
                 # Try multiple label variants for the upload menu item
@@ -426,6 +426,39 @@ class OneDriveBrowserStorageProvider(StorageProvider):
             except Exception:
                 pass
             return UploadResult(success=False, url="", error=f"Upload failed: {e}")
+
+    def _click_create_or_upload(self, page, timeout_ms: int = 8000) -> None:
+        """Click the OneDrive 'Create or upload' / 'Upload' / 'Add new' button.
+
+        OneDrive's toolbar button text has changed across UI refreshes. We try
+        multiple known labels before falling back to a CSS/role-based selector.
+        Raises on total failure so callers can surface a clean error.
+        """
+        candidates = [
+            # Text labels — ordered most-recent-first
+            "text=Upload",
+            "text=Add new",
+            "text=New",
+            "text=Create or upload",
+            # ARIA role fallbacks
+            "[aria-label='Upload']",
+            "[aria-label='Add new']",
+            "[aria-label='New']",
+            "[aria-label='Create or upload']",
+            # Generic toolbar button containing 'upload' anywhere
+            "button:has-text('Upload')",
+            "button:has-text('Add new')",
+        ]
+        for selector in candidates:
+            try:
+                page.click(selector, timeout=timeout_ms // len(candidates))
+                return
+            except Exception:
+                continue
+        raise RuntimeError(
+            "Could not find the OneDrive upload/add-new toolbar button. "
+            "The OneDrive UI may have changed — run with --headed to inspect manually."
+        )
 
     def _wait_for_replace_dialog(self, page, timeout_ms: int = 8000) -> bool | None:
         """Wait for the OneDrive 'Replace' confirmation dialog.
