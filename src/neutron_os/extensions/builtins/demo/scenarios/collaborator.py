@@ -29,7 +29,7 @@ def _fixture_exists(name: str) -> bool:
 def _check_sense_status() -> bool:
     """Validate that sense pipeline has some data."""
     try:
-        from neutron_os.extensions.builtins.sense_agent.cli import INBOX_RAW, DRAFTS_DIR
+        from neutron_os.extensions.builtins.eve_agent.cli import INBOX_RAW, DRAFTS_DIR
 
         has_inbox = INBOX_RAW.exists() and any(INBOX_RAW.rglob("*"))
         has_drafts = DRAFTS_DIR.exists() and any(DRAFTS_DIR.glob("*.md"))
@@ -41,7 +41,7 @@ def _check_sense_status() -> bool:
 def _check_doc_status() -> bool:
     """Validate publisher is accessible."""
     try:
-        from neutron_os.extensions.builtins.publisher.engine import PublisherEngine
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
 
         PublisherEngine()
         return True
@@ -85,8 +85,8 @@ def build_scenario() -> Scenario:
         teardown_fn=_teardown,
         next_steps=[
             "Complete full onboarding (GitLab, Teams, Linear): neut config",
-            "Add your repositories as signal sources: neut sense pipeline sources --init",
-            "Run your first real ingestion: neut sense pipeline ingest --source github",
+            "Add your repositories as signal sources: neut signal pipeline sources --init",
+            "Run your first real ingestion: neut signal pipeline ingest --source github",
         ],
         acts=[
             Act(
@@ -103,7 +103,7 @@ def build_scenario() -> Scenario:
                 commands=[
                     "neut config --set anthropic_api_key",
                     "neut config --set github_token",
-                    "neut sense pipeline sources --check",
+                    "neut signal pipeline sources --check",
                 ],
                 hints=[
                     "Credentials are stored in runtime/config/ — gitignored, never committed.",
@@ -126,12 +126,12 @@ def build_scenario() -> Scenario:
                 ),
                 mode="cli",
                 commands=[
-                    "neut sense ingest --source gitlab",
-                    "neut sense draft",
+                    "neut signal ingest --source gitlab",
+                    "neut signal draft",
                 ],
                 hints=[
                     f"The demo fixture at {WEEKLY_SUMMARY} shows what a real draft looks like.",
-                    "In production, 'neut sense serve' runs an HTTP server for continuous ingestion.",
+                    "In production, 'neut signal serve' runs an HTTP server for continuous ingestion.",
                     "Voice memos, Teams transcripts, and freetext notes all flow through the same pipeline.",
                 ],
                 fallback_message=(
@@ -148,7 +148,7 @@ def build_scenario() -> Scenario:
                 ),
                 mode="cli",
                 commands=[
-                    "neut sense status",
+                    "neut signal status",
                     "neut pub status",
                 ],
                 hints=[
@@ -192,7 +192,7 @@ def build_scenario() -> Scenario:
                 ],
                 hints=[
                     "Falls back gracefully if no LLM is configured.",
-                    "/status works inside chat — it runs neut sense status inline.",
+                    "/status works inside chat — it runs neut signal status inline.",
                     "/complete finalizes the review session.",
                     "The same review state is shared between CLI and chat modes.",
                 ],

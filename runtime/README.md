@@ -9,7 +9,7 @@ installation. It is NOT code — it is configuration, state, and working data.
 runtime/
   config.example/    # Template configs (tracked in git)
   config/            # Facility-specific config (gitignored)
-  inbox/             # Signal inbox for sense pipeline (gitignored)
+  inbox/             # Signal inbox for signal pipeline (gitignored)
   sessions/          # Agent session logs (partially tracked)
   drafts/            # Pending drafts awaiting approval (gitignored)
   approved/          # Approved outputs (gitignored)

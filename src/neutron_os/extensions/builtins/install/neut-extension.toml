@@ -1,0 +1,12 @@
+[extension]
+name = "install"
+version = "0.1.0"
+description = "Environment-aware installation and setup — reads runtime/config/install.toml"
+builtin = true
+kind = "utility"
+module = "platform"
+
+[[cli.commands]]
+noun = "install"
+module = "neutron_os.extensions.builtins.install.cli"
+description = "Run environment setup steps from runtime/config/install.toml"

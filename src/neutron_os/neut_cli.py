@@ -6,7 +6,7 @@ Routes subcommands to their respective handlers via the extension system.
 Core commands (config, ext, infra, doctor) are handled directly.
 All other nouns are dispatched to builtin or user extensions.
 
-The production neut CLI will be Rust (see docs/specs/neut-cli-spec.md).
+The production neut CLI will be Rust (see docs/tech-specs/spec-neut-cli.md).
 This Python entry point serves developer tooling during early development.
 
 Usage:
@@ -444,7 +444,7 @@ def _copy_subparsers(
 ) -> None:
     """Copy subparser definitions from *src_parser* into *dst_parser*.
 
-    This lets argcomplete see the full completion tree (e.g. ``neut sense
+    This lets argcomplete see the full completion tree (e.g. ``neut signal
     ingest``) without duplicating parser definitions.
     """
     for action in src_parser._actions:
@@ -522,7 +522,10 @@ def _copy_top_level_args(
         elif action.nargs is not None:
             kwargs["nargs"] = action.nargs
         try:
-            dst_parser.add_argument(*names, **kwargs)
+            new_action = dst_parser.add_argument(*names, **kwargs)
+            # Carry over argcomplete completers
+            if hasattr(action, "completer") and action.completer is not None:
+                new_action.completer = action.completer
         except Exception:
             pass
 

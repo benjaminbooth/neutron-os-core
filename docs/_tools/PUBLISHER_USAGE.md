@@ -55,7 +55,7 @@ Browse folders, select files, confirm, and publish. Best for exploring what's av
 python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd_*.md
 
 # Publish all specs
-python3 docs/_tools/publish_to_onedrive.py docs/specs/*.md
+python3 docs/_tools/publish_to_onedrive.py docs/tech-specs/*.md
 
 # Publish research
 python3 docs/_tools/publish_to_onedrive.py docs/research/*.md
@@ -88,10 +88,10 @@ python3 docs/_tools/publish_to_onedrive.py "docs/**/*.md"
 
 ```bash
 # Publish PRDs and specs together
-python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd_*.md docs/specs/*.md
+python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd_*.md docs/tech-specs/*.md
 
 # Publish specific files
-python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd_experiment-manager.md docs/research/deeplynx-assessment.md
+python3 docs/_tools/publish_to_onedrive.py docs/requirements/prd-experiment-manager.md docs/research/deeplynx-assessment.md
 ```
 
 ---
@@ -103,12 +103,12 @@ The publisher respects your `docs/` folder hierarchy:
 ```
 docs/
 ├── requirements/
-│   ├── prd_experiment-manager.md
-│   ├── prd_data-platform.md
+│   ├── prd-experiment-manager.md
+│   ├── prd-data-platform.md
 │   ├── adr_001-streaming-first.md
 │   └── ...
 ├── specs/
-│   ├── neutron-os-master-tech-spec.md
+│   ├── spec-executive.md
 │   └── ...
 └── research/
     ├── deeplynx-assessment.md
@@ -147,21 +147,21 @@ Output:
 ```
 📋 Found 8 file(s):
 
-  [1] requirements/prd_experiment-manager.md
-  [2] requirements/prd_data-platform.md
-  [3] requirements/prd_reactor-ops-log.md
-  [4] requirements/prd_neutron-os-executive.md
-  [5] requirements/prd_scheduling-system.md
-  [6] requirements/prd_compliance-tracking.md
-  [7] requirements/prd_analytics-dashboards.md
-  [8] requirements/prd_medical-isotope.md
+  [1] requirements/prd-experiment-manager.md
+  [2] requirements/prd-data-platform.md
+  [3] requirements/prd-reactor-ops-log.md
+  [4] requirements/prd-executive.md
+  [5] requirements/prd-scheduling-system.md
+  [6] requirements/prd-compliance-tracking.md
+  [7] requirements/prd-analytics-dashboards.md
+  [8] requirements/prd-medical-isotope.md
 
 Publish these files? [y/N]: y
 
 🚀 ONEDRIVE DOCUMENT PUBLISHER
 ======================================================================
 
-  📝 Generating prd_experiment-manager.md...
+  📝 Generating prd-experiment-manager.md...
   ✅ Generated prd_experiment-manager.docx
   📤 Uploading requirements > prd_experiment-manager.docx...
   ✅ Uploaded (ID: 01AB2CD...)
@@ -198,8 +198,8 @@ Enter search pattern (e.g., 'prd' or 'experiment'): architecture
 📋 Found 4 match(es):
 
   [1] research/deeplynx-assessment.md
-  [2] specs/digital-twin-architecture-spec.md
-  [3] specs/data-architecture-spec.md
+  [2] specs/spec-digital-twin-architecture.md
+  [3] specs/spec-data-architecture.md
   [4] requirements/adr_007-streaming-first.md
 
 Publish these files? [y/N]: y
@@ -282,7 +282,7 @@ Set via the `MS_GRAPH_TENANT_ID` environment variable.
 
 OneDrive folder names mirror your local structure:
 - `docs/requirements/` → OneDrive `requirements/`
-- `docs/specs/` → OneDrive `specs/`
+- `docs/tech-specs/` → OneDrive `specs/`
 - `docs/research/` → OneDrive `research/`
 
 This makes it easy to find published documents.

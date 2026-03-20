@@ -65,7 +65,7 @@ python generate_all_docs.py --category specs
 ```bash
 # Convert individual file from its directory
 cd /Users/ben/Projects/UT_Computational_NE/Neutron_OS/docs/specs
-python ../_tools/md_to_docx.py neutron-os-master-tech-spec.md output.docx
+python ../_tools/md_to_docx.py spec-executive.md output.docx
 ```
 
 ## File Locations
@@ -74,7 +74,7 @@ python ../_tools/md_to_docx.py neutron-os-master-tech-spec.md output.docx
 `/Users/ben/Projects/UT_Computational_NE/Neutron_OS/docs/_tools/generated/`
 
 ### Source Markdown:
-- Specs: `../specs/`
+- Specs: `../tech-specs/`
 - PRDs: `../prd/`
 - ADRs: `../adr/`
 - Scenarios: `../scenarios/`

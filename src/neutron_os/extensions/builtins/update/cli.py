@@ -309,7 +309,7 @@ class Updater:
 
         # Run migrations
         try:
-            from neutron_os.extensions.builtins.sense_agent.migrations import run_migrations, check_migrations
+            from neutron_os.extensions.builtins.eve_agent.migrations import run_migrations, check_migrations
 
             status = check_migrations()
             if status.get("up_to_date"):
@@ -340,7 +340,7 @@ class Updater:
     def _check_migrations(self) -> None:
         """Check if migrations are pending."""
         try:
-            from neutron_os.extensions.builtins.sense_agent.migrations import check_migrations
+            from neutron_os.extensions.builtins.eve_agent.migrations import check_migrations
 
             status = check_migrations()
             if status.get("up_to_date"):

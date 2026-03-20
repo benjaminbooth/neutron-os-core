@@ -1,7 +1,7 @@
 """IssueProvider ABC + Factory — files issues from self-healing signals.
 
-Follows the same Factory/Provider pattern as DocFlowFactory
-(tools/docflow/factory.py). Providers self-register on import.
+Follows the same Factory/Provider pattern as PublisherFactory
+(tools/publisher/factory.py). Providers self-register on import.
 
 Usage:
     provider = IssueProviderFactory.create("gitlab", {"project": "..."})

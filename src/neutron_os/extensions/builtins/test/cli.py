@@ -218,7 +218,7 @@ class TestRunner:
 
         # Find test directories that exist
         test_dirs = []
-        for d in ["tests/", "src/neutron_os/extensions/builtins/sense_agent/tests/", "src/neutron_os/extensions/builtins/cost_estimation/"]:
+        for d in ["tests/", "src/neutron_os/extensions/builtins/eve_agent/tests/", "src/neutron_os/extensions/builtins/cost_estimation/"]:
             if (self.repo_root / d).exists():
                 test_dirs.append(d)
 
@@ -285,7 +285,7 @@ class TestRunner:
 import sys
 sys.path.insert(0, '.')
 
-from neutron_os.extensions.builtins.sense_agent.migrations import (
+from neutron_os.extensions.builtins.eve_agent.migrations import (
     run_migrations,
     check_migrations,
     verify_schema,

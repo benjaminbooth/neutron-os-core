@@ -1,6 +1,6 @@
 """EventBus subscriber registration and handlers for M-O.
 
-Follows the Doctor subscriber pattern (extensions/builtins/doctor_agent/subscriber.py):
+Follows the Doctor subscriber pattern (extensions/builtins/dfib_agent/subscriber.py):
 - register(bus) wires all handlers
 - Circuit breakers: max 3 LLM diagnosis calls per hour, 5-minute cooldown
   per signal fingerprint

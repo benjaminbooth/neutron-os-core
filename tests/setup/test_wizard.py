@@ -108,7 +108,7 @@ class TestWizardConfig:
         (config_example / "models.toml").write_text(
             '[gateway]\nformat = "openai"\n'
         )
-        (tmp_path / ".doc-workflow.yaml.example").write_text(
+        (tmp_path / ".publisher.yaml.example").write_text(
             "storage:\n  provider: onedrive\n"
         )
         claude_example = tmp_path / ".claude.example"
@@ -131,7 +131,7 @@ class TestWizardConfig:
 
         assert (tmp_path / "runtime" / "config" / "facility.toml").exists()
         assert (tmp_path / "runtime" / "config" / "models.toml").exists()
-        assert (tmp_path / ".doc-workflow.yaml").exists()
+        assert (tmp_path / ".publisher.yaml").exists()
         assert (tmp_path / ".claude" / "context.md").exists()
 
     def test_skips_existing_files(self, tmp_path, monkeypatch):
@@ -140,7 +140,7 @@ class TestWizardConfig:
         config_dir.mkdir(parents=True)
         (config_dir / "facility.toml").write_text("existing")
         (config_dir / "models.toml").write_text("existing")
-        (tmp_path / ".doc-workflow.yaml").write_text("existing")
+        (tmp_path / ".publisher.yaml").write_text("existing")
         claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
         (claude_dir / "context.md").write_text("existing")

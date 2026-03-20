@@ -33,11 +33,21 @@ def _make_gateway_with_response(response_text: str):
 
 
 def _real_gateway():
-    """Return the real gateway if an LLM is configured, else None."""
+    """Return the real gateway if a reachable LLM is configured, else None.
+
+    Excludes VPN-only providers that are not currently reachable, so tests
+    skip cleanly when running off-network rather than failing with misleading
+    'CLEAR' verdicts caused by provider fallback to an unconfigured stub.
+    """
     try:
         from neutron_os.infra.gateway import Gateway
         g = Gateway()
-        return g if g.active_provider else None
+        # Only count providers that are either not VPN-gated, or VPN is up
+        reachable = [
+            p for p in g.providers
+            if p.api_key and (not p.requires_vpn or g._check_vpn(p))
+        ]
+        return g if reachable else None
     except Exception:
         return None
 

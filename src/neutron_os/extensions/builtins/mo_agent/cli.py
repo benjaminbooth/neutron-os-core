@@ -7,6 +7,7 @@ Usage:
     neut mo purge        Delete everything (confirmation prompt)
     neut mo vitals       Live vitals: disk %, mem %, trend arrows, top owners
     neut mo diagnose     Trigger Layer 3 LLM diagnosis (requires gateway)
+    neut mo retention    Data retention status, dry-run preview, and cleanup
 """
 
 from __future__ import annotations
@@ -37,7 +38,9 @@ Examples:
 
     sub.add_parser("status", help="Show M-O status")
     sub.add_parser("ls", help="List all tracked entries")
-    sub.add_parser("clean", help="Sweep expired and orphaned entries")
+    clean_p = sub.add_parser("clean", help="Sweep expired and orphaned entries")
+    clean_p.add_argument("--repo", action="store_true", help="Also clean repo clutter (pycache, DS_Store, etc.)")
+    clean_p.add_argument("--dry-run", action="store_true", help="Show what would be cleaned")
 
     purge_p = sub.add_parser("purge", help="Delete all scratch entries")
     purge_p.add_argument(
@@ -47,6 +50,16 @@ Examples:
 
     sub.add_parser("vitals", help="Detailed vitals snapshot")
     sub.add_parser("diagnose", help="LLM-powered diagnosis (requires gateway)")
+
+    ret_p = sub.add_parser("retention", help="Data retention status and cleanup")
+    ret_p.add_argument(
+        "--dry-run", action="store_true",
+        help="Preview what would be cleaned up without deleting",
+    )
+    ret_p.add_argument(
+        "--cleanup", action="store_true",
+        help="Execute retention cleanup (delete expired files)",
+    )
 
     parser.add_argument(
         "--json", action="store_true",
@@ -70,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         "purge": _cmd_purge,
         "vitals": _cmd_vitals,
         "diagnose": _cmd_diagnose,
+        "retention": _cmd_retention,
     }
 
     handler = handlers.get(args.action)
@@ -198,11 +212,48 @@ def _cmd_clean(args) -> int:
 
     total = result["expired"] + result["orphaned"]
     if total == 0:
-        print("Nothing to clean.")
+        print("Nothing to clean (scratch).")
     else:
         print(f"Cleaned {total} entries ({result['expired']} expired, {result['orphaned']} orphaned)")
         if result["errors"]:
             print(f"  {result['errors']} errors during cleanup")
+
+    # Repo hygiene (--repo flag)
+    if getattr(args, "repo", False):
+        from neutron_os import REPO_ROOT
+        from .repo_hygiene import scan_repo_hygiene, clean_clutter
+
+        dry_run = getattr(args, "dry_run", False)
+        print()
+        findings = scan_repo_hygiene(REPO_ROOT)
+
+        if findings["clutter"]:
+            print(f"Repo clutter ({len(findings['clutter'])} items):")
+            for path, item_type, desc in findings["clutter"][:20]:
+                print(f"  {path} ({desc})")
+            if not dry_run:
+                cleaned = clean_clutter(REPO_ROOT, dry_run=False)
+                print(f"  Cleaned: {cleaned['dirs']} dirs, {cleaned['files']} files")
+        else:
+            print("Repo is clean.")
+
+        if findings.get("stale_neut"):
+            print(f"\nStale .neut/ items: {', '.join(findings['stale_neut'])}")
+            if not dry_run:
+                from neutron_os import REPO_ROOT
+                import shutil
+                for name in findings["stale_neut"]:
+                    stale_path = REPO_ROOT / ".neut" / name
+                    if stale_path.is_dir():
+                        shutil.rmtree(stale_path, ignore_errors=True)
+                    elif stale_path.is_file():
+                        stale_path.unlink(missing_ok=True)
+                    print(f"  Removed .neut/{name}")
+
+        if findings["unexpected_root"]:
+            print(f"\nUnexpected root items: {', '.join(findings['unexpected_root'])}")
+            print("  New functionality → src/neutron_os/extensions/builtins/")
+            print("  One-off scripts → spikes/")
 
     return 0
 
@@ -365,6 +416,99 @@ def _cmd_diagnose(args) -> int:
     except Exception as e:
         print(f"Diagnosis failed: {e}")
         return 1
+
+    print()
+    return 0
+
+
+def _cmd_retention(args) -> int:
+    from neutron_os import REPO_ROOT
+
+    try:
+        from .retention import (
+            execute_retention,
+            load_retention_config,
+            retention_status,
+            scan_retention,
+        )
+    except ImportError as e:
+        print(f"Retention unavailable: {e}")
+        return 1
+
+    config_dir = REPO_ROOT / "runtime" / "config"
+    example_dir = REPO_ROOT / "runtime" / "config.example"
+    policies, legal_hold, audit_path = load_retention_config(config_dir, example_dir)
+
+    if not policies:
+        print("No retention policies configured.")
+        print(f"  Copy {example_dir / 'retention.yaml'} to {config_dir / 'retention.yaml'}")
+        return 0
+
+    if getattr(args, "json", False):
+        status = retention_status(REPO_ROOT, policies, legal_hold)
+        # Convert Path objects for JSON serialization
+        for cat in status.get("categories", []):
+            cat["actions"] = [
+                {"path": str(a.path), "age_days": a.age_days, "size_bytes": a.size_bytes}
+                for a in cat.get("actions", [])
+            ]
+        print(json.dumps(status, indent=2, default=str))
+        return 0
+
+    dry_run = getattr(args, "dry_run", False)
+    cleanup = getattr(args, "cleanup", False)
+
+    if cleanup or dry_run:
+        actions = scan_retention(REPO_ROOT, policies, legal_hold)
+        if not actions:
+            print("Nothing to clean up — all data within retention policies.")
+            return 0
+
+        label = "Retention Cleanup Preview (dry run)" if dry_run else "Retention Cleanup"
+        print(label)
+        print("=" * len(label))
+
+        for a in actions:
+            action_str = a.action if not dry_run else "would delete"
+            if a.action == "skip":
+                action_str = "SKIP (legal hold)"
+            print(f"  {action_str}: {a.path}")
+            print(f"           {a.age_days}d old, {_fmt_bytes(a.size_bytes)}, policy={a.policy_key}")
+
+        total_bytes = sum(a.size_bytes for a in actions if a.action == "delete")
+        print(f"\n  Total: {len(actions)} files, {_fmt_bytes(total_bytes)} recoverable")
+
+        if not dry_run:
+            result = execute_retention(actions, REPO_ROOT / audit_path)
+            print(f"\n  Deleted: {result['deleted']}  Skipped: {result['skipped']}  "
+                  f"Freed: {_fmt_bytes(result['bytes_freed'])}")
+            if result["errors"]:
+                print(f"  Errors: {result['errors']}")
+            print(f"  Audit log: {REPO_ROOT / audit_path}")
+        return 0
+
+    # Default: show status
+    status = retention_status(REPO_ROOT, policies, legal_hold)
+
+    print("Retention Policy Status")
+    print("=" * 50)
+
+    if legal_hold:
+        print("  ⚠  LEGAL HOLD ACTIVE — no automated deletion")
+        print()
+
+    if not status["categories"]:
+        print("  All data within retention policies.")
+    else:
+        for cat in status["categories"]:
+            print(f"  {cat['policy_key']} ({cat['days']}d after {cat['after']})")
+            print(f"    {cat['files']} files past retention ({_fmt_bytes(cat['bytes'])} recoverable)")
+
+        print()
+        print(f"  Total: {status['total_files']} files, {_fmt_bytes(status['total_bytes'])} recoverable")
+        print()
+        print("  Run `neut mo retention --dry-run` to preview cleanup")
+        print("  Run `neut mo retention --cleanup` to execute")
 
     print()
     return 0

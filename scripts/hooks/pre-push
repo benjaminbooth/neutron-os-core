@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# pre-push hook — runs fast test suite before every push.
+# Blocks the push if tests fail.
+#
+# To bypass in an emergency: git push --no-verify
+# To install: chmod +x .git/hooks/pre-push (already done)
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# Activate venv if not already active
+if [ -z "${VIRTUAL_ENV:-}" ]; then
+  if [ -f "$REPO_ROOT/../.venv/bin/activate" ]; then
+    # shellcheck disable=SC1091
+    source "$REPO_ROOT/../.venv/bin/activate"
+  elif [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
+    source "$REPO_ROOT/.venv/bin/activate"
+  fi
+fi
+
+echo "▶ pre-push: running test suite (unit only, no integration)..."
+
+if python -m pytest tests/ src/neutron_os/extensions/builtins/ \
+    -m "not integration" \
+    --tb=short -q \
+    --no-header \
+    2>&1; then
+  echo "✓ pre-push: all tests passed"
+else
+  echo ""
+  echo "✗ pre-push: tests failed — push blocked"
+  echo "  Fix the failures above, or use --no-verify to bypass"
+  exit 1
+fi

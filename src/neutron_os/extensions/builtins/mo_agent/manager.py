@@ -192,8 +192,12 @@ class MoManager:
             return []
         return self._manifest.all_entries()
 
-    def sweep(self) -> dict[str, int]:
-        """Clean expired entries and orphans. Returns counts."""
+    def sweep(self, project_root: Path | None = None) -> dict[str, Any]:
+        """Clean expired entries, orphans, and enforce retention policies.
+
+        Returns counts dict with scratch cleanup results and optional
+        retention results.
+        """
         if not self._writable or self._manifest is None:
             return {"expired": 0, "orphaned": 0, "errors": 0}
 
@@ -230,12 +234,55 @@ class MoManager:
         tracked_paths = {e.path for e in self._manifest.all_entries()}
         orphaned += self._sweep_untracked(tracked_paths)
 
-        self._publish("mo.swept", {
+        result: dict[str, Any] = {
             "expired": expired,
             "orphaned": orphaned,
             "errors": errors,
-        })
-        return {"expired": expired, "orphaned": orphaned, "errors": errors}
+        }
+
+        # Retention policy sweep (if project root provided)
+        if project_root is not None:
+            result["retention"] = self._sweep_retention(project_root)
+            # Repo hygiene: only clean pycache (safe), never delete .neut/ items automatically
+            result["repo_hygiene"] = self._sweep_repo_hygiene(project_root)
+
+        self._publish("mo.swept", result)
+        return result
+
+    def _sweep_repo_hygiene(self, project_root: Path) -> dict[str, Any]:
+        """Run lightweight repo hygiene as part of sweep."""
+        try:
+            from .repo_hygiene import clean_clutter
+            return clean_clutter(project_root, dry_run=False)
+        except Exception:
+            return {"skipped": True}
+
+    def _sweep_retention(self, project_root: Path) -> dict[str, Any]:
+        """Run retention policy enforcement as part of sweep."""
+        try:
+            from .retention import (
+                execute_retention,
+                load_retention_config,
+                scan_retention,
+            )
+        except ImportError:
+            return {"skipped": True, "reason": "pyyaml not installed"}
+
+        config_dir = project_root / "runtime" / "config"
+        example_dir = project_root / "runtime" / "config.example"
+        policies, legal_hold, audit_path = load_retention_config(
+            config_dir, example_dir,
+        )
+        if not policies:
+            return {"skipped": True, "reason": "no retention config"}
+
+        actions = scan_retention(project_root, policies, legal_hold)
+        if not actions:
+            return {"deleted": 0, "skipped": 0, "bytes_freed": 0, "errors": 0}
+
+        return execute_retention(
+            actions, project_root / audit_path,
+        )
 
     def purge(self) -> dict[str, int]:
         """Delete all tracked entries and wipe the base directory contents."""

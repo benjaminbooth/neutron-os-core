@@ -39,7 +39,9 @@ def detect_sources() -> list[SourceConfig]:
     """Auto-detect repo sources from environment variables."""
     sources: list[SourceConfig] = []
 
-    if os.environ.get("GITLAB_TOKEN"):
+    from neutron_os.infra.connections import has_credential
+
+    if has_credential("gitlab") or os.environ.get("GITLAB_TOKEN"):
         sources.append(SourceConfig(
             provider="gitlab",
             url="https://rsicc-gitlab.tacc.utexas.edu",
@@ -47,7 +49,7 @@ def detect_sources() -> list[SourceConfig]:
             token_env="GITLAB_TOKEN",
         ))
 
-    if os.environ.get("GITHUB_TOKEN"):
+    if has_credential("github") or os.environ.get("GITHUB_TOKEN"):
         sources.append(SourceConfig(
             provider="github",
             url="https://github.com",

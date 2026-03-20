@@ -1,0 +1,73 @@
+[extension]
+name = "prt"
+version = "0.4.0"
+description = "PR-T (Purty) — document lifecycle agent"
+author = "NeutronOS"
+builtin = true
+kind = "agent"
+module = "platform"
+aliases = ["publisher", "prt"]
+agent_identity = "AGENT.md"
+
+# Agent lifecycle — PR-T watches source dirs and auto-publishes
+[agent]
+heartbeat_interval = 10        # seconds between file system polls
+startup = "daemon"             # runs as background service via M-O
+
+[[agent.watchers]]
+name = "source_docs"
+enabled = true
+interval = 10                  # poll interval (seconds)
+cooldown = 300                 # wait 5 min after last edit before publishing
+module = "neutron_os.extensions.builtins.prt_agent.watcher"
+function = "run_watcher_cycle"
+
+[[cli.commands]]
+noun = "pub"
+module = "neutron_os.extensions.builtins.prt_agent.cli"
+description = "Document publishing lifecycle"
+
+[[cli.commands]]
+noun = "doc"
+module = "neutron_os.extensions.builtins.prt_agent.cli"
+description = "Document publishing lifecycle (alias for pub)"
+
+[[connections]]
+name = "onedrive"
+display_name = "Microsoft OneDrive"
+kind = "api"
+endpoint = "https://onedrive.live.com"
+credential_env_var = "MS_GRAPH_CLIENT_ID"
+credential_file = "onedrive/state.json"
+category = "storage"
+capabilities = ["read", "write"]
+docs_url = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps"
+
+[[connections.auth_methods]]
+method = "browser"
+description = "Browser login (recommended — no API keys needed)"
+endpoint = "https://onedrive.live.com"
+
+[[connections.auth_methods]]
+method = "graph_api"
+credential_env_var = "MS_GRAPH_CLIENT_ID"
+description = "MS Graph API (requires Azure developer credentials)"
+docs_url = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps"
+
+[[connections.auth_methods]]
+method = "manual"
+description = "Manual file drop (no auth)"
+
+[[connections]]
+name = "mmdc"
+display_name = "Mermaid CLI (diagrams)"
+kind = "cli"
+endpoint = "mmdc"
+credential_type = "none"
+health_check = "cli_version"
+category = "tools"
+docs_url = "https://github.com/mermaid-js/mermaid-cli"
+
+[connections.install_commands]
+macos = "npm install -g @mermaid-js/mermaid-cli"
+linux = "npm install -g @mermaid-js/mermaid-cli"

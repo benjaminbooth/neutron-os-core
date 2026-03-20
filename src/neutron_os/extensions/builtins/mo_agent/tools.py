@@ -1,6 +1,6 @@
 """M-O Agent tools — tool definitions and execute() dispatcher.
 
-Follows the Doctor Agent pattern (extensions/builtins/doctor_agent/tools.py):
+Follows the Doctor Agent pattern (extensions/builtins/dfib_agent/tools.py):
 OpenAI function-calling format defs + execute(name, params) dispatcher.
 
 Tools are divided into READ (safe) and WRITE (mutating) categories.

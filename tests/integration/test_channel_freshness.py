@@ -85,7 +85,7 @@ CHANNELS = [
     },
     {
         "name": "voice",
-        "description": "Voice memos via neut sense serve",
+        "description": "Voice memos via neut signal serve",
         "marker": "voice",
         "requires": [],  # Local service
     },
@@ -198,7 +198,7 @@ class TestChannelAccessibility:
     
     def test_teams_chat_accessible(self, ms_graph_creds):
         """Teams chat channel is configured."""
-        from neutron_os.extensions.builtins.sense_agent.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import TeamsChatExtractor
         extractor = TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
@@ -215,7 +215,7 @@ class TestChannelAccessibility:
     
     def test_github_accessible(self, github_token):
         """GitHub channel is configured."""
-        from neutron_os.extensions.builtins.sense_agent.extractors.github import GitHubExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.github import GitHubExtractor
         extractor = GitHubExtractor(token=github_token)
         assert extractor.is_available()
 
@@ -264,7 +264,7 @@ class TestChannelSyncValidation:
         self, github_token, channel_freshness_state
     ):
         """GitHub sync updates freshness state."""
-        from neutron_os.extensions.builtins.sense_agent.extractors.github import GitHubExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.github import GitHubExtractor
         
         extractor = GitHubExtractor(token=github_token)
         
@@ -290,7 +290,7 @@ class TestChannelSyncValidation:
         self, ms_graph_creds, channel_freshness_state
     ):
         """Teams Chat sync updates freshness state."""
-        from neutron_os.extensions.builtins.sense_agent.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import TeamsChatExtractor
         
         extractor = TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],

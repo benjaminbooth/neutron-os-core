@@ -1,0 +1,89 @@
+# NeutronOS Helm Chart — Rascal Server Values
+# Usage: helm install neut . -f values-rascal.yaml
+#
+# Rascal is a physical GPU server at UT Austin running Qwen for self-hosted
+# LLM experimentation (restricted tier). Access requires UT VPN.
+#
+# Deploy: helm upgrade --install neut . -f values-rascal.yaml -n neut --create-namespace
+
+environment: rascal
+
+# =============================================================================
+# PostgreSQL — larger persistence than local dev
+# =============================================================================
+
+postgresql:
+  enabled: true
+  auth:
+    database: neut_db
+    username: neut
+    # password: set via --set postgresql.auth.password=<secret> or existing secret
+    postgresPassword: ""  # override at deploy time
+  primary:
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 4Gi
+        cpu: 2000m
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: "local-path"  # k3d default; override with Rascal SSD class if available
+
+# =============================================================================
+# Ollama — enabled on Rascal for Qwen (restricted-tier LLM)
+# =============================================================================
+
+ollama:
+  # Rascal runs llama-server (llama.cpp) directly on the host — NOT Ollama in-cluster.
+  # The GPU (NVIDIA RTX PRO 6000 Blackwell, 97GB VRAM) is fully occupied by:
+  #   /usr/local/bin/llama-server -hf unsloth/Qwen3.5-122B-A10B-GGUF:Q4_K_M
+  #   Endpoint: https://rascal.austin.utexas.edu:41883/v1  (OpenAI-compatible)
+  #   API key env: RASCAL_API_KEY
+  #
+  # Do NOT deploy an in-cluster Ollama — it will fail to acquire the GPU.
+  # Configure the neut gateway in runtime/config/llm-providers.toml instead.
+  enabled: false
+
+# =============================================================================
+# Persistence — real server sizing
+# =============================================================================
+
+persistence:
+  inbox:
+    enabled: true
+    size: 20Gi
+    storageClass: local-path
+  media:
+    enabled: true
+    size: 100Gi
+    storageClass: local-path
+
+# =============================================================================
+# Service — ClusterIP internal; Ollama exposed via NodePort above
+# =============================================================================
+
+service:
+  type: ClusterIP
+
+# No ingress for now — access via kubectl port-forward or NodePort
+ingress:
+  enabled: false
+
+# =============================================================================
+# Pod security — production-like (tighter than local)
+# =============================================================================
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL

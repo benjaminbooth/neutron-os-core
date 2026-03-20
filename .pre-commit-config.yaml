@@ -1,0 +1,24 @@
+# Pre-commit hooks for Neutron_OS
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  - repo: local
+    hooks:
+      - id: lint-mermaid
+        name: Lint Mermaid Diagrams
+        entry: python scripts/lint_mermaid.py
+        language: python
+        types: [markdown]
+        pass_filenames: true
+        description: Check for Mermaid diagram rendering issues (overlap, missing colors)
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.(md|rst)$'
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']

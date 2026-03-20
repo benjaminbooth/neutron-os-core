@@ -1,0 +1,11 @@
+[extension]
+name = "log"
+version = "0.1.0"
+description = "Log inspection, verification, and management"
+builtin = true
+kind = "utility"
+module = "platform"
+
+[[cli.commands]]
+noun = "log"
+module = "neutron_os.extensions.builtins.log.cli"

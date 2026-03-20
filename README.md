@@ -6,8 +6,8 @@ A modular digital platform for nuclear facilities that unifies data management, 
 
 ## Key Capabilities
 
-- **Sense Pipeline** — Ingest signals from voice memos, Teams, GitLab, Linear, and freetext; extract structured insights; publish weekly briefings
-- **DocFlow** — Document lifecycle management with provider-based generation, storage, and review
+- **Signal Pipeline** — Ingest signals from voice memos, Teams, GitLab, Linear, and freetext; extract structured insights; publish weekly briefings
+- **Publisher** — Document lifecycle management with provider-based generation, storage, and review
 - **Interactive Agent** — Chat-based assistant with facility context (`neut chat`)
 - **Self-Diagnostics** — AI-powered troubleshooting (`neut doctor`)
 - **Extension System** — Scaffold and manage facility-specific extensions (`neut ext`)
@@ -17,7 +17,7 @@ A modular digital platform for nuclear facilities that unifies data management, 
 
 ```bash
 # Clone
-git clone https://github.com/UT-Computational-NE/neutron-os-core.git
+git clone https://github.com/benjaminbooth/neutron-os-core.git
 cd neutron-os-core
 pip install -e ".[all]"
 
@@ -57,9 +57,9 @@ Neutron_OS/
 
 ```bash
 neut chat                              # Interactive agent
-neut sense pipeline ingest             # Run signal ingestion
-neut sense status                      # Pipeline health
-neut doc publish                       # Generate and publish documents
+neut signal pipeline ingest             # Run signal ingestion
+neut signal status                      # Pipeline health
+neut pub publish                       # Generate and publish documents
 neut doctor                            # AI-powered diagnostics
 neut ext init my-extension             # Create a new extension
 neut demo run collaborator             # Guided onboarding walkthrough

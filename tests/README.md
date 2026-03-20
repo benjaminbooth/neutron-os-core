@@ -36,7 +36,7 @@ tests/
 
 ## AI Agent Policy
 
-When writing tests for a specific extension (sense, docflow, chat, etc.),
+When writing tests for a specific extension (sense, publisher, chat, etc.),
 place them in that extension's `tests/` directory, not here. Only create
 test files here if they genuinely test cross-cutting concerns. Import shared
 fixtures from `tests/conftest.py`.

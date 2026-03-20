@@ -1,39 +1,33 @@
 # Documentation Tools
 
-**Author:** Ben | **Updated:** 2026-01-22
+**Updated:** 2026-03-16
 
-## Core Scripts
+## Document Generation
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `md_to_docx.py` | Markdown → Word with diagrams & hyperlinks | `python md_to_docx.py input.md output.docx` |
-| `generate_all_docs.py` | Batch generate all docs | `python generate_all_docs.py [--category specs]` |
-| `pdf_to_text.py` | Extract text + comments from PDFs | `python pdf_to_text.py doc.pdf -o output.md` |
-
-## Quick Start
+Use `neut pub` for all document generation and publishing:
 
 ```bash
-# Generate all documentation
-cd /path/to/Neutron_OS/docs/_tools
-python generate_all_docs.py
+# Generate a single .docx
+neut pub generate docs/requirements/prd-executive.md
 
-# Single file conversion
-python md_to_docx.py ../specs/neutron-os-master-tech-spec.md output.docx
+# Generate all changed docs
+neut pub publish --all --changed-only
+
+# Push to OneDrive (browser-based, no API keys needed)
+neut pub push --endpoint onedrive .neut/generated/prd/prd_neutron-os-executive.docx
 ```
 
-## Features
+Generated `.docx` files are written to `.neut/generated/` (gitignored).
 
-- **Mermaid diagrams** rendered via mermaid.ink API with caching
-- **Internal hyperlinks** with bookmarks (Cmd/Ctrl+Click to navigate)
-- **Professional formatting** (tables, code blocks, blockquotes)
-- **Automatic scaling** for diagrams exceeding page width
+## Legacy Scripts (deprecated)
 
-## Output
-
-Generated `.docx` files go to `generated/` subdirectory, organized by category.
+| Script | Status | Replacement |
+|--------|--------|-------------|
+| `md_to_docx.py` | Deprecated | `neut pub generate <file>` |
+| `generate_all_docs.py` | Deprecated | `neut pub publish --all` |
+| `pdf_to_text.py` | Still useful | No replacement yet |
 
 ## Notes
 
-- Clear `.diagram_cache.json` to force diagram regeneration
-- Run from source file's directory for correct relative link resolution
+- `generated/` subdirectory is gitignored — generated artifacts don't belong in version control
 - Archived tools and one-offs are in `../_archive/`

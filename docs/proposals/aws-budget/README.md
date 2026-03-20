@@ -2,7 +2,7 @@
 
 This directory contains the Dr. Clarno AWS cloud compute budget proposal structured as a
 Publisher-native document. It serves as the canonical working example for the Publisher
-system (see [spec §19](../../specs/neutron-os-publisher-spec.md)).
+system (see [spec §19](../../tech-specs/spec-publisher.md)).
 
 ## Document Structure
 

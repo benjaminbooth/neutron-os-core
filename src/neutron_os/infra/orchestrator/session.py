@@ -7,7 +7,7 @@ Usage:
     store = SessionStore()
     session = store.create()
     session.add_message("user", "Publish the executive PRD")
-    session.add_message("assistant", "I'll publish docs/requirements/prd_neutron-os-executive.md")
+    session.add_message("assistant", "I'll publish docs/requirements/prd-executive.md")
     store.save(session)
 
     # Resume later

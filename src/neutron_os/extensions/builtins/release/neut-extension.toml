@@ -1,0 +1,13 @@
+[extension]
+name = "release"
+version = "0.4.1"
+description = "Version bumping, tagging, and release automation"
+author = "NeutronOS"
+builtin = true
+kind = "utility"
+module = "platform"
+
+[[cli.commands]]
+noun = "release"
+module = "neutron_os.extensions.builtins.release.cli"
+description = "Cut a release — bump version, tag, and push"

@@ -950,6 +950,216 @@ idaholab/DeepLynx/
 | 0.2 | 2026-01-15 | UT Team | **Major revision**: Added timeseries capabilities, INL TRIGA context |
 | 0.3 | 2026-01-28 | Ben Booth | **Architectural refactor**: Shifted from tight coupling to plugin architecture |
 | 0.4 | 2026-02-05 | Ben Booth | **Verification**: Confirmed assessment accuracy against Ryan Stewart's AGN-201 DT paper (Annals of Nuclear Energy, 2025) and DeepLynx Nexus v2 codebase. Key confirmation: DeepLynx uses DuckDB for timeseries (batch SQL), SignalR for events—validates "near real time" characterization from the paper. |
+| 0.5 | 2026-03-17 | Ben Booth | **Deep Codebase Analysis**: Complete review of DeepLynx Nexus v2 C# codebase (389 files). See Section 8.5 for detailed technical findings including DuckDB timeseries implementation, data model architecture, and MCP server capabilities. |
+
+---
+
+## 8.5 Deep Codebase Analysis (March 2026)
+
+### 8.5.1 Repository Statistics
+
+| Metric | Value |
+|--------|-------|
+| **Total C# Files** | 389 |
+| **Business Logic Files** | 34 (`deeplynx.business/`) |
+| **Data Model Files** | 26 (`deeplynx.datalayer/Models/`) |
+| **API Controllers** | 36 (`deeplynx.api/Controllers/`) |
+| **Interface Definitions** | 35 (`deeplynx.interfaces/`) |
+
+### 8.5.2 Core Data Model Architecture
+
+The data model uses Entity Framework with JSONB properties stored in PostgreSQL:
+
+**Record.cs** (Instance Layer)
+```csharp
+public class Record : EntityBase
+{
+    public long ClassId { get; set; }              // FK to ontology type
+    public JsonDocument? Properties { get; set; }  // Schemaless JSONB
+    public List<Edge> OriginEdges { get; set; }    // Outgoing relationships
+    public List<Edge> DestinationEdges { get; set; }  // Incoming relationships
+    public virtual Class? Class { get; set; }      // Navigation property
+}
+```
+
+**Class.cs** (Schema Layer)
+```csharp
+public class Class : EntityBase
+{
+    public string Name { get; set; }               // e.g., "Reactor", "Sensor"
+    public JsonDocument? Properties { get; set; }  // Property definitions
+    public long? ParentId { get; set; }           // Inheritance support
+    public virtual List<Record>? Records { get; set; }  // Instances
+}
+```
+
+**Edge.cs** (Relationship Instance)
+```csharp
+public class Edge : EntityBase
+{
+    public long OriginRecordId { get; set; }       // Source node
+    public long DestinationRecordId { get; set; } // Target node
+    public long RelationshipId { get; set; }      // Typed relationship
+    public JsonDocument? Properties { get; set; }  // Edge properties
+}
+```
+
+**Relationship.cs** (Relationship Type)
+```csharp
+public class Relationship : EntityBase
+{
+    public string Name { get; set; }               // e.g., "contains", "monitors"
+    public long OriginClassId { get; set; }       // Valid source type
+    public long DestinationClassId { get; set; }  // Valid target type
+}
+```
+
+### 8.5.3 Timeseries Implementation (Critical Finding)
+
+**DeepLynx uses DuckDB for timeseries queries** - the same technology in NeutronOS's stack.
+
+From `TimeseriesBusiness.cs` (1,128 lines):
+
+```csharp
+// Creates DuckDB connection for each datasource
+private async Task<DuckDBConnection> GetDuckDBConnection(long dataSourceId)
+{
+    var path = GetDuckDBPath(dataSourceId);
+    return new DuckDBConnection($"Data Source={path}");
+}
+
+// Uploads CSV/Parquet files to S3-compatible storage
+public async Task<string> UploadFile(long userId, long orgId, long projectId, 
+    long dataSourceId, IFormFile file)
+{
+    // Stores file in ObjectStorage (MinIO/S3)
+    var objectStoragePath = await _objectStorageService.Upload(file, ...);
+    
+    // Creates DuckDB table from file
+    await CreateOrAppendTable(dataSourceId, file.FileName, objectStoragePath);
+    return objectStoragePath;
+}
+
+// Queries timeseries via DuckDB SQL
+public async Task<string> QueryTimeseries(long userId, TimeseriesQueryRequestDto request,
+    long orgId, long projectId, long dataSourceId, string fileType)
+{
+    using var conn = await GetDuckDBConnection(dataSourceId);
+    var result = await conn.ExecuteAsync(request.SqlQuery);  // Raw SQL execution
+    return FormatResult(result, fileType);  // CSV or Parquet output
+}
+```
+
+**Key Implications:**
+- DeepLynx stores timeseries as **files** (CSV/Parquet) in object storage
+- DuckDB is used for **batch queries**, not real-time streaming
+- Each DataSource gets its own DuckDB database file
+- Supports chunked uploads for large files
+
+### 8.5.4 Graph Traversal Implementation
+
+From `GraphBusiness.cs`:
+
+```csharp
+public async Task<List<RecordWithEdges>> TraverseGraph(
+    long startRecordId, 
+    string relationshipType,
+    int maxDepth = 3)  // Hard-coded limit
+{
+    // BFS traversal up to 3 levels
+    // Returns records with their edges at each level
+}
+```
+
+**Limitation:** Graph traversal is limited to 3 levels deep - sufficient for component hierarchy but not deep lineage analysis.
+
+### 8.5.5 MCP Server Implementation
+
+The MCP server (`deeplynx.mcp/`) is minimal:
+
+```
+deeplynx.mcp/
+├── Program.cs           # Server entry point
+├── tools/
+│   ├── ProjectTools.cs  # GetAllOrganizations, GetAllProjects
+│   └── RecordTools.cs   # CreateRecord, GetRecords, SearchRecords
+└── helpers/
+```
+
+**Available MCP Tools:**
+- `GetAllOrganizations` - List organizations
+- `GetAllProjects` - List projects in an organization
+- `CreateRecord` - Create a new record
+- `GetRecords` - Get records by class
+- `SearchRecords` - Search records by properties
+
+**Notable Gaps:**
+- No timeseries query tools
+- No graph traversal tools
+- No relationship management tools
+- No safety/limits query tools
+
+### 8.5.6 Events vs. Real-Time Streaming
+
+From `EventBusiness.cs` and `SubscriptionBusiness.cs`:
+
+```csharp
+public class Event : EntityBase
+{
+    public string EventType { get; set; }    // "record_created", "record_updated"
+    public long? RecordId { get; set; }
+    public JsonDocument? Payload { get; set; }
+}
+
+public class Subscription : EntityBase
+{
+    public long UserId { get; set; }
+    public string EventType { get; set; }    // Subscribe to specific event types
+    public string? NotificationUrl { get; set; }  // Webhook delivery
+}
+```
+
+**This is NOT real-time streaming.** Events are stored in PostgreSQL and delivered via webhooks. For real-time needs, NeutronOS's Kafka/Redpanda architecture is required.
+
+### 8.5.7 API Surface Area
+
+| Controller | Endpoints | Purpose |
+|------------|-----------|---------|
+| **RecordController** | 24KB | CRUD for records, bulk operations |
+| **EdgeController** | 17KB | Relationship instance management |
+| **ProjectController** | 16KB | Project lifecycle, settings |
+| **TimeseriesController** | 16KB | Upload, query, append timeseries |
+| **SubscriptionController** | 15KB | Event subscription management |
+| **FileController** | 14KB | File upload/download |
+| **OrganizationController** | 13KB | Org management, membership |
+| **ClassController** | 10KB | Ontology type management |
+| **RelationshipController** | 11KB | Relationship type management |
+| **SensitivityLabelController** | 9KB | Data classification labels |
+
+### 8.5.8 Architecture Assessment Summary
+
+| Aspect | DeepLynx Approach | NeutronOS Approach | Integration Impact |
+|--------|-------------------|-------------------|-------------------|
+| **Timeseries Storage** | DuckDB + S3 files | DuckDB + Iceberg | ✅ Same technology - easy bridge |
+| **Graph Model** | PostgreSQL + EF | PostgreSQL + JOINs | ⚠️ Different patterns |
+| **Real-time** | Webhooks (async) | Kafka/Redpanda | ⚠️ NeutronOS required for streaming |
+| **AI Integration** | Basic MCP server | Full MCP server | ⚠️ NeutronOS more capable |
+| **Ontology** | Native (Class/Relationship) | YAML schemas | ✅ DeepLynx has mature ontology |
+| **Audit Trail** | Ledger tables | Iceberg time-travel | ✅ Both have solutions |
+
+### 8.5.9 Recommendation: Learn and Complement
+
+Based on this deep analysis:
+
+1. **Don't reinvent ontology management** - DeepLynx's Class/Relationship model is mature; consider adopting their vocabulary for reactor ontologies
+
+2. **Leverage DuckDB alignment** - Both systems use DuckDB; this is a natural bridge point for timeseries data exchange
+
+3. **NeutronOS required for real-time** - DeepLynx's event system is batch-oriented; streaming-first architecture (ADR-007) remains critical
+
+4. **Expand MCP capabilities** - DeepLynx's MCP server is minimal; NeutronOS should lead on AI agent tooling
+
+5. **Plugin architecture validated** - DeepLynx as optional backend for ConfigurationPlugin makes sense; it excels at structure/relationships, NeutronOS excels at operations/analytics
 
 ---
 

@@ -1,10 +1,10 @@
-"""Tests for neutron_os.extensions.builtins.chat_agent.tools_ext.review — conversational review chat tools."""
+"""Tests for neutron_os.extensions.builtins.neut_agent.tools_ext.review — conversational review chat tools."""
 
 import pytest
 from pathlib import Path
 
 from neutron_os.review.models import ReviewSessionStore
-from neutron_os.extensions.builtins.chat_agent.tools_ext.review import (
+from neutron_os.extensions.builtins.neut_agent.tools_ext.review import (
     execute,
     _get_session,
 )
@@ -18,7 +18,7 @@ Week of 2026-03-04: 10 signals across 3 initiatives.
 
 ### Progress
 
-- Published 8 documents to docflow.
+- Published 8 documents to publisher.
 
 ## TRIGA Digital Twin
 
@@ -39,7 +39,7 @@ Week of 2026-03-04: 10 signals across 3 initiatives.
 @pytest.fixture(autouse=True)
 def _reset_module_state():
     """Reset module-level state between tests."""
-    import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+    import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
     mod._store = None
     mod._active_session = None
     yield
@@ -58,7 +58,7 @@ def draft_file(tmp_path):
 
 class TestReviewStart:
     def test_start_with_file(self, draft_file, tmp_path, monkeypatch):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
 
         result = execute("review_start", {"file": str(draft_file)})
@@ -69,7 +69,7 @@ class TestReviewStart:
         assert "next_item" in result
 
     def test_start_returns_first_item(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
 
         result = execute("review_start", {"file": str(draft_file)})
@@ -78,14 +78,14 @@ class TestReviewStart:
         assert "Weekly Summary" in next_item["content"]
 
     def test_start_no_file_found(self, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
 
         result = execute("review_start", {"file": "/nonexistent/file.md"})
         assert "error" in result
 
     def test_start_resumes_existing(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         store = ReviewSessionStore(state_path=tmp_path / "state.json")
         mod._store = store
 
@@ -99,7 +99,7 @@ class TestReviewStart:
         assert result2["session_id"] == session_id
 
     def test_start_fresh_creates_new(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         store = ReviewSessionStore(state_path=tmp_path / "state.json")
         mod._store = store
 
@@ -114,7 +114,7 @@ class TestReviewStart:
 
 class TestReviewGetItem:
     def test_get_next_pending(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -123,7 +123,7 @@ class TestReviewGetItem:
         assert result["index"] == 0
 
     def test_get_by_index(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -131,7 +131,7 @@ class TestReviewGetItem:
         assert "TRIGA" in result["heading"]
 
     def test_get_out_of_range(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -143,7 +143,7 @@ class TestReviewGetItem:
         assert "error" in result
 
     def test_all_reviewed_complete(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -159,7 +159,7 @@ class TestReviewGetItem:
 
 class TestReviewDecide:
     def test_accept_item(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         start = execute("review_start", {"file": str(draft_file)})
         item_id = start["next_item"]["item_id"]
@@ -169,7 +169,7 @@ class TestReviewDecide:
         assert result["progress"] == "1/4"
 
     def test_edit_item(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         start = execute("review_start", {"file": str(draft_file)})
         item_id = start["next_item"]["item_id"]
@@ -183,7 +183,7 @@ class TestReviewDecide:
         assert result["decision"] == "edited"
 
     def test_reject_item(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         start = execute("review_start", {"file": str(draft_file)})
         item_id = start["next_item"]["item_id"]
@@ -192,7 +192,7 @@ class TestReviewDecide:
         assert result["decision"] == "rejected"
 
     def test_edit_requires_content(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         start = execute("review_start", {"file": str(draft_file)})
         item_id = start["next_item"]["item_id"]
@@ -201,7 +201,7 @@ class TestReviewDecide:
         assert "error" in result
 
     def test_invalid_status(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         start = execute("review_start", {"file": str(draft_file)})
         item_id = start["next_item"]["item_id"]
@@ -210,7 +210,7 @@ class TestReviewDecide:
         assert "error" in result
 
     def test_unknown_item_id(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -218,7 +218,7 @@ class TestReviewDecide:
         assert "error" in result
 
     def test_returns_next_item(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         start = execute("review_start", {"file": str(draft_file)})
         item_id = start["next_item"]["item_id"]
@@ -228,7 +228,7 @@ class TestReviewDecide:
         assert "NeutronOS" in result["next_item"]["heading"]
 
     def test_last_item_signals_complete(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -242,7 +242,7 @@ class TestReviewDecide:
         assert result.get("complete") is True
 
     def test_persists_to_store(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         store = ReviewSessionStore(state_path=tmp_path / "state.json")
         mod._store = store
         start = execute("review_start", {"file": str(draft_file)})
@@ -262,7 +262,7 @@ class TestReviewDecide:
 
 class TestReviewProgress:
     def test_with_active_session(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -273,7 +273,7 @@ class TestReviewProgress:
         assert len(result["items"]) == 4
 
     def test_no_session(self, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
 
         result = execute("review_progress", {})
@@ -284,7 +284,7 @@ class TestReviewProgress:
 
 class TestReviewComplete:
     def test_writes_approved_file(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -300,7 +300,7 @@ class TestReviewComplete:
         assert "approved_path" in result or "message" in result
 
     def test_all_rejected_returns_message(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 
@@ -316,7 +316,7 @@ class TestReviewComplete:
         assert "error" in result
 
     def test_summary_counts(self, draft_file, tmp_path):
-        import neutron_os.extensions.builtins.chat_agent.tools_ext.review as mod
+        import neutron_os.extensions.builtins.neut_agent.tools_ext.review as mod
         mod._store = ReviewSessionStore(state_path=tmp_path / "state.json")
         execute("review_start", {"file": str(draft_file)})
 

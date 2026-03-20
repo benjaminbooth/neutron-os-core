@@ -25,7 +25,7 @@ Extensions are discovered in priority order:
 ## Extension Kinds
 
 - `agent` — Has LLM autonomy (chat, sense, mo, doctor)
-- `tool` — Capability invoked by agents or CLI (docflow, db, demo)
+- `tool` — Capability invoked by agents or CLI (publisher, db, demo)
 - `utility` — Platform plumbing (status, test, update)
 
 ## AI Agent Policy

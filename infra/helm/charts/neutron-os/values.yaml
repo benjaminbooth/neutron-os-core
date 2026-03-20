@@ -1,8 +1,8 @@
 # NeutronOS Helm Chart - Default Values
 # Override for specific environments: values-local.yaml, values-stage.yaml, values-prod.yaml
 #
-# Extracted and adapted from docs/_tools/docflow/deploy/helm/docflow/
-# as part of DocFlow → Sense consolidation (Step 0)
+# Extracted and adapted from docs/_tools/publisher/deploy/helm/publisher/
+# as part of Publisher → Sense consolidation (Step 0)
 
 # =============================================================================
 # Global Configuration
@@ -23,10 +23,10 @@ image:
   pullSecrets: []
 
 # Sense Server (THE agent - handles RAG, signal processing, media library)
-sense:
+signal:
   enabled: true
   image:
-    repository: ghcr.io/neutron-os/sense
+    repository: ghcr.io/neutron-os/signal
     tag: ""  # Defaults to Chart appVersion
   
   replicas: 1
@@ -162,7 +162,7 @@ persistence:
 service:
   type: ClusterIP
   
-  sense:
+  signal:
     port: 8765
   
   api:
@@ -184,7 +184,7 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-          service: sense
+          service: signal
   
   tls: []
   #  - secretName: neut-tls
@@ -243,6 +243,45 @@ secrets:
   # Names of existing secrets
   database: ""  # Contains 'url' key with connection string
   llm: ""       # Contains 'api_key' for OpenAI/Anthropic
+
+# =============================================================================
+# Ollama — self-hosted LLM (disabled by default; enabled in values-rascal.yaml)
+# =============================================================================
+
+ollama:
+  enabled: false
+
+  image:
+    repository: ollama/ollama
+    tag: "latest"
+
+  # Models to pull on first deploy (init container). Confirm tags via `ollama list`.
+  models: []
+
+  # How long to keep models loaded in VRAM. "-1" = forever. "0" = unload immediately.
+  keepAlive: "5m"
+
+  gpu:
+    enabled: false
+
+  resources:
+    requests:
+      memory: 2Gi
+      cpu: 500m
+    limits:
+      memory: 8Gi
+      cpu: 4000m
+
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+
+  # Expose Ollama outside the cluster via NodePort (for neut CLI access from host).
+  # Disabled by default; enable in environment-specific values files.
+  externalAccess:
+    enabled: false
+    nodePort: 31434
 
 # =============================================================================
 # LLM Configuration
