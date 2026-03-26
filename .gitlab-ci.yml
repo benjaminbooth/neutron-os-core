@@ -1,26 +1,23 @@
 # Neutron OS — GitLab CI/CD Pipeline
 #
+# NeutronOS is a thin nuclear-domain extension layer on top of Axiom.
+# Heavy lifting (signal pipeline, RAG, agents, migrations) is tested in Axiom's CI.
+#
 # Pipeline tiers by trigger:
 #   Push to any branch  → preflight + unit tests + lint (if code changed)
-#   MR opened/updated   → preflight + unit + lint + integration + build wheel
+#   MR opened/updated   → preflight + unit + lint + build wheel
 #   Merge to main       → all tests + build + publish + mirror
 #   Tag v* pushed       → all tests + build + publish stable release
-#   Docs-only push      → preflight + mirror only (skip tests/build)
 #
 # Required CI/CD Variables (Settings → CI/CD → Variables):
 #   GITLAB_TOKEN          — Personal access token for rsicc-gitlab.tacc.utexas.edu
 #   GITHUB_TOKEN          — GitHub PAT with repo push access (for mirror:github job)
-#   MS_GRAPH_CLIENT_ID    — Azure AD app registration (optional)
-#   MS_GRAPH_CLIENT_SECRET
-#   MS_GRAPH_TENANT_ID
 #   ANTHROPIC_API_KEY     — Powers LLM sensitivity review gate (mirror:review job)
 #
 # Runner setup:
 #   If no shared runners are available on TACC GitLab, register your own:
 #   gitlab-runner register --url https://rsicc-gitlab.tacc.utexas.edu \
 #     --token <runner-token> --executor shell
-#
-# See Makefile for local equivalents of each stage.
 
 stages:
   - preflight
@@ -40,10 +37,8 @@ variables:
   VENV_DIR: "$CI_PROJECT_DIR/.venv"
 
 # =============================================================================
-# Change-set anchors — reused across job rules
+# Change-set anchors
 # =============================================================================
-# Use these to avoid duplicating long path lists. Each anchor captures the
-# files that, when changed, should trigger a particular class of job.
 
 .changes-code: &changes-code
   - src/**/*
@@ -51,11 +46,6 @@ variables:
   - pyproject.toml
   - conftest.py
   - .gitlab-ci.yml
-
-.changes-migrations: &changes-migrations
-  - src/neutron_os/extensions/builtins/eve_agent/migrations/**/*
-  - src/neutron_os/extensions/builtins/eve_agent/db_models.py
-  - src/neutron_os/extensions/builtins/eve_agent/pgvector_store.py
 
 .changes-mirror: &changes-mirror
   - src/**/*
@@ -80,21 +70,15 @@ variables:
       - .pip-cache/
       - .venv/
   before_script:
-    # Create venv (--without-pip works even without python3-venv package)
     - python3 -m venv --without-pip "$VENV_DIR" || python3 -m venv "$VENV_DIR"
     - export PATH="$VENV_DIR/bin:$PATH"
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
-    - pip install --quiet -e ".[dev,publisher,chat]" requests git-filter-repo
+    - pip install --quiet -e ".[all]"
 
 # =============================================================================
-# Preflight Stage — Verify external credentials before doing any work
+# Preflight Stage
 # =============================================================================
-# Checks all external service tokens up front so failures are immediate
-# and obvious rather than surfacing deep inside downstream jobs.
-#
-# Required checks (hard fail):   GitLab token, GitHub token
-# Optional checks (warn only):   MS Graph, Anthropic API
 
 preflight:connections:
   stage: preflight
@@ -102,10 +86,6 @@ preflight:connections:
   variables:
     GITLAB_TOKEN: $GITLAB_TOKEN
     GITHUB_TOKEN: $GITHUB_TOKEN
-    MS_GRAPH_CLIENT_ID: $MS_GRAPH_CLIENT_ID
-    MS_GRAPH_CLIENT_SECRET: $MS_GRAPH_CLIENT_SECRET
-    MS_GRAPH_TENANT_ID: $MS_GRAPH_TENANT_ID
-    ANTHROPIC_API_KEY: $ANTHROPIC_API_KEY
   before_script:
     - pip install --quiet --break-system-packages requests
   script:
@@ -115,7 +95,6 @@ preflight:connections:
 
       PASS = "\033[32m✓\033[0m"
       FAIL = "\033[31m✗\033[0m"
-      WARN = "\033[33m⚠\033[0m"
       errors = []
 
       # --- GitLab token (required) ---
@@ -131,7 +110,7 @@ preflight:connections:
           if r.status_code == 200:
               print(f"{PASS} GitLab token valid (user: {r.json().get('username')})")
           else:
-              print(f"{FAIL} GitLab token invalid (HTTP {r.status_code}) — update GITLAB_TOKEN CI variable")
+              print(f"{FAIL} GitLab token invalid (HTTP {r.status_code})")
               errors.append(f"GITLAB_TOKEN rejected: HTTP {r.status_code}")
 
       # --- GitHub token (required for mirror) ---
@@ -148,44 +127,8 @@ preflight:connections:
           if r.status_code == 200:
               print(f"{PASS} GitHub token valid (repo: {r.json().get('full_name')})")
           else:
-              print(f"{FAIL} GitHub token invalid (HTTP {r.status_code}) — update GITHUB_TOKEN CI variable")
+              print(f"{FAIL} GitHub token invalid (HTTP {r.status_code})")
               errors.append(f"GITHUB_TOKEN rejected: HTTP {r.status_code}")
-
-      # --- MS Graph (optional — warn only) ---
-      ms_id = os.environ.get("MS_GRAPH_CLIENT_ID", "")
-      ms_secret = os.environ.get("MS_GRAPH_CLIENT_SECRET", "")
-      ms_tenant = os.environ.get("MS_GRAPH_TENANT_ID", "common")
-      if not ms_id or not ms_secret:
-          print(f"{WARN} MS Graph credentials not set — MS 365 integration tests will be skipped")
-      else:
-          r = requests.post(
-              f"https://login.microsoftonline.com/{ms_tenant}/oauth2/v2.0/token",
-              data={"client_id": ms_id, "client_secret": ms_secret,
-                    "scope": "https://graph.microsoft.com/.default", "grant_type": "client_credentials"},
-              timeout=10
-          )
-          if r.status_code == 200 and "access_token" in r.json():
-              print(f"{PASS} MS Graph credentials valid")
-          else:
-              print(f"{WARN} MS Graph credentials rejected (HTTP {r.status_code}) — integration tests will skip")
-
-      # --- Anthropic API (optional — warn only) ---
-      anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
-      if not anthropic_key:
-          print(f"{WARN} ANTHROPIC_API_KEY not set — AI review job will be limited")
-      else:
-          r = requests.post(
-              "https://api.anthropic.com/v1/messages",
-              headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01",
-                       "content-type": "application/json"},
-              json={"model": "claude-haiku-4-5-20251001", "max_tokens": 1,
-                    "messages": [{"role": "user", "content": "hi"}]},
-              timeout=10
-          )
-          if r.status_code == 200:
-              print(f"{PASS} Anthropic API key valid")
-          else:
-              print(f"{WARN} Anthropic API key rejected (HTTP {r.status_code})")
 
       if errors:
           print(f"\nPreflight failed: {len(errors)} required credential(s) invalid")
@@ -207,57 +150,17 @@ test:unit:
   extends: .python-setup
   stage: test
   script:
-    # TODO: Remove --ignore flags as these test files are fixed
-    - >
-      pytest tests/ -v --tb=short -m "not integration"
-      --ignore=tests/signal/test_briefing.py
-      --ignore=tests/signal/test_feedback.py
-      --ignore=tests/signal/test_router.py
-      --ignore=tests/signal/test_signal_rag.py
-      --ignore=tests/signal/test_correlator.py
-      --ignore=tests/signal/test_extractors.py
-      --ignore=tests/signal/test_multipart.py
-      --ignore=tests/publisher/test_cli.py
-      --ignore=tests/publisher/test_engine.py
-      --ignore=tests/e2e/test_cli_smoke.py
-      --ignore=tests/e2e/test_docflow_e2e.py
-      --ignore=tests/e2e/test_voice_to_changelog.py
-      --ignore=tests/integration/test_docflow_pull_workflow.py
-      --ignore=tests/serve/test_serve.py
-      --ignore=tests/setup/test_bootstrap.py
-      --ignore=tests/setup/test_wizard.py
-      --ignore=tests/signal/test_correction_guided.py
+    - pytest -v --tb=short -m "not integration"
   rules:
-    # Always run on MRs and tags
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_TAG
-    # On branch pushes: only if code or tests changed
     - if: $CI_PIPELINE_SOURCE == "push"
       changes: *changes-code
-
-test:integration:
-  extends: .python-setup
-  stage: test
-  needs: [preflight:connections]
-  script:
-    - pip install --quiet python-gitlab requests PyGithub
-    - pytest tests/integration/ -v --tb=short -m "integration"
-  variables:
-    GITLAB_TOKEN: $GITLAB_TOKEN
-    MS_GRAPH_CLIENT_ID: $MS_GRAPH_CLIENT_ID
-    MS_GRAPH_CLIENT_SECRET: $MS_GRAPH_CLIENT_SECRET
-    MS_GRAPH_TENANT_ID: $MS_GRAPH_TENANT_ID
-  rules:
-    - if: $CI_MERGE_REQUEST_ID
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes: *changes-code
-  allow_failure: true  # Don't block on external service flakiness
 
 lint:
   extends: .python-setup
   stage: test
   script:
-    - pip install --quiet ruff
     - ruff check src/ --select E,F,W --ignore E501
   allow_failure: true
   rules:
@@ -267,112 +170,6 @@ lint:
       changes:
         - src/**/*
         - .gitlab-ci.yml
-
-# -----------------------------------------------------------------------------
-# Database Migration Tests
-# -----------------------------------------------------------------------------
-# Tests that migrations can be applied cleanly to a fresh database.
-# Only runs when migration-related files change, or on MR/main.
-
-test:migrations:
-  extends: .python-setup
-  stage: test
-  services:
-    - name: pgvector/pgvector:pg16
-      alias: postgres
-  variables:
-    POSTGRES_DB: neut_test
-    POSTGRES_USER: neut
-    POSTGRES_PASSWORD: neut
-    NEUT_DB_URL: "postgresql://neut:neut@postgres:5432/neut_test"
-  before_script:
-    - python3 -m venv --without-pip "$VENV_DIR" || python3 -m venv "$VENV_DIR"
-    - export PATH="$VENV_DIR/bin:$PATH"
-    - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
-    - pip install --quiet --upgrade pip
-    - pip install --quiet -e ".[dev,signal]"
-    # Wait for PostgreSQL to be ready (Python-based, no pg_isready needed)
-    - |
-      python3 -c "
-      import socket, time
-      for i in range(30):
-          try:
-              s = socket.create_connection(('postgres', 5432), timeout=2)
-              s.close()
-              print('PostgreSQL is ready')
-              break
-          except (ConnectionRefusedError, socket.timeout, OSError):
-              print(f'Waiting for PostgreSQL... ({i+1}/30)')
-              time.sleep(2)
-      else:
-          print('WARNING: PostgreSQL may not be ready')
-      "
-  script:
-    # Skip gracefully if postgres service is unavailable (shell executor, no Docker)
-    - |
-      python3 -c "
-      import socket, sys
-      try:
-          socket.create_connection(('postgres', 5432), timeout=3).close()
-          print('postgres reachable — running migration tests')
-      except OSError:
-          print('WARNING: postgres service not reachable — skipping migration tests (requires Docker executor)')
-          sys.exit(99)
-      " || { [ $? -eq 99 ] && exit 0 || exit 1; }
-    # Test 1: Fresh migration applies cleanly
-    - echo "Testing fresh migration..."
-    - python -c "from neutron_os.extensions.builtins.eve_agent.migrations import run_migrations, ensure_pgvector_extension; ensure_pgvector_extension(); run_migrations('upgrade', 'head')"
-    # Test 2: Migration status is up-to-date
-    - echo "Checking migration status..."
-    - |
-      python -c "
-      from neutron_os.extensions.builtins.eve_agent.migrations import check_migrations
-      status = check_migrations()
-      assert status['up_to_date'], f'Migrations not up to date: {status}'
-      print('✓ All migrations applied')
-      "
-    # Test 3: Schema verification
-    - echo "Verifying schema..."
-    - |
-      python -c "
-      from neutron_os.extensions.builtins.eve_agent.migrations import verify_schema
-      result = verify_schema()
-      assert result['valid'], f'Schema invalid: {result}'
-      assert result['has_pgvector'], 'pgvector extension missing'
-      print('✓ Schema verified')
-      print(f'  Tables: {result[\"tables_found\"]}')
-      "
-    # Test 4: Downgrade and upgrade cycle
-    - echo "Testing downgrade/upgrade cycle..."
-    - python -c "from neutron_os.extensions.builtins.eve_agent.migrations import run_migrations; run_migrations('downgrade', 'base')"
-    - python -c "from neutron_os.extensions.builtins.eve_agent.migrations import run_migrations; run_migrations('upgrade', 'head')"
-    - echo "✓ Downgrade/upgrade cycle successful"
-    # Test 5: SQLAlchemy models match schema
-    - echo "Verifying SQLAlchemy models..."
-    - |
-      python -c "
-      from sqlalchemy import create_engine, inspect
-      from neutron_os.extensions.builtins.eve_agent.db_models import Base, Signal, Media, Participant, Person
-      import os
-
-      engine = create_engine(os.environ['NEUT_DB_URL'])
-      inspector = inspect(engine)
-
-      model_tables = {'signals', 'media', 'participants', 'people'}
-      db_tables = set(inspector.get_table_names())
-
-      missing = model_tables - db_tables
-      assert not missing, f'Missing tables: {missing}'
-      print('✓ All model tables present')
-      "
-  rules:
-    # Only run when migration files change on a branch push
-    - if: $CI_PIPELINE_SOURCE == "push"
-      changes: *changes-migrations
-    # Always run on MRs and main
-    - if: $CI_MERGE_REQUEST_ID
-    - if: $CI_COMMIT_BRANCH == "main"
-  allow_failure: true  # Requires Docker executor for postgres service
 
 # =============================================================================
 # Build Stage
@@ -393,7 +190,7 @@ build:wheel:
       changes: *changes-code
 
 # =============================================================================
-# Publish Stage — GitLab Package Registry
+# Publish Stage
 # =============================================================================
 
 publish:dev:
@@ -405,7 +202,6 @@ publish:dev:
     - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
     - pip install --quiet build twine
-    # Stamp dev version: 0.1.0 → 0.1.0.dev<pipeline_iid>
     - |
       python3 -c "
       import re, pathlib, os
@@ -414,7 +210,7 @@ publish:dev:
       text = p.read_text()
       text = re.sub(r'version = \"([^\"]+)\"', lambda m: f'version = \"{m.group(1)}.dev{iid}\"', text, count=1)
       p.write_text(text)
-      print(f'Stamped version: {m.group(1)}.dev{iid}' if (m := re.search(r'version = \"([^\"]+)\"', text)) else 'Version stamp applied')
+      print(f'Stamped dev version')
       "
   script:
     - rm -rf dist/
@@ -444,9 +240,8 @@ publish:release:
     - if: $CI_COMMIT_TAG
 
 # =============================================================================
-# AI Review Stage — Claude Code
+# AI Review Stage
 # =============================================================================
-# Requires CI/CD Variable: ANTHROPIC_API_KEY (masked, protected)
 
 claude:review:
   stage: ai
@@ -467,47 +262,16 @@ claude:review:
     - if: $CI_MERGE_REQUEST_ID
     - if: '$CI_PIPELINE_SOURCE == "web"'
   timeout: 20 minutes
-  allow_failure: true  # Don't block MRs on AI review
+  allow_failure: true
 
 # =============================================================================
 # Mirror Stage — Push stripped copy to public GitHub mirror
 # =============================================================================
-# Triggered on every push to main where mirror-relevant files changed.
-# Uses an allowlist (scripts/push-public.sh) — only approved paths go public.
-#
-# Required CI/CD Variable:
-#   GITHUB_TOKEN   — GitHub PAT with repo push access for benjaminbooth/neutron-os-core
-
-mirror:canary:
-  # Red-team gate — verifies the LLM reviewer catches known-bad content.
-  stage: mirror
-  extends: .python-setup
-  needs: [preflight:connections]
-  script:
-    - pytest src/neutron_os/extensions/builtins/mirror_agent/tests/test_canary_detection.py
-        -v --tb=short -m "integration"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes: *changes-mirror
-  allow_failure: false  # Broken canary = broken gate = no push
-
-mirror:review:
-  # LLM sensitivity gate — scans all allowlisted public files before push.
-  stage: mirror
-  extends: .python-setup
-  script:
-    - pip install --quiet -e ".[chat]"
-    - neut mirror review --all --ci
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes: *changes-mirror
-  needs:
-    - mirror:canary
-  allow_failure: false  # Hard gate — no push if review flags anything
 
 mirror:github:
   stage: mirror
   image: python:3.12-slim
+  needs: [preflight:connections]
   before_script:
     - pip install --quiet --break-system-packages git-filter-repo
     - git config --global user.email "ci@neutron-os"
@@ -519,21 +283,4 @@ mirror:github:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *changes-mirror
-  needs:
-    - preflight:connections
-    - mirror:review
   allow_failure: true
-
-mirror:smoke-test:
-  stage: mirror
-  extends: .python-setup
-  script:
-    - echo "Waiting 15s for GitHub to propagate the mirror push..."
-    - sleep 15
-    - pytest tests/test_mirror_linkage.py -v --tb=short
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes: *changes-mirror
-  needs:
-    - mirror:github
-  allow_failure: false

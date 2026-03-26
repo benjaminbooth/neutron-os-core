@@ -1,11 +1,11 @@
 [project]
 name = "neutron-os"
-version = "0.6.0"
+version = "0.6.1"
 description = "Nuclear facility digital operations platform — extends Axiom"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
-    "axiom @ git+https://github.com/benjaminbooth/axiom.git",
+    "axiom @ git+https://github.com/benjaminbooth/axiom.git@v0.1.1",
 ]
 
 [project.optional-dependencies]
