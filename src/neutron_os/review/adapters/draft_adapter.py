@@ -12,7 +12,6 @@ Extra commands beyond the standard set:
 
 from __future__ import annotations
 
-import hashlib
 import os
 import secrets
 import subprocess
@@ -21,6 +20,7 @@ from pathlib import Path
 
 # ── constants ────────────────────────────────────────────────────────
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.hash_utils import MEDIUM, fingerprint
 from neutron_os.review.models import (
     ReviewItem,
     ReviewSession,
@@ -67,7 +67,7 @@ def parse_draft_sections(content: str) -> list[ReviewItem]:
         body = "\n".join(section_lines).strip()
         if not body:
             continue
-        item_id = hashlib.sha256(body.encode()).hexdigest()[:12]
+        item_id = fingerprint(body, length=MEDIUM)
         items.append(ReviewItem(
             item_id=item_id,
             heading=heading,

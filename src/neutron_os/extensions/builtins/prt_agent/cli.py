@@ -913,10 +913,6 @@ def _assemble_from_manifest(manifest_path: Path, output_path: Path | None = None
     Returns the path to the assembled file.
     """
     try:
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]  # noqa: F401
         # .compile.yaml is YAML, not TOML
         import yaml as _yaml  # type: ignore[import]
         with open(manifest_path) as f:

@@ -29,7 +29,6 @@ Usage:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from dataclasses import dataclass, field
@@ -37,6 +36,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.hash_utils import LONG, fingerprint
 
 from .models import Signal
 
@@ -55,7 +55,7 @@ def _normalize_text(text: str) -> str:
 def _compute_content_hash(text: str) -> str:
     """Hash normalized text content."""
     normalized = _normalize_text(text)
-    return hashlib.sha256(normalized.encode()).hexdigest()[:16]
+    return fingerprint(normalized, length=LONG)
 
 
 def _extract_key_phrases(text: str, min_length: int = 3) -> set[str]:

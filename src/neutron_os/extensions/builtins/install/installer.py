@@ -90,16 +90,8 @@ class Environment:
 # ---------------------------------------------------------------------------
 
 def _load_toml(path: Path) -> dict:
-    try:
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
-        with open(path, "rb") as f:
-            return tomllib.load(f)
-    except Exception as e:
-        log.warning("Failed to load %s: %s", path, e)
-        return {}
+    from neutron_os.infra.toml_compat import load_toml
+    return load_toml(path)
 
 
 def _parse_environments(data: dict) -> list[Environment]:

@@ -268,19 +268,8 @@ def load_signal_registry(path: Path) -> set[str]:
     if not path.exists():
         return set()
     try:
-        try:
-            import tomllib
-        except ImportError:
-            try:
-                import tomli as tomllib  # type: ignore[no-redef]
-            except ImportError:
-                _internal.warning(
-                    "No TOML parser available — signal registry not loaded. "
-                    "Install tomli: pip install tomli"
-                )
-                return set()
-        with open(path, "rb") as f:
-            data = tomllib.load(f)
+        from neutron_os.infra.toml_compat import load_toml
+        data = load_toml(path)
         return {e["event_type"] for e in data.get("events", []) if "event_type" in e}
     except Exception as exc:
         _internal.warning("Failed to load signal registry from %s: %s", path, exc)

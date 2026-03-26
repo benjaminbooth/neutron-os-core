@@ -15,7 +15,6 @@ Project settings take precedence over global.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -58,16 +57,8 @@ _DEFAULTS: dict[str, Any] = {
 def _load_toml(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
-    try:
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
-        with open(path, "rb") as f:
-            return tomllib.load(f)
-    except Exception as e:
-        print(f"Warning: could not read {path}: {e}", file=sys.stderr)
-        return {}
+    from neutron_os.infra.toml_compat import load_toml
+    return load_toml(path)
 
 
 def _save_toml(path: Path, data: dict[str, Any]) -> None:

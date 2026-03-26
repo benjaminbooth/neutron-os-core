@@ -142,17 +142,13 @@ class LogSinkFactory:
         if not Path(path).exists():
             return []
         try:
-            try:
-                import tomllib
-            except ImportError:
-                import tomli as tomllib  # type: ignore[no-redef]
+            from neutron_os.infra.toml_compat import load_toml
         except ImportError:
             _log.warning("No TOML parser — logging.toml not loaded. pip install tomli")
             return []
 
         try:
-            with open(path, "rb") as f:
-                data = tomllib.load(f)
+            data = load_toml(path)
         except Exception as exc:
             _log.warning("Failed to parse %s: %s", path, exc)
             return []

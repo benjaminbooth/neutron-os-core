@@ -17,11 +17,12 @@ Design notes:
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+
+from neutron_os.infra.hash_utils import LONG, fingerprint
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ def _now_iso() -> str:
 
 def _source_hash(content: str) -> str:
     """Deterministic hash of source content for change detection."""
-    return hashlib.sha256(content.encode()).hexdigest()[:16]
+    return fingerprint(content, length=LONG)
 
 
 # ── data classes ─────────────────────────────────────────────────────

@@ -122,10 +122,7 @@ class TemplateRegistry:
 
     def _load_file(self, path: Path) -> None:
         try:
-            try:
-                import tomllib  # Python 3.11+
-            except ImportError:
-                import tomli as tomllib  # type: ignore[no-redef]
+            from neutron_os.infra.toml_compat import tomllib
             with open(path, "rb") as f:
                 data = tomllib.load(f)
             for raw in data.get("templates", []):

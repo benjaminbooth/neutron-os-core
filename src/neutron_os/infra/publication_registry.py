@@ -31,13 +31,13 @@ Usage:
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.hash_utils import fingerprint_file
 from neutron_os.infra.state import LockedJsonFile
 
 _REGISTRY_PATH = _REPO_ROOT / ".neut" / "publisher" / "publications.json"
@@ -194,6 +194,4 @@ class PublicationRegistry:
 
 def _hash_file(path: Path) -> str:
     """SHA-256 hash of file content."""
-    h = hashlib.sha256()
-    h.update(path.read_bytes())
-    return f"sha256:{h.hexdigest()[:16]}"
+    return f"sha256:{fingerprint_file(path)}"

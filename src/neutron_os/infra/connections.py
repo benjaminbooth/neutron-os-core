@@ -218,15 +218,11 @@ class ConnectionRegistry:
         Legacy method — prefer discover_from_extensions() which uses
         the proper 3-tier extension discovery system.
         """
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]  # noqa: F401
+        from neutron_os.infra.toml_compat import load_toml
 
         for manifest_path in search_dir.rglob("neut-extension.toml"):
             try:
-                with open(manifest_path, "rb") as f:
-                    data = tomllib.load(f)
+                data = load_toml(manifest_path)
             except Exception as e:
                 log.debug("Failed to parse %s: %s", manifest_path, e)
                 continue

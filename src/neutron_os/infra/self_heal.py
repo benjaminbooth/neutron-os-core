@@ -11,7 +11,6 @@ JSONL logging and subscriber dispatch (GitLab issue filing, etc.).
 
 from __future__ import annotations
 
-import hashlib
 import os
 import platform
 import traceback as tb_module
@@ -19,6 +18,7 @@ from argparse import Namespace
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from neutron_os.infra.hash_utils import MEDIUM, fingerprint
 from neutron_os.infra.orchestrator.bus import EventBus
 
 # ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ for _cmd in ["signal", "brief", "chat", "pub", "doc", "rag", "connect", "status"
 def _fingerprint(command: str, error: Exception) -> str:
     """Stable fingerprint for dedup — same command + error type + message pattern."""
     raw = f"{command}:{type(error).__name__}:{str(error)}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:12]
+    return fingerprint(raw, length=MEDIUM)
 
 
 def _collect_environment() -> dict[str, str]:

@@ -223,8 +223,8 @@ class SmartRouter:
                 if line.strip().startswith("-"):
                     personas.append(line.strip()[1:].strip())
 
-        import hashlib
-        content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
+        from neutron_os.infra.hash_utils import LONG, fingerprint
+        content_hash = fingerprint(content, length=LONG)
 
         return PRDTarget(
             path=path,

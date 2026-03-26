@@ -9,12 +9,13 @@ Workflow: load config -> create providers via factory -> generate artifact
 
 from __future__ import annotations
 
-import hashlib
 import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from neutron_os.infra.hash_utils import FULL, fingerprint_file
 
 from .config import PublisherConfig, _state_dir, load_config
 from .factory import PublisherFactory
@@ -142,10 +143,7 @@ class PublisherEngine:
         This is more reliable than hashing the artifact because artifacts
         may contain timestamps or other non-deterministic content.
         """
-        hasher = hashlib.sha256()
-        with open(source_path, 'rb') as f:
-            hasher.update(f.read())
-        return hasher.hexdigest()
+        return fingerprint_file(source_path, length=FULL)
 
     def _has_artifact_changes(self, source_path: Path, doc_id: str) -> bool:
         """Check if the source document has changed since last publication.

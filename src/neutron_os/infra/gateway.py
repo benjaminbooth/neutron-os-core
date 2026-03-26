@@ -398,15 +398,7 @@ class Gateway:
         models_path = providers_path
 
         try:
-            # Use tomllib (Python 3.11+) or tomli
-            try:
-                import tomllib
-            except ImportError:
-                try:
-                    import tomli as tomllib
-                except ImportError:
-                    # No TOML parser available — no providers
-                    return
+            from neutron_os.infra.toml_compat import tomllib
 
             with open(models_path, "rb") as f:
                 config = tomllib.load(f)

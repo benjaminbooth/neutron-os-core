@@ -24,7 +24,6 @@ Threading model:
 
 from __future__ import annotations
 
-import hashlib
 import os
 import random
 import re
@@ -68,6 +67,7 @@ from prompt_toolkit.selection import SelectionState, SelectionType
 from prompt_toolkit.styles import Style
 
 from neutron_os.extensions.builtins.mo_agent import acquire_dir
+from neutron_os.infra.hash_utils import MEDIUM, fingerprint
 
 from .providers.base import RenderProvider
 from .pulse_spinner import (
@@ -595,7 +595,7 @@ def _render_mermaid_svg(code: str, diagram_dir: Path) -> str | None:
     if not _MMDC_PATH:
         return None
 
-    digest = hashlib.sha256(code.encode()).hexdigest()[:12]
+    digest = fingerprint(code, length=MEDIUM)
     input_path = diagram_dir / f"input-{digest}.mmd"
     output_path = diagram_dir / f"diagram-{digest}.svg"
 

@@ -11,12 +11,12 @@ Enabled by default (routing.audit_log = true in settings).
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from datetime import UTC, datetime
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.hash_utils import LONG, fingerprint
 from neutron_os.infra.state import locked_append_jsonl
 
 logger = logging.getLogger(__name__)
@@ -68,4 +68,4 @@ def log_routing_decision(
 
 def hash_query(text: str) -> str:
     """SHA-256 hash of query text (for audit log — no plaintext stored)."""
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+    return fingerprint(text, length=LONG)

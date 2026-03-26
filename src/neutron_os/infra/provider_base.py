@@ -78,12 +78,14 @@ Usage in a @dataclass provider (identity mixin only):
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import uuid
 from abc import ABC
 from pathlib import Path
 from typing import Any
+
+from neutron_os.infra.hash_utils import SHORT
+from neutron_os.infra.hash_utils import fingerprint as hash_fingerprint
 
 _log = logging.getLogger(__name__)
 
@@ -140,8 +142,8 @@ class ProviderIdentityMixin:
             self.uid = str(uuid.uuid4())
             uid_was_generated = True
 
-        fingerprint = "|".join(str(config.get(f, "")) for f in self._fingerprint_fields)
-        self.config_hash = hashlib.sha256(fingerprint.encode()).hexdigest()[:8]
+        fp_text = "|".join(str(config.get(f, "")) for f in self._fingerprint_fields)
+        self.config_hash = hash_fingerprint(fp_text, length=SHORT)
         self.instance_id = uuid.uuid4().hex[:12]
 
         return uid_was_generated

@@ -210,10 +210,7 @@ def parse_manifest(manifest_path: Path) -> Extension:
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest not found: {manifest_path}")
 
-    try:
-        import tomllib
-    except ImportError:
-        import tomli as tomllib  # type: ignore[no-redef]
+    from neutron_os.infra.toml_compat import tomllib
 
     text = manifest_path.read_text(encoding="utf-8")
     data = tomllib.loads(text)

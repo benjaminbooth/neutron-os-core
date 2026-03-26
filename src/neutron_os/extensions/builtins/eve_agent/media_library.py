@@ -22,7 +22,6 @@ Usage:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -36,6 +35,7 @@ from pathlib import Path
 from typing import Literal
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.hash_utils import LONG, fingerprint
 from neutron_os.infra.state import atomic_write
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
@@ -286,7 +286,7 @@ class MediaLibrary:
     def _generate_media_id(self, path: Path) -> str:
         """Generate deterministic ID from file path."""
         content = f"{path.name}|{path.stat().st_size}"
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
+        return fingerprint(content, length=LONG)
 
     def _get_file_duration(self, path: Path) -> float:
         """Get duration of audio/video file using ffprobe."""
