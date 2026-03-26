@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+from datetime import UTC
 from pathlib import Path
 
 import pytest
@@ -197,8 +198,8 @@ class TestGitHubMirrorReachability:
     }
 
     def _get(self, path: str) -> dict:
-        import urllib.request
         import json
+        import urllib.request
         url = f"{self.API_BASE}{path}"
         req = urllib.request.Request(url, headers=self.HEADERS)
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -214,11 +215,11 @@ class TestGitHubMirrorReachability:
 
     def test_mirror_has_recent_commit(self):
         """Main branch should have been pushed within the last 30 days."""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
         data = self._get(f"/repos/{self.GITHUB_REPO}/commits/main")
         date_str = data["commit"]["committer"]["date"]
         pushed_at = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        age = datetime.now(timezone.utc) - pushed_at
+        age = datetime.now(UTC) - pushed_at
         assert age < timedelta(days=30), (
             f"Mirror last pushed {age.days} days ago — mirror job may be broken"
         )

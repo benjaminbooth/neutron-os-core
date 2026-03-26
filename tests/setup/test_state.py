@@ -1,7 +1,6 @@
 """Tests for neutron_os.setup.state."""
 
-from datetime import datetime, timedelta, timezone
-
+from datetime import UTC, datetime, timedelta
 
 from neutron_os.setup.state import (
     SetupState,
@@ -42,7 +41,7 @@ class TestSetupState:
 
     def test_is_stale_old(self):
         old_time = (
-            datetime.now(timezone.utc) - timedelta(days=31)
+            datetime.now(UTC) - timedelta(days=31)
         ).isoformat()
         state = SetupState(created_at=old_time)
         assert state.is_stale() is True
@@ -95,7 +94,7 @@ class TestPersistence:
 
     def test_load_stale_state(self, tmp_path):
         old_time = (
-            datetime.now(timezone.utc) - timedelta(days=31)
+            datetime.now(UTC) - timedelta(days=31)
         ).isoformat()
         state = SetupState(created_at=old_time)
         save_state(state, tmp_path)

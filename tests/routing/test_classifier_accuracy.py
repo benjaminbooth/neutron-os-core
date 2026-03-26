@@ -21,12 +21,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from neutron_os.infra.router import (
-    OllamaClassifier,
-    QueryRouter,
-    RoutingTier,
     SENSITIVITY_BALANCED,
     SENSITIVITY_PERMISSIVE,
     SENSITIVITY_STRICT,
+    OllamaClassifier,
+    QueryRouter,
+    RoutingTier,
 )
 
 _TESTS_DIR = Path(__file__).parent

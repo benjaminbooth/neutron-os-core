@@ -9,12 +9,9 @@ from __future__ import annotations
 import hashlib
 import hmac as hmac_lib
 import json
-import os
 import uuid
-from pathlib import Path
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers

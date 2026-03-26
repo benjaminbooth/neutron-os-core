@@ -11,8 +11,6 @@ from __future__ import annotations
 
 from unittest import mock
 
-import pytest
-
 
 class TestLlmProviderCheck:
     """Tests for check_llm_providers."""
@@ -62,6 +60,7 @@ class TestOllamaCheck:
 
     def test_ollama_running_with_model_is_healthy(self):
         import json
+
         from neutron_os.extensions.builtins.status.cli import HealthChecker, HealthStatus
 
         mock_resp = mock.MagicMock()
@@ -116,7 +115,7 @@ class TestProbeOllama:
     """Tests for Ollama in setup probe."""
 
     def test_ollama_in_dependency_list(self):
-        from neutron_os.setup.probe import _probe_dependencies, ProbeResult
+        from neutron_os.setup.probe import ProbeResult, _probe_dependencies
         result = ProbeResult()
         _probe_dependencies(result)
 

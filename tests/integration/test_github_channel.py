@@ -13,27 +13,27 @@ Requires:
     GITHUB_TOKEN environment variable
 """
 
-from datetime import datetime, timezone
 import json
-import pytest
+from datetime import UTC, datetime
 
+import pytest
 
 pytestmark = pytest.mark.integration
 
 
 class TestGitHubExtractor:
     """Test GitHubExtractor against live API."""
-    
+
     @pytest.fixture
     def extractor(self, github_token):
         """Create extractor with real credentials."""
         from neutron_os.extensions.builtins.eve_agent.extractors.github import GitHubExtractor
         return GitHubExtractor(token=github_token)
-    
+
     def test_extractor_is_available(self, extractor):
         """Verify extractor has valid token."""
         assert extractor.is_available()
-    
+
     def test_fetch_activity_returns_commits(self, extractor):
         """Fetch activity includes recent commits."""
         # Use a known active repo
@@ -45,12 +45,12 @@ class TestGitHubExtractor:
         assert activity.exported_at
         assert activity.repo
         assert activity.owner
-    
+
     def test_extract_from_export(self, extractor, tmp_path):
         """Test extraction from saved JSON export."""
         # Create a mock export using GitHubActivity fields (repo + owner, not repository)
         export_data = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "time_window_days": 7,
             "repo": "repo",
             "owner": "test",
@@ -59,7 +59,7 @@ class TestGitHubExtractor:
                     "sha": "abc123",
                     "message": "Fix critical bug in signal router",
                     "author": "developer@example.com",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "files_changed": ["router.py"],
                     "insertions": 10,
                     "deletions": 5,
@@ -71,7 +71,7 @@ class TestGitHubExtractor:
                     "title": "Add Teams Chat extractor",
                     "state": "merged",
                     "author": "maintainer@example.com",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "labels": ["feature", "teams"],
                     "reviewers": ["reviewer@example.com"],
                 }
@@ -100,32 +100,32 @@ class TestGitHubExtractor:
 
 class TestGitHubFreshness:
     """Test freshness tracking for GitHub channel."""
-    
+
     @pytest.fixture
     def extractor(self, github_token):
         from neutron_os.extensions.builtins.eve_agent.extractors.github import GitHubExtractor
         return GitHubExtractor(token=github_token)
-    
+
     def test_freshness_tracking(self, extractor, freshness_tracker):
         """Verify freshness tracking works."""
         channel = "github"
-        
+
         # Initially not fresh
         assert not freshness_tracker.is_fresh(channel)
-        
+
         # Mark as synced
         freshness_tracker.mark_synced(channel)
-        
+
         # Now should be fresh
         assert freshness_tracker.is_fresh(channel, max_age_hours=1)
-    
+
     def test_sync_updates_timestamp(self, extractor, freshness_tracker, tmp_path):
         """Verify sync operation updates freshness state."""
         channel = "github"
-        
+
         before_sync = freshness_tracker.get_last_sync(channel)
         assert before_sync is None
-        
+
         # Perform a sync (even if it fails, we track the attempt)
         try:
             activity = extractor.fetch_activity("NeutronStar/NeutronOS", days=1)
@@ -133,26 +133,26 @@ class TestGitHubFreshness:
                 freshness_tracker.mark_synced(channel)
         except Exception:
             pass  # API may be unavailable in test
-        
+
         # Either we synced or we didn't, but the mechanism works
         # In a real test environment with valid repo, this would succeed
 
 
 class TestGitHubSignalQuality:
     """Test signal extraction quality from GitHub."""
-    
+
     @pytest.fixture
     def extractor(self, github_token):
         from neutron_os.extensions.builtins.eve_agent.extractors.github import GitHubExtractor
         return GitHubExtractor(token=github_token)
-    
+
     def test_commit_classification(self, extractor, tmp_path):
         """Verify commit messages are classified correctly."""
         from neutron_os.extensions.builtins.eve_agent.extractors.github import GitHubActivity
 
         # Test data with different commit types (commits are plain dicts)
         activity = GitHubActivity(
-            exported_at=datetime.now(timezone.utc).isoformat(),
+            exported_at=datetime.now(UTC).isoformat(),
             time_window_days=7,
             repo="repo",
             owner="test",
@@ -161,19 +161,19 @@ class TestGitHubSignalQuality:
                     "sha": "fix1",
                     "message": "fix: resolve race condition in scheduler",
                     "author": "dev@test.com",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
                 {
                     "sha": "feat1",
                     "message": "feat: add Outlook calendar integration",
                     "author": "dev@test.com",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
                 {
                     "sha": "chore1",
                     "message": "chore: update dependencies",
                     "author": "bot@test.com",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
             ],
         )

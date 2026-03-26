@@ -4,11 +4,16 @@ Tests the complete pull cycle: publish → external edit simulation → pull bac
 These tests hit real filesystem operations but mock external storage.
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
-from neutron_os.extensions.builtins.prt_agent.config import PublisherConfig, GitPolicy, ProviderConfig
+import pytest
+
+from neutron_os.extensions.builtins.prt_agent.config import (
+    GitPolicy,
+    ProviderConfig,
+    PublisherConfig,
+)
 from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
 from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
 

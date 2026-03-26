@@ -1,7 +1,8 @@
 """Tests for neutron_os.extensions.builtins.neut_agent.tools_ext.email — email chat tools."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from neutron_os.extensions.builtins.neut_agent.tools_ext.email import execute
 

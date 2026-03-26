@@ -81,23 +81,23 @@ class TestDomainGlossary:
         """Domain glossary terms are included."""
         glossary = corrector_with_aliases._glossary
 
-        # Check some nuclear engineering terms
-        assert "new tronics" in glossary
-        assert glossary["new tronics"] == "neutronics"
+        # Check domain-agnostic default terms
+        assert "cfd" in glossary
+        assert glossary["cfd"] == "CFD"
 
     def test_program_acronyms_included(self, corrector_with_aliases):
         """Program acronyms are in glossary."""
         glossary = corrector_with_aliases._glossary
 
-        assert "any up" in glossary or "any u.p." in glossary
         assert "doe" in glossary
+        assert glossary["doe"] == "DOE"
 
-    def test_code_names_included(self, corrector_with_aliases):
-        """Software/code names are in glossary."""
+    def test_technical_mishearings_included(self, corrector_with_aliases):
+        """Common technical mishearings are in glossary."""
         glossary = corrector_with_aliases._glossary
 
-        assert "gen foam" in glossary
-        assert glossary["gen foam"] == "Genfoam"
+        assert "c of d" in glossary
+        assert glossary["c of d"] == "CFD"
 
 
 class TestParagraphBreaks:

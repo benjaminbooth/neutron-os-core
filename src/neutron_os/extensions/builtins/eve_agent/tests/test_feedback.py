@@ -58,10 +58,10 @@ class TestFeedbackRequest:
         request = FeedbackRequest(
             request_id="abc123",
             signal_id="sig456",
-            originator="ben@example.com",
-            signal_summary="Signal about TRIGA",
+            originator="user@example.com",
+            signal_summary="Signal about Project Alpha",
             routed_to=["endpoint-1", "endpoint-2"],
-            suggested_prds=["prd-triga", "prd-netl"],
+            suggested_prds=["prd-alpha", "prd-beta"],
         )
 
         d = request.to_dict()
@@ -144,10 +144,10 @@ class TestFeedbackCollector:
         return Signal(
             source="voice",
             timestamp="2026-02-15T10:00:00Z",
-            raw_text="Discussion about TRIGA thermal limits",
-            detail="TRIGA thermal hydraulics need review",
-            originator="ben@example.com",
-            initiatives=["TRIGA Digital Twin"],
+            raw_text="Discussion about thermal limits",
+            detail="Thermal hydraulics need review",
+            originator="user@example.com",
+            initiatives=["Project Alpha"],
             signal_type="action_item",
         )
 
@@ -157,7 +157,7 @@ class TestFeedbackCollector:
         assert request is not None
         assert request.signal_id == sample_signal.signal_id
         assert request.originator == sample_signal.originator
-        assert "TRIGA" in request.signal_summary
+        assert "thermal" in request.signal_summary
 
     def test_request_saved_to_pending(self, collector, sample_signal):
         request = collector.create_feedback_request(sample_signal)

@@ -13,10 +13,10 @@ Requires:
     MS_GRAPH_CLIENT_ID, MS_GRAPH_CLIENT_SECRET environment variables
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-import pytest
 
+import pytest
 
 pytestmark = [
     pytest.mark.integration,
@@ -36,7 +36,9 @@ class TestOutlookCalendarProvider:
         MICROSOFT_CLIENT_SECRET env vars or a JSON credentials file.
         The ms_graph_creds fixture ensures the env vars are set.
         """
-        from neutron_os.extensions.builtins.eve_agent.calendar_context import OutlookCalendarProvider
+        from neutron_os.extensions.builtins.eve_agent.calendar_context import (
+            OutlookCalendarProvider,
+        )
         return OutlookCalendarProvider()
 
     def test_provider_is_available(self, provider):
@@ -74,8 +76,8 @@ class TestCalendarEventCorrelation:
         event = CalendarEvent(
             event_id="test-event-123",
             title="Weekly Sync",
-            start=datetime.now(timezone.utc),
-            end=datetime.now(timezone.utc) + timedelta(hours=1),
+            start=datetime.now(UTC),
+            end=datetime.now(UTC) + timedelta(hours=1),
             attendees=["alice@test.com", "bob@test.com"],
             location="Teams",
             description="Weekly team sync meeting",
@@ -93,7 +95,9 @@ class TestOutlookCalendarFreshness:
 
     @pytest.fixture
     def provider(self, ms_graph_creds):
-        from neutron_os.extensions.builtins.eve_agent.calendar_context import OutlookCalendarProvider
+        from neutron_os.extensions.builtins.eve_agent.calendar_context import (
+            OutlookCalendarProvider,
+        )
         return OutlookCalendarProvider()
 
     def test_freshness_tracking(self, provider, freshness_tracker):
@@ -134,7 +138,7 @@ class TestCalendarSignalEnrichment:
         # Create a signal from a voice memo
         signal = Signal(
             source="voice",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             raw_text="We discussed the API changes in the standup",
             people=["Alice", "Bob"],
             signal_type="discussion",
@@ -145,8 +149,8 @@ class TestCalendarSignalEnrichment:
         event = CalendarEvent(
             event_id="standup-123",
             title="Daily Standup",
-            start=datetime.now(timezone.utc) - timedelta(minutes=30),
-            end=datetime.now(timezone.utc),
+            start=datetime.now(UTC) - timedelta(minutes=30),
+            end=datetime.now(UTC),
             attendees=["alice@test.com", "bob@test.com", "charlie@test.com"],
             location="Teams",
             description="Daily sync",

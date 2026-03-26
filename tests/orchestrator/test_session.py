@@ -1,7 +1,7 @@
 """Tests for chat session persistence."""
 
 
-from neutron_os.infra.orchestrator.session import Session, SessionStore, Message
+from neutron_os.infra.orchestrator.session import Message, Session, SessionStore
 
 
 class TestSession:

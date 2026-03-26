@@ -10,8 +10,9 @@ No external credentials needed — this tests the local HTTP server.
 
 import json
 import threading
-import urllib.request
 import urllib.parse
+import urllib.request
+
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.voice]
@@ -50,11 +51,11 @@ class TestVoiceMemoUpload:
 
         _boundary = "----VoiceTest123"
         body = (
-            "------VoiceTest123\r\n"
-            'Content-Disposition: form-data; name="file"; filename="meeting_notes.m4a"\r\n'
-            "Content-Type: audio/mp4\r\n"
-            "\r\n"
-        ).encode() + fake_audio + b"\r\n------VoiceTest123--\r\n"
+            b"------VoiceTest123\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="meeting_notes.m4a"\r\n'
+            b"Content-Type: audio/mp4\r\n"
+            b"\r\n"
+        ) + fake_audio + b"\r\n------VoiceTest123--\r\n"
 
         req = urllib.request.Request(
             _url(server, "/upload"),

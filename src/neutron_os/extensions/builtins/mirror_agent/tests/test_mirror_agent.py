@@ -42,7 +42,7 @@ def test_parse_response_review_needed():
     response = """VERDICT: REVIEW_NEEDED
 FINDINGS:
 - Contains staff name: Jane Researcher
-- Internal hostname: reactor.internal.example.org
+- Internal hostname: internal.example.org
 RECOMMENDATION: Redact names and internal hostnames before publishing."""
 
     review = _parse_response("config.py", response)

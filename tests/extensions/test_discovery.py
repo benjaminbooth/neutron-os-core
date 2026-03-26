@@ -4,13 +4,13 @@
 import pytest
 
 from neutron_os.extensions.discovery import (
-    discover_extensions,
-    discover_cli_commands,
     discover_all_skills,
-    load_chat_tools,
     discover_and_load_chat_tools,
+    discover_cli_commands,
+    discover_extensions,
     execute_extension_tool,
     generate_contract_docs,
+    load_chat_tools,
 )
 from neutron_os.extensions.scaffold import scaffold_extension
 
@@ -86,7 +86,7 @@ class TestLoadChatTools:
         tools = load_chat_tools(exts[0])
         assert len(tools) >= 1
         names = [t.name for t in tools]
-        assert "reactor_query" in names
+        assert "data_query" in names
 
     def test_no_tools_module(self, ext_base):
         d = ext_base / "empty-ext"
@@ -103,7 +103,7 @@ class TestDiscoverAndLoadChatTools:
     def test_full_discovery(self, scaffolded_ext):
         tools = discover_and_load_chat_tools(scaffolded_ext)
         assert len(tools) >= 1
-        assert any(t.name == "reactor_query" for t in tools)
+        assert any(t.name == "data_query" for t in tools)
 
     def test_empty(self, ext_base):
         tools = discover_and_load_chat_tools(ext_base)
@@ -113,7 +113,7 @@ class TestDiscoverAndLoadChatTools:
 class TestExecuteExtensionTool:
     def test_execute_scaffolded_tool(self, scaffolded_ext):
         result = execute_extension_tool(
-            "reactor_query", {"query": "power"}, scaffolded_ext
+            "data_query", {"query": "power"}, scaffolded_ext
         )
         assert result is not None
         assert "results" in result

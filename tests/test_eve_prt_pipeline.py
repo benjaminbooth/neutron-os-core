@@ -11,11 +11,8 @@ Covers:
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from unittest import mock
-
-import pytest
 
 from neutron_os import REPO_ROOT
 
@@ -36,8 +33,9 @@ class TestPublisherHashCheck:
 
     def test_source_hash_detects_change(self):
         """_compute_source_hash returns different values for different content."""
-        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
         import tempfile
+
+        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
 
         engine = PublisherEngine.__new__(PublisherEngine)
 
@@ -78,7 +76,7 @@ class TestNotesFlowToSignalInbox:
 
     def test_note_creates_inbox_copy(self, tmp_path):
         """When a note is saved, a copy should appear in inbox/raw/ for EVE."""
-        from neutron_os.extensions.builtins.note.cli import _append_note, _inbox_dir
+        from neutron_os.extensions.builtins.note.cli import _append_note
 
         note_file = tmp_path / "test_note.md"
         inbox_dir = tmp_path / "inbox" / "raw"

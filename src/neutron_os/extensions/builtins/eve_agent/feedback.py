@@ -27,8 +27,8 @@ Usage:
     feedback = SignalFeedback(
         signal_id="abc123",
         feedback_type="add_initiative",
-        content="Also relevant to TRIGA Digital Twin",
-        originator="ben@neutronos.dev",
+        content="Also relevant to Project Alpha",
+        originator="user@example.com",
     )
     collector.apply_feedback(feedback)
 """

@@ -244,13 +244,13 @@ def test_extract_signal_text_malformed(tmp_path):
 
 
 def test_extract_signal_text_nested(tmp_path):
-    data = {"event": {"type": "alert", "message": "reactor trip"}}
+    data = {"event": {"type": "alert", "message": "system alert"}}
     p = tmp_path / "nested.json"
     p.write_text(json.dumps(data))
     result = _extract_signal_text(p)
     assert result is not None
     title, text = result
-    assert "reactor trip" in text
+    assert "system alert" in text
 
 
 # ---------------------------------------------------------------------------

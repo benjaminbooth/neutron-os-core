@@ -35,18 +35,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from neutron_os.infra.router import (
-    OllamaClassifier,
-    QueryRouter,
-    RoutingTier,
-    SENSITIVITY_STRICT,
-)
 from neutron_os.infra.gateway import (
     CompletionResponse,
     Gateway,
     LLMProvider,
 )
-
+from neutron_os.infra.router import (
+    SENSITIVITY_STRICT,
+    OllamaClassifier,
+    QueryRouter,
+    RoutingTier,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers

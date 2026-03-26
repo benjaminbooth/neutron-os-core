@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 from unittest import mock
 
-
 from neutron_os.extensions.contracts import (
     CLICommandDef,
     Extension,

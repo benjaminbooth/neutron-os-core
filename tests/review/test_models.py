@@ -10,7 +10,6 @@ from neutron_os.review.models import (
     _source_hash,
 )
 
-
 # ── fixtures ─────────────────────────────────────────────────────────
 
 @pytest.fixture

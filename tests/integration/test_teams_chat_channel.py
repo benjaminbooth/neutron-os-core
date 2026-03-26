@@ -13,10 +13,10 @@ Requires:
     MS_GRAPH_CLIENT_ID, MS_GRAPH_CLIENT_SECRET environment variables
 """
 
-from datetime import datetime, timezone
 import json
-import pytest
+from datetime import UTC, datetime
 
+import pytest
 
 pytestmark = [
     pytest.mark.integration,
@@ -27,27 +27,29 @@ pytestmark = [
 
 class TestTeamsChatExtractor:
     """Test TeamsChatExtractor against real MS Graph API."""
-    
+
     @pytest.fixture
     def extractor(self, ms_graph_creds):
         """Create extractor with real credentials."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import (
+            TeamsChatExtractor,
+        )
         return TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
             tenant_id=ms_graph_creds["tenant_id"],
         )
-    
+
     def test_extractor_is_available(self, extractor):
         """Verify extractor has valid credentials configured."""
         assert extractor.is_available()
-    
+
     def test_can_handle_teams_chat_json(self, extractor, tmp_path):
         """Verify file pattern matching."""
         chat_file = tmp_path / "teams_chat_20250101.json"
         chat_file.write_text("{}")
         assert extractor.can_handle(chat_file)
-        
+
         other_file = tmp_path / "random.json"
         other_file.write_text("{}")
         assert not extractor.can_handle(other_file)
@@ -55,20 +57,22 @@ class TestTeamsChatExtractor:
 
 class TestTeamsChatExtraction:
     """Test signal extraction from Teams chat exports."""
-    
+
     @pytest.fixture
     def extractor(self, ms_graph_creds):
-        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import (
+            TeamsChatExtractor,
+        )
         return TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
             tenant_id=ms_graph_creds["tenant_id"],
         )
-    
+
     def test_extract_action_items(self, extractor, tmp_path):
         """Messages with action requests become action_item signals."""
         export = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "time_window_days": 7,
             "messages": [
                 {
@@ -77,7 +81,7 @@ class TestTeamsChatExtraction:
                     "content_text": "Can you review the PR?",
                     "sender": "Alice Smith",
                     "sender_email": "alice@test.com",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "team_name": "Project Team",
                     "channel_name": "General",
                     "chat_type": "channel",
@@ -91,22 +95,22 @@ class TestTeamsChatExtraction:
             "channels": [],
             "errors": [],
         }
-        
+
         export_path = tmp_path / "teams_chat_action.json"
         export_path.write_text(json.dumps(export))
-        
+
         extraction = extractor.extract(export_path)
-        
+
         assert len(extraction.signals) == 1
         signal = extraction.signals[0]
         assert signal.signal_type == "action_item"
         assert "Alice Smith" in signal.people
         assert "Bob Jones" in signal.people  # mentioned
-    
+
     def test_extract_blockers(self, extractor, tmp_path):
         """Messages mentioning blockers get blocker type."""
         export = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "time_window_days": 7,
             "messages": [
                 {
@@ -115,7 +119,7 @@ class TestTeamsChatExtraction:
                     "content_text": "I'm blocked waiting on the API key",
                     "sender": "Developer",
                     "sender_email": "dev@test.com",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "chat_type": "oneOnOne",
                     "mentions": [],
                     "reactions": [],
@@ -127,21 +131,21 @@ class TestTeamsChatExtraction:
             "channels": [],
             "errors": [],
         }
-        
+
         export_path = tmp_path / "teams_chat_blocker.json"
         export_path.write_text(json.dumps(export))
-        
+
         extraction = extractor.extract(export_path)
-        
+
         assert len(extraction.signals) == 1
         signal = extraction.signals[0]
         assert signal.signal_type == "blocker"
         assert signal.confidence >= 0.9  # high importance
-    
+
     def test_extract_decisions(self, extractor, tmp_path):
         """Messages with decisions get decision type."""
         export = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "time_window_days": 7,
             "messages": [
                 {
@@ -150,7 +154,7 @@ class TestTeamsChatExtraction:
                     "content_text": "We decided to go with approach B",
                     "sender": "Lead",
                     "sender_email": "lead@test.com",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "team_name": "Architecture",
                     "channel_name": "Decisions",
                     "chat_type": "channel",
@@ -164,12 +168,12 @@ class TestTeamsChatExtraction:
             "channels": [],
             "errors": [],
         }
-        
+
         export_path = tmp_path / "teams_chat_decision.json"
         export_path.write_text(json.dumps(export))
-        
+
         extraction = extractor.extract(export_path)
-        
+
         assert len(extraction.signals) == 1
         signal = extraction.signals[0]
         assert signal.signal_type == "decision"
@@ -178,58 +182,62 @@ class TestTeamsChatExtraction:
 
 class TestTeamsChatFreshness:
     """Test freshness tracking for Teams Chat channel."""
-    
+
     @pytest.fixture
     def extractor(self, ms_graph_creds):
-        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import (
+            TeamsChatExtractor,
+        )
         return TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
             tenant_id=ms_graph_creds["tenant_id"],
         )
-    
+
     def test_freshness_tracking(self, extractor, freshness_tracker):
         """Verify freshness tracking mechanism."""
         channel = "teams_chat"
-        
+
         # Initially not fresh
         assert not freshness_tracker.is_fresh(channel)
-        
+
         # After marking synced, should be fresh
         freshness_tracker.mark_synced(channel)
         assert freshness_tracker.is_fresh(channel, max_age_hours=24)
-    
+
     def test_stale_after_timeout(self, extractor, freshness_tracker, monkeypatch):
         """Channel becomes stale after max_age_hours."""
         channel = "teams_chat"
-        
+
         # Mark synced
         freshness_tracker.mark_synced(channel)
         assert freshness_tracker.is_fresh(channel, max_age_hours=24)
-        
+
         # Still fresh with short window
         assert freshness_tracker.is_fresh(channel, max_age_hours=1)
-        
+
         # Would be stale after 0 hours (impossible window)
         assert not freshness_tracker.is_fresh(channel, max_age_hours=0)
 
 
 class TestTeamsChannelMessages:
     """Test channel message handling specifically."""
-    
+
     @pytest.fixture
     def extractor(self, ms_graph_creds):
-        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import TeamsChatExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.teams_chat import (
+            TeamsChatExtractor,
+        )
         return TeamsChatExtractor(
             client_id=ms_graph_creds["client_id"],
             client_secret=ms_graph_creds["client_secret"],
             tenant_id=ms_graph_creds["tenant_id"],
         )
-    
+
     def test_message_location_in_detail(self, extractor, tmp_path):
         """Signal detail includes team/channel location."""
         export = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "time_window_days": 7,
             "messages": [
                 {
@@ -238,7 +246,7 @@ class TestTeamsChannelMessages:
                     "content_text": "Status update",
                     "sender": "PM",
                     "sender_email": "pm@test.com",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "team_name": "NeutronOS Core",
                     "channel_name": "Standup",
                     "chat_type": "channel",
@@ -252,12 +260,12 @@ class TestTeamsChannelMessages:
             "channels": [],
             "errors": [],
         }
-        
+
         export_path = tmp_path / "teams_chat_location.json"
         export_path.write_text(json.dumps(export))
-        
+
         extraction = extractor.extract(export_path)
-        
+
         signal = extraction.signals[0]
         assert "[NeutronOS Core/Standup]" in signal.detail
         assert "PM:" in signal.detail

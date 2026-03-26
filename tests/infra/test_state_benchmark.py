@@ -30,7 +30,8 @@ from neutron_os.infra.state import LockedJsonFile
 # PostgreSQL tests require psycopg and a running database
 try:
     import psycopg
-    from neutron_os.infra.state_pg import PgStateStore, ConcurrentModificationError
+
+    from neutron_os.infra.state_pg import ConcurrentModificationError, PgStateStore
     HAS_PG = True
 except ImportError:
     HAS_PG = False

@@ -3,8 +3,8 @@
 
 import pytest
 
-from neutron_os.extensions.scaffold import scaffold_extension
 from neutron_os.extensions.contracts import parse_manifest
+from neutron_os.extensions.scaffold import scaffold_extension
 
 
 class TestScaffoldExtension:
@@ -13,14 +13,14 @@ class TestScaffoldExtension:
         assert ext_dir.is_dir()
         assert (ext_dir / "neut-extension.toml").exists()
         assert (ext_dir / "tools_ext" / "__init__.py").exists()
-        assert (ext_dir / "tools_ext" / "reactor_logs.py").exists()
+        assert (ext_dir / "tools_ext" / "data_query.py").exists()
         assert (ext_dir / "skills" / "weekly-slides" / "SKILL.md").exists()
         assert (ext_dir / "providers" / "__init__.py").exists()
         assert (ext_dir / "providers" / "pptx_generation.py").exists()
         assert (ext_dir / "cli" / "__init__.py").exists()
         assert (ext_dir / "cli" / "logs.py").exists()
         assert (ext_dir / "extractors" / "__init__.py").exists()
-        assert (ext_dir / "extractors" / "reactor_log.py").exists()
+        assert (ext_dir / "extractors" / "data_log.py").exists()
 
     def test_manifest_is_valid(self, tmp_path):
         ext_dir = scaffold_extension("my-ext", base_dir=tmp_path, author="Test User")
@@ -41,7 +41,7 @@ class TestScaffoldExtension:
 
     def test_chat_tool_is_importable(self, tmp_path):
         ext_dir = scaffold_extension("my-ext", base_dir=tmp_path)
-        tool_file = ext_dir / "tools_ext" / "reactor_logs.py"
+        tool_file = ext_dir / "tools_ext" / "data_query.py"
         assert tool_file.exists()
         # Verify it's valid Python
         content = tool_file.read_text()
@@ -61,7 +61,7 @@ class TestScaffoldExtension:
 
     def test_extractor_is_importable(self, tmp_path):
         ext_dir = scaffold_extension("my-ext", base_dir=tmp_path)
-        ext_file = ext_dir / "extractors" / "reactor_log.py"
+        ext_file = ext_dir / "extractors" / "data_log.py"
         content = ext_file.read_text()
         compile(content, str(ext_file), "exec")
 

@@ -36,8 +36,8 @@ def _retrieve(query: str, tier: str = "institutional", limit: int = 5) -> str:
         # Allow running outside the installed package (e.g. from repo root)
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-        from neutron_os.rag.store import RAGStore
         from neutron_os.rag.embeddings import embed_texts
+        from neutron_os.rag.store import RAGStore
 
         db_url = os.environ.get(
             "NEUTRON_OS_DATABASE_URL",
@@ -53,7 +53,7 @@ def _retrieve(query: str, tier: str = "institutional", limit: int = 5) -> str:
         if embedding_result:
             query_embedding = embedding_result[0]
 
-        from neutron_os.rag.store import ALL_CORPORA, CORPUS_COMMUNITY, CORPUS_ORG, CORPUS_INTERNAL
+        from neutron_os.rag.store import ALL_CORPORA, CORPUS_COMMUNITY, CORPUS_INTERNAL, CORPUS_ORG
 
         # Map legacy tier arg to corpora list for backwards compat
         corpora_map = {

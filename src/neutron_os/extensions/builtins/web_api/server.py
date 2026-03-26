@@ -91,7 +91,7 @@ def _get_context_summary() -> dict:
 
     context = {
         "project": "NeutronOS",
-        "description": "Digital platform for nuclear facilities",
+        "description": "Modular digital platform for facilities",
         "knowledge_sources": [],
     }
 

@@ -1,7 +1,8 @@
 """Tests for neutron_os.review.runner — ReviewRunner with mock adapter."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from neutron_os.review.models import (
     ReviewDecision,
@@ -10,7 +11,6 @@ from neutron_os.review.models import (
     ReviewSessionStore,
 )
 from neutron_os.review.runner import ReviewRunner
-
 
 # ── mock adapter ─────────────────────────────────────────────────────
 

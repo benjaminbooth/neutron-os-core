@@ -11,15 +11,11 @@ Covers:
 
 from __future__ import annotations
 
-import json
 import os
-import stat
 import textwrap
-from pathlib import Path
 from unittest import mock
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Connection dataclass
@@ -398,7 +394,10 @@ class TestHealthChecks:
 
     def test_cli_version_check_for_git(self):
         from neutron_os.infra.connections import (
-            Connection, ConnectionRegistry, check_health, HealthStatus,
+            Connection,
+            ConnectionRegistry,
+            HealthStatus,
+            check_health,
         )
 
         registry = ConnectionRegistry()
@@ -418,7 +417,10 @@ class TestHealthChecks:
 
     def test_health_check_for_missing_binary(self):
         from neutron_os.infra.connections import (
-            Connection, ConnectionRegistry, check_health, HealthStatus,
+            Connection,
+            ConnectionRegistry,
+            HealthStatus,
+            check_health,
         )
 
         registry = ConnectionRegistry()
@@ -438,7 +440,10 @@ class TestHealthChecks:
     def test_tcp_connect_localhost(self):
         """TCP check against a port that's likely not listening."""
         from neutron_os.infra.connections import (
-            Connection, ConnectionRegistry, check_health, HealthStatus,
+            Connection,
+            ConnectionRegistry,
+            HealthStatus,
+            check_health,
         )
 
         registry = ConnectionRegistry()
@@ -456,8 +461,12 @@ class TestHealthChecks:
 
     def test_custom_health_check(self):
         from neutron_os.infra.connections import (
-            Connection, ConnectionRegistry, check_health,
-            HealthStatus, ConnectionHealth, register_custom_health_check,
+            Connection,
+            ConnectionHealth,
+            ConnectionRegistry,
+            HealthStatus,
+            check_health,
+            register_custom_health_check,
         )
 
         def my_checker(conn: Connection) -> ConnectionHealth:
@@ -483,7 +492,9 @@ class TestHealthChecks:
 
     def test_unknown_connection_returns_unhealthy(self):
         from neutron_os.infra.connections import (
-            ConnectionRegistry, check_health, HealthStatus,
+            ConnectionRegistry,
+            HealthStatus,
+            check_health,
         )
 
         registry = ConnectionRegistry()
@@ -546,7 +557,9 @@ class TestConnectionUsage:
 
     def test_record_and_retrieve(self):
         from neutron_os.infra.connections import (
-            ConnectionUsage, record_usage, get_usage, reset_usage,
+            get_usage,
+            record_usage,
+            reset_usage,
         )
 
         reset_usage()
@@ -562,7 +575,7 @@ class TestConnectionUsage:
         reset_usage()
 
     def test_record_error(self):
-        from neutron_os.infra.connections import record_usage, get_usage, reset_usage
+        from neutron_os.infra.connections import get_usage, record_usage, reset_usage
 
         reset_usage()
         record_usage("err_svc", 10.0, error="timeout")
@@ -574,7 +587,9 @@ class TestConnectionUsage:
 
     def test_capabilities_in_status(self):
         from neutron_os.infra.connections import (
-            Connection, ConnectionRegistry, _connection_status_info,
+            Connection,
+            ConnectionRegistry,
+            _connection_status_info,
         )
 
         registry = ConnectionRegistry()
@@ -619,7 +634,7 @@ class TestCredentialStorage:
         assert (tmp_path / "svc" / "token").read_text() == "new"
 
     def test_clear_credential(self, tmp_path):
-        from neutron_os.infra.connections import store_credential, clear_credential
+        from neutron_os.infra.connections import clear_credential, store_credential
 
         store_credential("svc", "val", credentials_dir=tmp_path)
         assert (tmp_path / "svc" / "token").exists()

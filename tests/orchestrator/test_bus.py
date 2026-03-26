@@ -2,7 +2,7 @@
 
 import json
 
-from neutron_os.infra.orchestrator.bus import EventBus, Event
+from neutron_os.infra.orchestrator.bus import Event, EventBus
 
 
 class TestEventBus:

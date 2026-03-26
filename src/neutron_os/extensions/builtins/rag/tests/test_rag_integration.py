@@ -94,11 +94,11 @@ def sample_chunks():
             source_title="Xenon Poisoning Guide",
             source_type="markdown",
             text=textwrap.dedent("""\
-                ## Xenon Poisoning
+                ## Cache Invalidation
 
-                Xenon-135 is a fission product with a very high neutron absorption cross-section.
-                During reactor shutdown, Xe-135 builds up as I-135 decays, causing the reactor
-                to become harder to restart — a phenomenon called the iodine pit.
+                Cache coherence issues can cause stale data in distributed systems.
+                During system shutdown, pending writes may be lost if not properly flushed,
+                causing data inconsistencies on restart — a phenomenon called write-behind lag.
             """),
             chunk_index=0,
             start_line=1,
@@ -108,11 +108,11 @@ def sample_chunks():
             source_title="Export Control Overview",
             source_type="markdown",
             text=textwrap.dedent("""\
-                ## Export Control (EAR / 10 CFR 810)
+                ## Access Control
 
-                MCNP, SCALE, and ORIGEN are export-controlled nuclear codes.
+                Proprietary analysis tools require restricted access.
                 Any analysis using these tools must be routed through the VPN-gated model tier.
-                Queries containing these code names should never reach cloud providers.
+                Queries containing sensitive code names should never reach cloud providers.
             """),
             chunk_index=0,
             start_line=1,
@@ -205,17 +205,17 @@ def test_ingest_file_roundtrip(store, tmp_path):
     # Ensure no stale cache entry from a previous run (source_path is relative: "test-doc.md")
     store.delete_document("test-doc.md", corpus=TEST_CORPUS)
     md.write_text(
-        "# TRIGA Reactor Safety\n\n"
-        "The TRIGA reactor has a negative temperature coefficient of reactivity. "
-        "This self-limiting safety feature prevents runaway power excursions.\n"
+        "# Thermal Management Safety\n\n"
+        "The cooling system has a negative feedback loop for temperature control. "
+        "This self-limiting safety feature prevents thermal runaway.\n"
     )
     # Use a unique path prefix to avoid collisions
     stats = ingest_file(md, store, repo_root=tmp_path, corpus=TEST_CORPUS)
     assert stats.files_indexed == 1
     assert stats.chunks_created >= 1
 
-    results = store.search(query_text="negative temperature coefficient TRIGA", limit=5)
-    assert any("TRIGA" in r.chunk_text for r in results)
+    results = store.search(query_text="negative feedback thermal", limit=5)
+    assert any("thermal" in r.chunk_text.lower() for r in results)
 
 
 @pytest.mark.integration
@@ -256,9 +256,9 @@ def test_cli_index_with_explicit_path(tmp_path):
     """neut rag index <path> traverses the directory and indexes docs."""
     from neutron_os.rag.cli import main
 
-    doc = tmp_path / "reactor-ops.md"
+    doc = tmp_path / "system-ops.md"
     doc.write_text(
-        "# Reactor Operations\n\nMaintain criticality with control rod withdrawal.\n"
+        "# System Operations\n\nMaintain stability with gradual parameter adjustments.\n"
     )
     main(["index", str(tmp_path), "--corpus", "rag-internal"])
 
@@ -268,9 +268,9 @@ def test_cli_index_with_explicit_path(tmp_path):
     from neutron_os.rag.store import RAGStore
     s = RAGStore(url)
     s.connect()
-    results = s.search(query_text="criticality control rod", limit=5)
+    results = s.search(query_text="stability parameter", limit=5)
     s.close()
-    assert any("criticality" in r.chunk_text.lower() for r in results)
+    assert any("stability" in r.chunk_text.lower() for r in results)
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +338,7 @@ def test_hybrid_search_combines_vector_and_text(store):
         source_path=TEST_PREFIX + "vec-hybrid.md",
         source_title="Hybrid Test",
         source_type="markdown",
-        text="Delayed neutrons play a key role in reactor control and kinetics.",
+        text="Feedback loops play a key role in system control and dynamics.",
         chunk_index=0,
         start_line=1,
     )
@@ -349,7 +349,7 @@ def test_hybrid_search_combines_vector_and_text(store):
 
     results = store.search(
         query_embedding=emb,
-        query_text="delayed neutrons reactor control",
+        query_text="feedback loops system control",
         limit=5,
     )
 
@@ -386,15 +386,15 @@ def test_search_across_all_three_corpora(store):
     chunks_by_corpus = {
         CORPUS_INTERNAL: _make_chunk(
             "mc-internal.md", "Internal Doc",
-            "The TRIGA reactor uses a unique prompt-negative temperature coefficient."
+            "The thermal system uses a unique negative feedback temperature coefficient."
         ),
         CORPUS_ORG: _make_chunk(
             "mc-org.md", "Org Doc",
-            "The TRIGA reactor fuel-moderator design enables inherent safety."
+            "The cooling system design enables inherent thermal safety."
         ),
         CORPUS_COMMUNITY: _make_chunk(
             "mc-community.md", "Community Doc",
-            "TRIGA reactors are widely used for research and isotope production."
+            "Thermal management systems are widely used for research and production."
         ),
     }
 
@@ -402,7 +402,7 @@ def test_search_across_all_three_corpora(store):
         store.upsert_chunks([chunk], checksum="mc1", corpus=corpus)
 
     # Search all three corpora (default: corpora=None)
-    results = store.search(query_text="TRIGA reactor", limit=10)
+    results = store.search(query_text="thermal system", limit=10)
 
     found_corpora = {r.corpus for r in results}
     # All three corpora should have contributed a result
@@ -417,7 +417,7 @@ def test_search_filtered_to_single_corpus(store):
     from neutron_os.rag.store import CORPUS_INTERNAL
 
     results = store.search(
-        query_text="TRIGA reactor",
+        query_text="thermal system",
         corpora=[CORPUS_INTERNAL],
         limit=10,
     )
@@ -508,15 +508,15 @@ def test_load_community_dump_restores_data(store, tmp_path):
     fixture_sql.write_text(
         "BEGIN;\n"
         "INSERT INTO documents (source_path, corpus, source_type, title, checksum, chunk_count)\n"
-        "VALUES ('community/nrc-glossary.md', 'rag-community', 'markdown',\n"
-        "        'NRC Glossary', 'dump-test-checksum', 1)\n"
+        "VALUES ('community/eng-glossary.md', 'rag-community', 'markdown',\n"
+        "        'Engineering Glossary', 'dump-test-checksum', 1)\n"
         "ON CONFLICT (source_path, corpus) DO UPDATE\n"
         "    SET checksum = EXCLUDED.checksum;\n"
         "\n"
         "INSERT INTO chunks (source_path, source_title, source_type, chunk_text,\n"
         "                    chunk_index, start_line, corpus, checksum)\n"
-        "VALUES ('community/nrc-glossary.md', 'NRC Glossary', 'markdown',\n"
-        "        'Reactivity: the relative departure from criticality of a reactor.',\n"
+        "VALUES ('community/eng-glossary.md', 'Engineering Glossary', 'markdown',\n"
+        "        'Stability: the tendency of a system to return to equilibrium.',\n"
         "        0, 1, 'rag-community', 'dump-test-checksum');\n"
         "COMMIT;\n"
     )
@@ -525,14 +525,14 @@ def test_load_community_dump_restores_data(store, tmp_path):
 
     # Verify the restored chunk is searchable
     results = store.search(
-        query_text="reactivity criticality reactor",
+        query_text="stability equilibrium system",
         corpora=[CORPUS_COMMUNITY],
         limit=5,
     )
     assert len(results) >= 1
-    assert any("criticality" in r.chunk_text.lower() for r in results)
+    assert any("stability" in r.chunk_text.lower() for r in results)
 
     # Verify the document record was restored
-    doc = store.get_document("community/nrc-glossary.md", corpus=CORPUS_COMMUNITY)
+    doc = store.get_document("community/eng-glossary.md", corpus=CORPUS_COMMUNITY)
     assert doc is not None
     assert doc["checksum"] == "dump-test-checksum"

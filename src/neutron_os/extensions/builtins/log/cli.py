@@ -341,7 +341,7 @@ Examples:
   neut log tail --follow             # Stream new events as they arrive
   neut log tail --ec --n 50          # Last 50 EC-flagged events
   neut log tail --level warning      # Events at WARNING level or above
-  neut log tail --provider qwen-tacc-ec
+  neut log tail --provider llama-internal
   neut log verify                    # Verify audit chain integrity
   neut log verify --table routing    # Verify a specific table
   neut log stats                     # Show backend info and counts

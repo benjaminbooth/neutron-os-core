@@ -44,9 +44,9 @@ Each extension follows this structure:
 
 ## What does NOT belong here
 
-- **Domain-specific extensions** (reactor-ops-log, medical-isotope) →
+- **Domain-specific extensions** (industry-specific tools) →
   external repos, installed to `.neut/extensions/` or `~/.neut/extensions/`
-- **Platform infrastructure** → `src/neutron_os/infra/`
+- **Platform infrastructure** → `src/axiom/infra/`
 - **Runtime data** → `runtime/`
 
 ## AI Agent Policy

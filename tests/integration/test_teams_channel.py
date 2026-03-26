@@ -41,7 +41,9 @@ class TestTeamsTranscriptProcessing:
 
     def test_vtt_file_recognized(self, tmp_path):
         """Transcript extractor recognizes .vtt files in a teams directory."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.transcript import TranscriptExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.transcript import (
+            TranscriptExtractor,
+        )
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -58,7 +60,9 @@ class TestTeamsTranscriptProcessing:
 
     def test_extract_signals_from_transcript(self, tmp_path):
         """Extract signals from a meeting transcript without LLM."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.transcript import TranscriptExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.transcript import (
+            TranscriptExtractor,
+        )
 
         teams_dir = tmp_path / "teams"
         teams_dir.mkdir()
@@ -80,6 +84,7 @@ class TestTeamsTranscriptProcessing:
         import json
         import threading
         import urllib.request
+
         from neutron_os.extensions.builtins.eve_agent.serve import create_server
 
         inbox = tmp_path / "inbox" / "raw"
@@ -95,11 +100,11 @@ class TestTeamsTranscriptProcessing:
 
             _boundary = "----TeamsTest"
             body = (
-                "------TeamsTest\r\n"
-                'Content-Disposition: form-data; name="file"; filename="standup_2026-02-18.vtt"\r\n'
-                "Content-Type: text/vtt\r\n"
-                "\r\n"
-            ).encode() + SAMPLE_VTT.encode() + b"\r\n------TeamsTest--\r\n"
+                b"------TeamsTest\r\n"
+                b'Content-Disposition: form-data; name="file"; filename="standup_2026-02-18.vtt"\r\n'
+                b"Content-Type: text/vtt\r\n"
+                b"\r\n"
+            ) + SAMPLE_VTT.encode() + b"\r\n------TeamsTest--\r\n"
 
             req = urllib.request.Request(
                 url,

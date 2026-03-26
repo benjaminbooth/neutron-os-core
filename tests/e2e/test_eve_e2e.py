@@ -147,8 +147,10 @@ class TestSenseIngestPipeline:
 
     def test_gitlab_ingest_single_export(self, workspace):
         """Ingest a single GitLab export — produces signals."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import GitLabDiffExtractor
         from neutron_os.extensions.builtins.eve_agent.correlator import Correlator
+        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import (
+            GitLabDiffExtractor,
+        )
 
         export_data = self._make_gitlab_export("2026-02-17", [
             {
@@ -175,7 +177,9 @@ class TestSenseIngestPipeline:
 
     def test_gitlab_diff_ingest(self, workspace):
         """Diff two GitLab exports — detects new commits and issues."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import GitLabDiffExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import (
+            GitLabDiffExtractor,
+        )
 
         old = self._make_gitlab_export("2026-02-10", [
             {
@@ -231,8 +235,8 @@ class TestSenseIngestPipeline:
 
     def test_freetext_ingest(self, workspace):
         """Drop a text file in inbox/raw → freetext extractor picks it up."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.freetext import FreetextExtractor
         from neutron_os.extensions.builtins.eve_agent.correlator import Correlator
+        from neutron_os.extensions.builtins.eve_agent.extractors.freetext import FreetextExtractor
 
         note = workspace / "agents" / "inbox" / "raw" / "meeting-notes.md"
         note.write_text(
@@ -259,7 +263,9 @@ class TestSenseIngestPipeline:
 
     def test_transcript_ingest(self, workspace):
         """Place a transcript file in inbox/raw/teams → transcript extractor processes it."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.transcript import TranscriptExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.transcript import (
+            TranscriptExtractor,
+        )
 
         transcript = workspace / "agents" / "inbox" / "raw" / "teams" / "standup_transcript.md"
         transcript.write_text(
@@ -345,8 +351,10 @@ class TestSenseDraftPipeline:
 
     def test_full_ingest_to_draft_pipeline(self, tmp_path):
         """Complete pipeline: export → ingest → save signals → load → synthesize → files."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import GitLabDiffExtractor
         from neutron_os.extensions.builtins.eve_agent.correlator import Correlator
+        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import (
+            GitLabDiffExtractor,
+        )
         from neutron_os.extensions.builtins.eve_agent.models import Signal
         from neutron_os.extensions.builtins.eve_agent.synthesizer import Synthesizer
 
@@ -448,8 +456,10 @@ class TestSenseRealData:
         if not exports:
             pytest.skip("No real GitLab exports found")
 
-        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import GitLabDiffExtractor
         from neutron_os.extensions.builtins.eve_agent.correlator import Correlator
+        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import (
+            GitLabDiffExtractor,
+        )
 
         extractor = GitLabDiffExtractor()
         correlator = Correlator()

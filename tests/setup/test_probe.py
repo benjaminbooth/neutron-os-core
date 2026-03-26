@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-
 from neutron_os.setup.probe import (
     DepStatus,
     ProbeResult,

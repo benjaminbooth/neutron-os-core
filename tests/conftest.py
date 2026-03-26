@@ -1,7 +1,6 @@
 """Shared test fixtures for neut signal and publisher test suites."""
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -226,7 +225,11 @@ def sample_gitlab_export_previous(tmp_path):
 @pytest.fixture
 def publisher_config(tmp_path):
     """Create a minimal publisher config for testing."""
-    from neutron_os.extensions.builtins.prt_agent.config import PublisherConfig, GitPolicy, ProviderConfig
+    from neutron_os.extensions.builtins.prt_agent.config import (
+        GitPolicy,
+        ProviderConfig,
+        PublisherConfig,
+    )
 
     return PublisherConfig(
         git=GitPolicy(require_clean=False, require_pushed=False),

@@ -6,16 +6,10 @@ Run:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import threading
 import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # neutron_os.infra.trace
@@ -32,7 +26,7 @@ class TestTrace:
         assert len(tid) >= 8
 
     def test_current_trace_matches_new_trace(self):
-        from neutron_os.infra.trace import new_trace, current_trace
+        from neutron_os.infra.trace import current_trace, new_trace
         tid = new_trace()
         assert current_trace() == tid
 
@@ -56,7 +50,7 @@ class TestTrace:
 
     def test_trace_is_thread_local(self):
         """Each thread has its own trace_id via contextvars."""
-        from neutron_os.infra.trace import new_trace, current_trace
+        from neutron_os.infra.trace import current_trace, new_trace
         ids = {}
 
         def worker(name):
@@ -73,7 +67,7 @@ class TestTrace:
         assert len(set(ids.values())) == 5, "all threads should have unique trace_ids"
 
     def test_set_and_get_session(self):
-        from neutron_os.infra.trace import set_session, current_session
+        from neutron_os.infra.trace import current_session, set_session
         set_session("test-session-abc")
         assert current_session() == "test-session-abc"
 
@@ -167,8 +161,9 @@ class TestStructuredJsonFormatter:
         assert all("file" in frame for frame in data["exc_traceback"])
 
     def test_ts_is_iso8601_utc(self):
+        from datetime import datetime
+
         from neutron_os.infra.neut_logging import StructuredJsonFormatter
-        from datetime import datetime, timezone
         fmt = StructuredJsonFormatter()
         data = json.loads(fmt.format(self._make_record()))
         # Must parse without error and be UTC

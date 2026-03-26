@@ -15,21 +15,20 @@ focusing on the merge logic and signal synthesis.
 
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from neutron_os.extensions.builtins.eve_agent.models import Signal, Extraction, Changelog
-from neutron_os.extensions.builtins.eve_agent.synthesizer import Synthesizer
 from neutron_os.extensions.builtins.eve_agent.extractors.docflow_review import (
-    ExternalChange,
     ChangeType,
     DivergenceReport,
     DocFormat,
+    ExternalChange,
 )
+from neutron_os.extensions.builtins.eve_agent.models import Changelog, Extraction, Signal
+from neutron_os.extensions.builtins.eve_agent.synthesizer import Synthesizer
 from neutron_os.extensions.builtins.prt_agent.state import DocumentState, PublicationRecord
-
 
 # ============================================================================
 # SCENARIO SETUP: Advanced Analytics PRD
@@ -41,7 +40,7 @@ class AdvancedAnalyticsPRDScenario:
     PDR_ID = "advanced-analytics-prd"
     BASE_VERSION = "v2.0.0"
     BASE_COMMIT = "abc1234"
-    
+
     # Content versions
     BASELINE_MD = """**Advanced Analytics Module PRD**
 
@@ -249,7 +248,7 @@ def sense_signals_extraction() -> Extraction:
 def external_changes() -> list[ExternalChange]:
     """Changes detected from SharePoint review."""
     changes = []
-    
+
     # Mapping from test data to actual enum names
     type_mapping = {
         "comment": ChangeType.COMMENT,
@@ -257,7 +256,7 @@ def external_changes() -> list[ExternalChange]:
         "drift": ChangeType.CONTENT_DRIFT,
         "structural": ChangeType.STRUCTURAL,
     }
-    
+
     for change_dict in AdvancedAnalyticsPRDScenario.EXTERNAL_CHANGES:
         change_type = type_mapping.get(change_dict["change_type"], ChangeType.COMMENT)
         changes.append(ExternalChange(
@@ -280,11 +279,11 @@ def divergence_report(external_changes: list[ExternalChange]) -> DivergenceRepor
     md_hash = hashlib.sha256(
         AdvancedAnalyticsPRDScenario.BASELINE_MD.encode()
     ).hexdigest()
-    
+
     # Simulate small changes on SharePoint (added reviewer feedback)
     sharepoint_content = AdvancedAnalyticsPRDScenario.BASELINE_MD + "\n\n[REVIEWER NOTES ADDED]"
     sp_hash = hashlib.sha256(sharepoint_content.encode()).hexdigest()
-    
+
     return DivergenceReport(
         prd_id="advanced-analytics-prd",
         md_path=Path("docs/requirements/prd_advanced-analytics.md"),
@@ -317,7 +316,7 @@ class TestDivergenceDetection:
     def test_external_changes_extracted(self, divergence_report: DivergenceReport):
         """Verify all 4 reviewer changes are extracted."""
         assert len(divergence_report.changes) == 4
-        
+
         # Check change types
         change_types = {c.change_type for c in divergence_report.changes}
         assert ChangeType.COMMENT in change_types
@@ -347,13 +346,13 @@ class TestSenseWorkflowIntegration:
         """Verify signals flow through the actual Sense synthesizer."""
         # This simulates: Raw signals → Synthesizer → Changelog
         synthesizer = Synthesizer()
-        
+
         changelog = synthesizer.synthesize(
             signals=sense_signals_extraction.signals,
             date="2026-02-21",
             include_all=True,
         )
-        
+
         assert isinstance(changelog, Changelog)
         assert changelog.date == "2026-02-21"
         assert len(changelog.entries) == 3, "Should have 3 changelog entries from 3 signals"
@@ -368,7 +367,7 @@ class TestSenseWorkflowIntegration:
             signals=sense_signals_extraction.signals,
             include_all=True,
         )
-        
+
         # All entries should be for the same initiative
         initiatives = {e.initiative for e in changelog.entries}
         assert "advanced-analytics-prd" in initiatives
@@ -383,7 +382,7 @@ class TestSenseWorkflowIntegration:
             signals=sense_signals_extraction.signals,
             include_all=True,
         )
-        
+
         signal_types = {e.signal_type for e in changelog.entries}
         assert "action_item" in signal_types
         assert "decision" in signal_types
@@ -422,7 +421,7 @@ class TestSenseWorkflowIntegration:
                 "new_content": "Performance to be validated at 500k+ row datasets.",
             },
         }
-        
+
         # Verify all signals have corresponding revisions
         for signal in sense_signals_extraction.signals:
             assert signal.detail in signal_to_revision_mapping, \
@@ -465,7 +464,7 @@ class TestSignalSynthesis:
         initiatives_mentioned = set()
         for signal in sense_signals_extraction.signals:
             initiatives_mentioned.update(signal.initiatives)
-        
+
         # All signals should mention the same PRD
         assert "advanced-analytics-prd" in initiatives_mentioned
 
@@ -503,7 +502,7 @@ class TestConceptualMerge:
         For this test, we simulate the decision logic.
         """
         decisions = []
-        
+
         # Decision 1: Effect size reporting (external comment)
         decisions.append(MergeDecision(
             section="R1: Statistical Analysis Engine",
@@ -517,7 +516,7 @@ class TestConceptualMerge:
                 "on experimental data, including effect size reporting."
             ),
         ))
-        
+
         # Decision 2: Vega backend for interactive dashboards (external tracked change)
         decisions.append(MergeDecision(
             section="R2: Visualization Pipeline - AC2.1",
@@ -530,7 +529,7 @@ class TestConceptualMerge:
                 "Support matplotlib, plotly, vega backends (for interactive web dashboards)"
             ),
         ))
-        
+
         # Decision 3: Bayesian methods timing (signal + external comment)
         # Signals suggest it's important; external comment agrees
         decisions.append(MergeDecision(
@@ -546,7 +545,7 @@ class TestConceptualMerge:
                 "in v2.1 instead of v3? High stakeholder interest."
             ),
         ))
-        
+
         # Decision 4: Performance metric clarification (external drift + PI voice memo)
         decisions.append(MergeDecision(
             section="Success Metrics",
@@ -561,7 +560,7 @@ class TestConceptualMerge:
                 "performance at 500k+ rows to be validated in alpha testing"
             ),
         ))
-        
+
         # Decision 5: Missing data imputation (signal - action item)
         decisions.append(MergeDecision(
             section="R2: Visualization Pipeline",
@@ -579,7 +578,7 @@ class TestConceptualMerge:
                 "All strategies shall be logged in audit trail."
             ),
         ))
-        
+
         return decisions
 
     def test_merge_decisions_generated(
@@ -595,9 +594,9 @@ class TestConceptualMerge:
             external_changes,
             signals,
         )
-        
+
         assert len(decisions) >= 4, "Should have decisions for major sections"
-        
+
         for decision in decisions:
             assert decision.section, "Must identify which section"
             assert decision.resolution in ("accept_external", "accept_local", "combine", "defer")
@@ -616,13 +615,13 @@ class TestConceptualMerge:
             external_changes,
             signals,
         )
-        
+
         # Should have decisions that mention both sources
         decision_text = "\n".join(d.rationale for d in decisions)
-        
+
         # Signals are mentioned in rationale
         assert "Sense" in decision_text or "signal" in decision_text.lower()
-        
+
         # External reviews are mentioned
         assert "external" in decision_text.lower() or "reviewer" in decision_text.lower()
 
@@ -638,10 +637,10 @@ class TestConceptualMerge:
         """
         ext_confidences = [c.confidence for c in external_changes]
         sig_confidences = [s.confidence for s in sense_signals_extraction.signals]
-        
+
         avg_ext = sum(ext_confidences) / len(ext_confidences)
         avg_sig = sum(sig_confidences) / len(sig_confidences)
-        
+
         assert avg_ext >= 0.92, "External changes should have high confidence"
         assert avg_sig >= 0.85, "Signals should have reasonable confidence"
 
@@ -657,7 +656,7 @@ class TestMergeOutput:
         """Verify merged markdown is syntactically valid."""
         # Simulate merged content (would be generated by actual merge)
         merged_md = AdvancedAnalyticsPRDScenario.BASELINE_MD + "\n\n[MERGE NOTES]"
-        
+
         # Should have proper structure
         assert "## Executive Summary" in merged_md
         assert "### Key Features" in merged_md
@@ -667,7 +666,7 @@ class TestMergeOutput:
         """Verify version is bumped appropriately (v2.0.0 → v2.1.0)."""
         current_version = baseline_document_state.published.version
         assert current_version == "v2.0.0"
-        
+
         # After merge: should bump to v2.1.0 (minor bump for feature additions)
         # This would be handled by semantic versioning logic
         # Expected: 5 commits since last version (meet, gitlab, voice, merge decisions)
@@ -685,7 +684,7 @@ class TestMergeOutput:
             "Open Questions",
             "Success Metrics",
         ]
-        
+
         merged_content = AdvancedAnalyticsPRDScenario.BASELINE_MD
         for section in required_sections:
             assert section in merged_content, f"Merged doc must have {section}"
@@ -724,19 +723,19 @@ class TestSenseSignalsInMerge:
             s for s in sense_signals_extraction.signals
             if "Bayesian" in s.raw_text or "bayesian" in s.raw_text.lower()
         ]
-        
+
         bayesian_changes = [
             c for c in external_changes
             if "Bayesian" in c.comment_text or "Bayesian" in str(c.new_text)
         ]
-        
+
         assert len(bayesian_signals) > 0, "Should have GitLab signal about Bayesian"
         assert len(bayesian_changes) > 0, "Should have reviewer comment about Bayesian"
-        
+
         # Both sources agree → high confidence merge decision
         for signal in bayesian_signals:
             assert signal.confidence >= 0.90, "Bayesian signal should have high confidence"
-        
+
         for change in bayesian_changes:
             assert change.confidence >= 0.90, "Bayesian comment should have high confidence"
 
@@ -753,10 +752,10 @@ class TestSenseSignalsInMerge:
             s for s in sense_signals_extraction.signals
             if s.source == "voice_memo"
         ]
-        
+
         assert len(voice_signals) > 0
         assert voice_signals[0].confidence == 0.85, "Voice memo confidence should be 0.85"
-        
+
         # Merge should still include it, but with appropriate weight
         # In actual merge: "PI voice memo raises concern → we flag as validation needed"
 
@@ -775,7 +774,7 @@ class TestSenseSignalsInMerge:
         - docflow_review (external document changes)
         """
         sources = {s.source for s in sense_signals_extraction.signals}
-        
+
         # Our test uses realistic sources
         assert "meeting_notes" in sources
         assert "voice_memo" in sources
@@ -801,7 +800,7 @@ class TestFullMergeWorkflow:
     ):
         """Step 2: Extract and synthesize Sense signals."""
         assert len(sense_signals_extraction.signals) == 3
-        
+
         # All should be recent (within last 4 days)
         for signal in sense_signals_extraction.signals:
             timestamp = datetime.fromisoformat(signal.timestamp.replace("Z", "+00:00"))
@@ -821,9 +820,9 @@ class TestFullMergeWorkflow:
             external_changes,
             sense_signals_extraction.signals,
         )
-        
+
         assert len(decisions) >= 4
-        
+
         # Verify decisions make semantic sense
         for decision in decisions:
             assert decision.resolution in ("accept_external", "accept_local", "combine", "defer")
@@ -836,7 +835,7 @@ class TestFullMergeWorkflow:
     ):
         """Step 4: Generate audit trail of merge decisions."""
         audit_trail = {
-            "merge_timestamp": datetime.now(timezone.utc).isoformat(),
+            "merge_timestamp": datetime.now(UTC).isoformat(),
             "source_version": baseline_document_state.published.version,
             "source_commit": baseline_document_state.published.commit_sha,
             "divergence_report": {
@@ -849,7 +848,7 @@ class TestFullMergeWorkflow:
             },
             "merge_strategy": "semantic_with_rag",
         }
-        
+
         assert audit_trail["source_version"] == "v2.0.0"
         assert audit_trail["divergence_report"]["external_changes"] == 4
         assert audit_trail["sense_signals"]["count"] == 3
@@ -858,13 +857,13 @@ class TestFullMergeWorkflow:
         """Step 5: Verify merged PRD is ready for publication."""
         # Merged PRD should pass validation
         merged_md = AdvancedAnalyticsPRDScenario.BASELINE_MD
-        
+
         # Must have cover page
         assert "**[" in merged_md or "**" in merged_md
-        
+
         # Must have required structure
         assert "## " in merged_md  # Section headers
-        
+
         # Must have no malformed markdown
         assert merged_md.count("[") == merged_md.count("]"), "Bracket mismatch"
 
@@ -894,11 +893,11 @@ class TestCompleteSenseToMergePipeline:
         divergence_report: DivergenceReport,
     ):
         """Execute complete pipeline and verify all stages work together."""
-        
+
         # Stage 1: Sense extraction (already done in fixture)
         assert len(sense_signals_extraction.signals) == 3
         print(f"\n✓ Stage 1: Extracted {len(sense_signals_extraction.signals)} signals")
-        
+
         # Stage 2: Synthesize signals into changelog
         synthesizer = Synthesizer()
         changelog = synthesizer.synthesize(
@@ -908,7 +907,7 @@ class TestCompleteSenseToMergePipeline:
         )
         assert len(changelog.entries) == 3
         print(f"✓ Stage 2: Synthesized to {len(changelog.entries)} changelog entries")
-        
+
         # Stage 3: Map changelog entries to draft revisions
         # In real system: human reviews changelog, creates PR/branch with revisions
         draft_revisions = [
@@ -918,12 +917,12 @@ class TestCompleteSenseToMergePipeline:
         ]
         assert len(draft_revisions) == len(changelog.entries)
         print(f"✓ Stage 3: Generated {len(draft_revisions)} draft revisions from signals")
-        
+
         # Stage 4: Detect external changes (already in divergence_report)
         assert divergence_report.external_changed_since_sync is True
         assert len(divergence_report.changes) == 4
         print(f"✓ Stage 4: Detected {len(divergence_report.changes)} external changes")
-        
+
         # Stage 5: Merge - reconcile Sense-derived drafts with external changes
         merge_decisions = self._simulate_merge(
             baseline=baseline_document_state,
@@ -931,10 +930,10 @@ class TestCompleteSenseToMergePipeline:
             external_changes=external_changes,
             changelog=changelog,
         )
-        
+
         assert len(merge_decisions) >= 4, "Should have decisions for major concerns"
         print(f"✓ Stage 5: Generated {len(merge_decisions)} merge decisions")
-        
+
         # Stage 6: Verify merge respects both sources
         decision_sources = []
         for decision in merge_decisions:
@@ -942,17 +941,17 @@ class TestCompleteSenseToMergePipeline:
                 decision_sources.append("sense")
             if "external" in decision["rationale"].lower() or "reviewer" in decision["rationale"].lower():
                 decision_sources.append("external")
-        
+
         assert "sense" in decision_sources, "Merge should incorporate Sense signals"
         assert "external" in decision_sources, "Merge should incorporate external reviews"
         print("✓ Stage 6: Merge incorporates both Sense and external sources")
-        
+
         # Stage 7: Version bump (v2.0.0 → v2.1.0)
         # In reality: commit count since v2.0.0 = 5, so 2-5 commits → minor bump
         new_version = "v2.1.0"
         assert new_version > baseline_document_state.published.version
         print(f"✓ Stage 7: Version bumped: {baseline_document_state.published.version} → {new_version}")
-        
+
         print("\n✅ Complete pipeline successful!")
 
     def _simulate_merge(
@@ -964,7 +963,7 @@ class TestCompleteSenseToMergePipeline:
     ) -> list[dict]:
         """Simulate the actual merge logic combining Sense and external changes."""
         decisions = []
-        
+
         # Decision 1: From Sense signal (missing data handling)
         decisions.append({
             "section": "R2: Visualization Pipeline",
@@ -973,7 +972,7 @@ class TestCompleteSenseToMergePipeline:
             "rationale": "Sense signal from meeting notes identifies missing data handling as critical gap",
             "resolution": "add_requirement",
         })
-        
+
         # Decision 2: Converged decision (Bayesian methods)
         decisions.append({
             "section": "Open Questions",
@@ -982,7 +981,7 @@ class TestCompleteSenseToMergePipeline:
                         "recommend moving Bayesian to v2.1. High convergence → strong signal.",
             "resolution": "update_roadmap",
         })
-        
+
         # Decision 3: From external review (Vega backend)
         decisions.append({
             "section": "R2: Visualization Pipeline",
@@ -991,7 +990,7 @@ class TestCompleteSenseToMergePipeline:
             "rationale": "External reviewer suggests vega for interactive dashboards",
             "resolution": "add_feature",
         })
-        
+
         # Decision 4: External comment on missing requirement (effect size)
         decisions.append({
             "section": "R1: Statistical Analysis",
@@ -1000,7 +999,7 @@ class TestCompleteSenseToMergePipeline:
             "rationale": "External reviewer correctly identifies missing requirement: effect size reporting",
             "resolution": "add_acceptance_criterion",
         })
-        
+
         # Decision 5: Sense + PI voice concern (performance metric)
         decisions.append({
             "section": "Success Metrics",
@@ -1008,7 +1007,7 @@ class TestCompleteSenseToMergePipeline:
             "rationale": "External refinement (3s bound) + PI voice concern (validation needed at scale)",
             "resolution": "refine_metric_with_caveats",
         })
-        
+
         return decisions
 
     def test_changelog_to_merge_traceability(
@@ -1024,13 +1023,13 @@ class TestCompleteSenseToMergePipeline:
             signals=sense_signals_extraction.signals,
             include_all=True,
         )
-        
+
         # Each changelog entry should be traceable to original signal(s)
         for entry in changelog.entries:
             assert entry.detail, "Changelog entry must have detail"
             assert entry.people, "Changelog entry must identify people/sources"
             assert entry.confidence > 0, "Changelog entry must have confidence"
-        
+
         # Verify traceability
         assert len(changelog.entries) == len(sense_signals_extraction.signals)
         print(f"✓ Traceability: {len(changelog.entries)} entries → {len(sense_signals_extraction.signals)} signals")
@@ -1091,7 +1090,7 @@ class MergeTestHelper:
         """Create Signal from meeting transcript."""
         return Signal(
             source="meeting_notes",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             raw_text=notes,
             people=attendees,
             signal_type="action_item",
@@ -1104,7 +1103,7 @@ class MergeTestHelper:
         """Create Signal from transcribed voice memo."""
         return Signal(
             source="voice_memo",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             raw_text=transcript,
             people=[speaker],
             signal_type="blocker",
@@ -1123,7 +1122,7 @@ class MergeTestHelper:
             change_type=ChangeType.COMMENT,
             section=section,
             author=author,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             original_text="",
             new_text="",
             comment_text=comment,

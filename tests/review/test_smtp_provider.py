@@ -1,14 +1,14 @@
 """Tests for neutron_os.extensions.builtins.prt_agent.providers.notification.smtp — SMTP email provider."""
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from neutron_os.extensions.builtins.prt_agent.factory import PublisherFactory
 from neutron_os.extensions.builtins.prt_agent.providers.notification.smtp import (
     SMTPNotificationProvider,
     _markdown_to_html,
 )
-from neutron_os.extensions.builtins.prt_agent.factory import PublisherFactory
-
 
 # ── _markdown_to_html ────────────────────────────────────────────────
 

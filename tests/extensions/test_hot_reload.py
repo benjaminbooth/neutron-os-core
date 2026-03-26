@@ -10,11 +10,10 @@ from __future__ import annotations
 import shutil
 import sys
 
-
 from neutron_os.extensions.discovery import (
-    discover_extensions,
     discover_and_load_chat_tools,
     discover_cli_commands,
+    discover_extensions,
     execute_extension_tool,
     load_chat_tools,
 )
@@ -29,14 +28,14 @@ class TestExtensionHotReload:
 
         # 1. Scan: no extensions
         tools_before = discover_and_load_chat_tools(ext_dir)
-        assert not any(t.name == "reactor_query" for t in tools_before)
+        assert not any(t.name == "data_query" for t in tools_before)
 
         # 2. Create extension (simulates neut ext init)
         scaffold_extension("triga-tools", base_dir=ext_dir)
 
         # 3. Scan again: tool appears without restart
         tools_after = discover_and_load_chat_tools(ext_dir)
-        assert any(t.name == "reactor_query" for t in tools_after)
+        assert any(t.name == "data_query" for t in tools_after)
 
     def test_cli_commands_appear_after_extension_created(self, tmp_path):
         """Extension CLI nouns discoverable immediately after creation."""
@@ -70,12 +69,12 @@ class TestExtensionHotReload:
         scaffold_extension("triga-tools", base_dir=ext_dir)
 
         # Execute original tool
-        result1 = execute_extension_tool("reactor_query", {"query": "power"}, ext_dir)
+        result1 = execute_extension_tool("data_query", {"query": "power"}, ext_dir)
         assert result1 is not None
         assert "updated" not in result1
 
         # Modify the tool module to return different data
-        tool_file = ext_dir / "triga-tools" / "tools_ext" / "reactor_logs.py"
+        tool_file = ext_dir / "triga-tools" / "tools_ext" / "data_query.py"
         original = tool_file.read_text()
         modified = original.replace(
             '"note": "Stub data',
@@ -84,7 +83,7 @@ class TestExtensionHotReload:
         tool_file.write_text(modified)
 
         # Re-discover: picks up modified code
-        result2 = execute_extension_tool("reactor_query", {"query": "power"}, ext_dir)
+        result2 = execute_extension_tool("data_query", {"query": "power"}, ext_dir)
         assert result2 is not None
         assert result2.get("updated") is True
 

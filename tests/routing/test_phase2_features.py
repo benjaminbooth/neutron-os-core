@@ -12,9 +12,6 @@ import json
 from pathlib import Path
 from unittest import mock
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # 1. Ollama model configurable
 # ---------------------------------------------------------------------------
@@ -34,7 +31,7 @@ class TestOllamaModelConfigurable:
 
     def test_router_falls_back_to_default_model(self):
         """When settings unavailable, use default llama3.2:1b."""
-        from neutron_os.infra.router import QueryRouter, _OLLAMA_MODEL
+        from neutron_os.infra.router import _OLLAMA_MODEL, QueryRouter
 
         with mock.patch(
             "neutron_os.infra.router.QueryRouter._default_ollama",
@@ -66,10 +63,10 @@ class TestSettingsEdit:
 
     def test_edit_uses_editor_env(self):
         """Edit respects $EDITOR environment variable."""
-        import os
         # Just verify the settings CLI code references EDITOR/VISUAL
-        from neutron_os.extensions.builtins.settings import cli
         import inspect
+
+        from neutron_os.extensions.builtins.settings import cli
         source = inspect.getsource(cli.main)
         assert "EDITOR" in source
 

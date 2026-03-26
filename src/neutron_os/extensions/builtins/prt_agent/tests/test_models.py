@@ -28,7 +28,7 @@ class TestComment:
             author="Bob",
             timestamp="2026-02-15T10:00:00Z",
             text="Fix typo on page 3",
-            context="The reactor uses...",
+            context="The system uses...",
             resolved=True,
             source="docx-comments",
             replies=[

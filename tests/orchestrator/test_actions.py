@@ -2,11 +2,11 @@
 
 
 from neutron_os.infra.orchestrator.actions import (
+    ACTION_REGISTRY,
     Action,
     ActionCategory,
     ActionStatus,
     create_action,
-    ACTION_REGISTRY,
 )
 
 

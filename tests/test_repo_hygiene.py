@@ -152,7 +152,7 @@ class TestPRDIntegrity:
         text = f.read_text()
         mermaid_count = text.count("```mermaid")
         assert mermaid_count >= 1, (
-            f"Executive PRD has no mermaid blocks. "
+            "Executive PRD has no mermaid blocks. "
             "The Gantt chart may have been stripped."
         )
 

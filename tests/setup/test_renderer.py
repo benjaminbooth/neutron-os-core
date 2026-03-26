@@ -5,8 +5,8 @@ import pytest
 
 from neutron_os.setup.renderer import (
     JARGON_MAP,
-    _Colors,
     _c,
+    _Colors,
     banner,
     blank,
     divider,

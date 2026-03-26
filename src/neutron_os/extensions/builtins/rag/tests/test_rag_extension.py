@@ -134,7 +134,7 @@ def test_cli_sync_org_prints_instructions(capsys):
     rag_cli.cmd_sync(args)
     out = capsys.readouterr().out
     assert "rsync" in out
-    assert "rascal" in out
+    assert "org-corpus" in out
 
 
 def test_cli_status_calls_store_stats():

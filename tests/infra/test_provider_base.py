@@ -6,13 +6,10 @@ Run:
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from dataclasses import dataclass, field
-from typing import Any
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # ProviderIdentityMixin — pure mixin, works with @dataclass
@@ -412,8 +409,10 @@ class TestLLMProviderIdentity:
 class TestLogSinkBaseIdentity:
 
     def test_log_sink_has_identity(self):
+        import os
+        import tempfile
+
         from neutron_os.infra.log_sinks import FileSink
-        import tempfile, os
         with tempfile.TemporaryDirectory() as d:
             sink = FileSink({"name": "my-file-sink", "uid": "sink-uid-1", "path": os.path.join(d, "out.jsonl")})
             identity = sink.identity
@@ -432,8 +431,10 @@ class TestLogSinkBaseIdentity:
         assert "dev-null" in sink.describe()
 
     def test_file_sink_handles_sensitive_data_false(self):
+        import os
+        import tempfile
+
         from neutron_os.infra.log_sinks import FileSink
-        import tempfile, os
         with tempfile.TemporaryDirectory() as d:
             sink = FileSink({"path": os.path.join(d, "out.jsonl")})
             assert sink.handles_sensitive_data is False
@@ -470,6 +471,7 @@ class TestEnsureProviderUids:
 
     def test_written_uid_is_valid_uuid(self, tmp_path):
         import uuid
+
         from neutron_os.infra.provider_base import ensure_provider_uids
         f = tmp_path / "logging.toml"
         self._write_toml(f, '[[log.sinks]]\ntype = "file"\n')

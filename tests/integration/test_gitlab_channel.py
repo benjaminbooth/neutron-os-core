@@ -9,8 +9,9 @@ Requires: GITLAB_TOKEN environment variable
           pip install python-gitlab
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.gitlab]
 
@@ -85,7 +86,9 @@ class TestGitLabExport:
 
     def test_extractor_on_existing_export(self, tmp_path):
         """If a GitLab export JSON exists, the extractor processes it."""
-        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import GitLabDiffExtractor
+        from neutron_os.extensions.builtins.eve_agent.extractors.gitlab_diff import (
+            GitLabDiffExtractor,
+        )
 
         # Check if real exports exist
         exports_dir = Path(__file__).resolve().parents[2] / "src" / "neutron_os" / "exports"

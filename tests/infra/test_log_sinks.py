@@ -8,11 +8,9 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,7 +42,7 @@ class TestLogSinkFactory:
         LogSinkFactory.reset()
 
     def test_register_and_create(self):
-        from neutron_os.infra.log_sinks import LogSinkFactory, LogSinkBase
+        from neutron_os.infra.log_sinks import LogSinkBase, LogSinkFactory
 
         class DummySink(LogSinkBase):
             def write(self, record: dict) -> None: ...
@@ -59,7 +57,7 @@ class TestLogSinkFactory:
             LogSinkFactory.create("no_such_sink", {})
 
     def test_available_lists_registered_types(self):
-        from neutron_os.infra.log_sinks import LogSinkFactory, LogSinkBase
+        from neutron_os.infra.log_sinks import LogSinkBase, LogSinkFactory
 
         class Alpha(LogSinkBase):
             def write(self, record: dict) -> None: ...
@@ -72,7 +70,7 @@ class TestLogSinkFactory:
         assert set(LogSinkFactory.available()) >= {"alpha", "beta"}
 
     def test_reset_clears_registry(self):
-        from neutron_os.infra.log_sinks import LogSinkFactory, LogSinkBase
+        from neutron_os.infra.log_sinks import LogSinkBase, LogSinkFactory
 
         class Temp(LogSinkBase):
             def write(self, record: dict) -> None: ...
@@ -82,7 +80,7 @@ class TestLogSinkFactory:
         assert "temp" not in LogSinkFactory.available()
 
     def test_load_from_toml_creates_enabled_sinks(self, tmp_path):
-        from neutron_os.infra.log_sinks import LogSinkFactory, LogSinkBase
+        from neutron_os.infra.log_sinks import LogSinkBase, LogSinkFactory
 
         class FakeSink(LogSinkBase):
             def write(self, record: dict) -> None: ...
@@ -324,7 +322,7 @@ class TestSignalSinkFactory:
 
 class TestLogSinkDispatcher:
     def test_dispatches_to_all_sinks(self):
-        from neutron_os.infra.log_sinks import LogSinkDispatcher, LogSinkBase
+        from neutron_os.infra.log_sinks import LogSinkBase, LogSinkDispatcher
 
         counts = [0, 0]
 
@@ -341,7 +339,7 @@ class TestLogSinkDispatcher:
         assert counts == [1, 1]
 
     def test_one_sink_failure_does_not_block_others(self):
-        from neutron_os.infra.log_sinks import LogSinkDispatcher, LogSinkBase
+        from neutron_os.infra.log_sinks import LogSinkBase, LogSinkDispatcher
 
         received = []
 

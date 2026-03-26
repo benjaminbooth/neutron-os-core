@@ -21,11 +21,9 @@ import pytest
 from neutron_os.infra.state import (
     STATE_LOCATIONS,
     LockedJsonFile,
-    StateLocation,
     atomic_write,
     locked_read,
 )
-
 
 # ---------------------------------------------------------------------------
 # Basic read/write

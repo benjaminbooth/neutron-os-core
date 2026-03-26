@@ -72,12 +72,14 @@ class TranscriptCorrector:
         "d o e": "DOE",
     }
 
-    # User glossary location
+    # Config file locations
     from neutron_os import REPO_ROOT as _REPO_ROOT
     _RUNTIME_DIR = _REPO_ROOT / "runtime"
     USER_GLOSSARY_PATH = _RUNTIME_DIR / "inbox" / "corrections" / "user_glossary.json"
-    # Domain-specific glossary (e.g., nuclear engineering terms for neutron-os)
+    # Domain-specific configs (loaded from runtime/config/ if present)
     DOMAIN_GLOSSARY_PATH = _RUNTIME_DIR / "config" / "stt_glossary.json"
+    DOMAIN_PROMPT_PATH = _RUNTIME_DIR / "config" / "stt_prompt.txt"
+    DOMAIN_EXAMPLES_PATH = _RUNTIME_DIR / "config" / "stt_examples.json"
 
     @classmethod
     def _load_domain_glossary(cls) -> dict[str, str]:
@@ -101,6 +103,64 @@ class TranscriptCorrector:
 
     # Lazily loaded domain glossary
     DOMAIN_GLOSSARY: dict[str, str] | None = None
+
+    def _load_static_examples(self) -> list:
+        """Load few-shot examples from config or use generic defaults."""
+        if not LANGEXTRACT_AVAILABLE or lx is None:
+            return []
+
+        # Try to load domain-specific examples from config
+        if self.DOMAIN_EXAMPLES_PATH.exists():
+            try:
+                import json
+                data = json.loads(self.DOMAIN_EXAMPLES_PATH.read_text())
+                examples = []
+                for ex in data.get("examples", []):
+                    examples.append(lx.data.ExampleData(
+                        text=ex["text"],
+                        extractions=[
+                            lx.data.Extraction(
+                                extraction_class=ext["class"],
+                                extraction_text=ext["text"],
+                                attributes=ext.get("attributes", {})
+                            ) for ext in ex.get("extractions", [])
+                        ]
+                    ))
+                return examples
+            except (json.JSONDecodeError, KeyError):
+                pass  # Fall through to defaults
+
+        # Generic default examples
+        return [
+            lx.data.ExampleData(
+                text="Reluca is really hungry for us to start working with UCB",
+                extractions=[
+                    lx.data.Extraction(
+                        extraction_class="person_name",
+                        extraction_text="Reluca",
+                        attributes={
+                            "correction": "Raluca",
+                            "confidence": "0.90",
+                            "reason": "Name commonly misheard by speech-to-text"
+                        }
+                    )
+                ]
+            ),
+            lx.data.ExampleData(
+                text="On the CUVCU side, is it built and running?",
+                extractions=[
+                    lx.data.Extraction(
+                        extraction_class="facility",
+                        extraction_text="CUVCU",
+                        attributes={
+                            "correction": "CUCU",
+                            "confidence": "0.75",
+                            "reason": "Likely facility/system name - needs confirmation"
+                        }
+                    )
+                ]
+            ),
+        ]
 
     def __init__(self, config_dir: Path | None = None):
         """Initialize with config directory for people/initiatives."""
@@ -198,79 +258,8 @@ class TranscriptCorrector:
         except Exception:
             pass  # Review system not initialized yet
 
-        # Then add static examples (fallback)
-        static_examples = [
-            lx.data.ExampleData(
-                text="we can't find anyone who has written a code for new tronics",
-                extractions=[
-                    lx.data.Extraction(
-                        extraction_class="technical_term",
-                        extraction_text="new tronics",
-                        attributes={
-                            "correction": "neutronics",
-                            "confidence": "0.95",
-                            "reason": "Common Whisper mishearing of nuclear physics term"
-                        }
-                    )
-                ]
-            ),
-            lx.data.ExampleData(
-                text="Reluca is really hungry for us to start working with UCB",
-                extractions=[
-                    lx.data.Extraction(
-                        extraction_class="person_name",
-                        extraction_text="Reluca",
-                        attributes={
-                            "correction": "Raluca",
-                            "confidence": "0.90",
-                            "reason": "Romanian name commonly misheard by speech-to-text"
-                        }
-                    )
-                ]
-            ),
-            lx.data.ExampleData(
-                text="the any U.P. application as a collaborator",
-                extractions=[
-                    lx.data.Extraction(
-                        extraction_class="acronym",
-                        extraction_text="any U.P.",
-                        attributes={
-                            "correction": "NEUP",
-                            "confidence": "0.92",
-                            "reason": "Nuclear Energy University Program - DOE grant"
-                        }
-                    )
-                ]
-            ),
-            lx.data.ExampleData(
-                text="On the CUVCU side, is it built and running?",
-                extractions=[
-                    lx.data.Extraction(
-                        extraction_class="facility",
-                        extraction_text="CUVCU",
-                        attributes={
-                            "correction": "CUCU",
-                            "confidence": "0.75",
-                            "reason": "Likely facility/system name - needs confirmation"
-                        }
-                    )
-                ]
-            ),
-            lx.data.ExampleData(
-                text="I think it's the B4, the B4. But it isn't just LIF, THF.",
-                extractions=[
-                    lx.data.Extraction(
-                        extraction_class="chemical",
-                        extraction_text="LIF, THF",
-                        attributes={
-                            "correction": "LiF, BeF4",
-                            "confidence": "0.88",
-                            "reason": "FLiBe salt components - lithium fluoride and beryllium fluoride"
-                        }
-                    )
-                ]
-            ),
-        ]
+        # Load domain-specific examples from config (or use generic defaults)
+        static_examples = self._load_static_examples()
 
         # Prioritize human examples, cap at 10 total
         return (examples + static_examples)[:10]
@@ -288,26 +277,26 @@ class TranscriptCorrector:
         people_list = ", ".join(people_with_aliases)
         init_list = ", ".join(i.name for i in self.correlator.initiatives[:10])
 
+        # Try to load domain-specific prompt from config
+        if self.DOMAIN_PROMPT_PATH.exists():
+            prompt_template = self.DOMAIN_PROMPT_PATH.read_text()
+            return prompt_template.format(people_list=people_list, init_list=init_list)
+
+        # Default generic prompt
         return textwrap.dedent(f"""\
-            You are correcting a transcript of a nuclear engineering research meeting.
+            You are correcting a transcript of a research meeting.
 
             CRITICAL: Person name corrections are HIGH PRIORITY for attribution/communication.
-            Many names have nicknames or phonetic variants (e.g., "so-ha" → "Soha Aslam",
-            "Jay" is Jeongwon Seo). Match mishearings to the correct full name.
+            Many names have nicknames or phonetic variants. Match mishearings to the correct full name.
 
             Identify likely transcription errors and suggest corrections. Focus on:
             1. Person names - HIGHEST PRIORITY (team members with aliases: {people_list})
-            2. Technical terms (neutronics, CFD, redox, FLiBe, etc.)
-            3. Acronyms (NEUP, DOE, NRC, SAM, SyTH, MPACT, etc.)
-            4. Facility/system names (TRIGA, flow loops, etc.)
-            5. Chemical formulas (LiF, BeF4, ThF4, etc.)
+            2. Technical terms
+            3. Acronyms and abbreviations
+            4. Facility/system names
+            5. Chemical formulas or equations
 
             Active initiatives: {init_list}
-
-            Person name guidance:
-            - Phonetic mishearings like "so-ha", "so-ja" often refer to "Soha Aslam"
-            - "Jay" or "J" refers to "Jeongwon Seo" (his nickname)
-            - Match the mishearing to the CORRECT person based on context
 
             For each error found:
             - Extract the EXACT text as it appears (verbatim, no changes)
@@ -403,13 +392,12 @@ class TranscriptCorrector:
 
         prompt = self._get_prompt()
 
-        # Build examples into the prompt
+        # Build examples into the prompt (generic examples)
         example_text = """
 Examples of corrections:
-- "new tronics" → "neutronics" (technical term, confidence: 0.95)
 - "Reluca" → "Raluca" (person name, confidence: 0.90)
-- "any U.P." → "NEUP" (acronym for Nuclear Energy University Program, confidence: 0.92)
-- "LIF, THF" → "LiF, BeF4" (chemical formula - FLiBe salt, confidence: 0.88)
+- "c of d" → "CFD" (acronym, confidence: 0.92)
+- "m dot" → "ṁ (mass flow rate)" (technical term, confidence: 0.85)
 """
 
         full_prompt = f"""{prompt}

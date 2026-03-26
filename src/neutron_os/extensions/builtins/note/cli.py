@@ -2,7 +2,7 @@
 
 Usage::
 
-    neut note "meeting with Dr. Farzad: agreed MCNP mesh must stay on rascal"
+    neut note "meeting with Dr. Smith: agreed CFD mesh stays on internal server"
     neut note                   # open $EDITOR for a longer note
     neut note --list            # show recent daily note files
 

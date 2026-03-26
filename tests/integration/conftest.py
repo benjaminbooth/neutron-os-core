@@ -15,6 +15,8 @@ Usage:
 """
 
 import os
+from datetime import UTC
+
 import pytest
 
 
@@ -72,35 +74,35 @@ def github_token():
 @pytest.fixture
 def freshness_tracker(tmp_path):
     """Track last sync time for channels."""
-    from datetime import datetime, timezone
     import json
-    
+    from datetime import datetime
+
     state_file = tmp_path / "channel_freshness.json"
-    
+
     class FreshnessTracker:
         def __init__(self):
             self.state = {}
             if state_file.exists():
                 self.state = json.loads(state_file.read_text())
-        
+
         def get_last_sync(self, channel: str) -> datetime | None:
             """Get the last sync time for a channel."""
             if ts := self.state.get(channel):
                 return datetime.fromisoformat(ts)
             return None
-        
+
         def mark_synced(self, channel: str) -> None:
             """Mark a channel as just synced."""
-            self.state[channel] = datetime.now(timezone.utc).isoformat()
+            self.state[channel] = datetime.now(UTC).isoformat()
             state_file.write_text(json.dumps(self.state, indent=2))
-        
+
         def is_fresh(self, channel: str, max_age_hours: int = 24) -> bool:
             """Check if channel was synced within max_age_hours."""
             from datetime import timedelta
             last = self.get_last_sync(channel)
             if not last:
                 return False
-            age = datetime.now(timezone.utc) - last
+            age = datetime.now(UTC) - last
             return age < timedelta(hours=max_age_hours)
-    
+
     return FreshnessTracker()

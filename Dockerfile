@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir --prefix=/install \
 FROM python:3.12-slim
 
 LABEL org.opencontainers.image.version="0.3.1" \
-      org.opencontainers.image.description="Modular digital platform for nuclear facilities"
+      org.opencontainers.image.description="Modular digital platform for facilities"
 
 ENV PYTHONUNBUFFERED=1
 

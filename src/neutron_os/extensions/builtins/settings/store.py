@@ -5,7 +5,7 @@ Two scopes (mirrors Claude Code's .claude/ pattern):
   project  → .neut/settings.toml      repo-local overrides (gitignored)
 
 Deliberately separate from runtime/config/ which is owned by `neut config`
-(the facility setup wizard: API keys, reactor config, model config).
+(the facility setup wizard: API keys, facility config, model config).
 
   neut config   → runtime/config/     facility setup (admin, one-time onboarding)
   neut settings → .neut/ + ~/.neut/   user preferences (runtime, per-user)
