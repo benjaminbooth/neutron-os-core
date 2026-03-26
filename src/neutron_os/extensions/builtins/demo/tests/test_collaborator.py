@@ -14,7 +14,7 @@ class TestCollaboratorScenario:
         assert scenario.slug == "collaborator"
 
     def test_has_nine_acts(self):
-        """Scenario has exactly 9 acts (Connect + 8 demo acts, including Triga DT wiki drift)."""
+        """Scenario has exactly 9 acts (Connect + 8 demo acts, including project docs wiki drift)."""
         scenario = build_scenario()
         assert len(scenario.acts) == 9
 
@@ -66,7 +66,7 @@ class TestCollaboratorScenario:
         content = (FIXTURES_DIR / "weekly_summary_demo.md").read_text()
         assert "Active Blockers" in content
         assert "55 commits" in content
-        assert "NeutronOS" in content
+        assert "Core Platform" in content
         # Must not contain real staff names
         assert "Jeongwon" not in content
         assert "Clarno" not in content

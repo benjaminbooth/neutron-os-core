@@ -7,6 +7,7 @@ This folder contains materials for open source disclosure and licensing through 
 | File | Purpose |
 |------|---------|
 | [open-source-disclosure-guide.md](open-source-disclosure-guide.md) | Complete guide for MIT open source release of axiom + neutron-os |
+| [codebase-split-plan.md](codebase-split-plan.md) | Technical plan for splitting into two repos |
 
 ## Quick Start
 

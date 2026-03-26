@@ -7,15 +7,15 @@ Week of 2026-03-04: 47 signals across 8 initiatives, involving 6 contributors.
 - Version control export scope incomplete — child repositories not visible in activity report.
 - Three repositories with no commits in 30+ days: sensor-calibration, log-parser-v1, data-bridge.
 
-## Reactor Log Digitization
+## Data Log Digitization
 ### Progress
 - J. Kim: 55 commits in the export period (highest activity in program).
-- Newly discovered repositories: log-digitizer, reactor-log-schema, modtools.
+- Newly discovered repositories: log-digitizer, data-log-schema, modtools.
 - Structured log extraction pipeline operational for paper-to-CSV conversions.
 ### Blockers
 - Export tool does not enumerate child repositories — velocity data incomplete.
 
-## NeutronOS Platform
+## Core Platform
 ### Progress
 - Sensing pipeline producing structured weekly summaries automatically.
 - Review framework operational with CLI and chat modes.

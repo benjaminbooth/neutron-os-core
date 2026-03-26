@@ -98,9 +98,11 @@ class ChannelTester:
                 message="python-gitlab library not installed (pip install python-gitlab)",
             )
 
+        # GitLab URL is configured via GITLAB_URL env var or defaults to gitlab.com
+        gitlab_url = os.environ.get("GITLAB_URL", "https://gitlab.com")
         try:
             gl = gitlab.Gitlab(
-                "https://rsicc-gitlab.tacc.utexas.edu",
+                gitlab_url,
                 private_token=token,
                 timeout=10,
             )

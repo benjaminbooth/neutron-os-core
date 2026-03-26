@@ -1,4 +1,4 @@
-# PRD: Reactor Log Digitization
+# PRD: Data Log Digitization
 
 | Field | Value |
 |-------|-------|
@@ -9,26 +9,26 @@
 
 ## Problem Statement
 
-Reactor operations are logged in paper binders and legacy spreadsheets.
-This data is critical for digital twin calibration, regulatory compliance,
+Operations are logged in paper binders and legacy spreadsheets.
+This data is critical for system calibration, compliance reporting,
 and operator training — but it's trapped in formats that resist analysis.
 
 [TODO: Jay fills in — what specific pain points have you encountered?]
 
 ## Proposed Solution
 
-Digitize reactor operation logs into a structured format that integrates with
-the digital twin pipeline and NeutronOS sensing system.
+Digitize operation logs into a structured format that integrates with
+the data pipeline and sensing system.
 
 ### Core Capabilities
 
 1. **Log Parsing** — Extract structured data from scanned log pages and CSV exports
    [TODO: Jay fills in — what log formats exist? Handwritten? Typed? CSV?]
 
-2. **Data Validation** — Cross-reference digitized entries against known reactor parameters
+2. **Data Validation** — Cross-reference digitized entries against known system parameters
    [TODO: Jay fills in — what validation rules matter most?]
 
-3. **Integration** — Feed validated data into the Digital Twin model and NeutronOS signals
+3. **Integration** — Feed validated data into the analysis model and platform signals
    [TODO: Jay fills in — which models consume this data?]
 
 ## Success Criteria

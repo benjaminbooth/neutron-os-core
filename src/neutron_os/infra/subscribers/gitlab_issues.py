@@ -5,8 +5,8 @@ if python-gitlab is not installed or GITLAB_TOKEN is not set.
 
 Config env vars:
     GITLAB_TOKEN         — Personal access token (required)
-    GITLAB_URL           — Instance URL (default: rsicc-gitlab.tacc.utexas.edu)
-    NEUT_GITLAB_PROJECT  — Project path (default: ut-computational-ne/neutron-os-core)
+    GITLAB_URL           — Instance URL (default: gitlab.com)
+    NEUT_GITLAB_PROJECT  — Project path (default: empty, must be configured)
 """
 
 from __future__ import annotations
@@ -16,8 +16,8 @@ from typing import Any
 
 from neutron_os.infra.subscribers.issue_provider import IssueProvider, IssueProviderFactory
 
-_DEFAULT_URL = "https://rsicc-gitlab.tacc.utexas.edu"
-_DEFAULT_PROJECT = "ut-computational-ne/neutron-os-core"
+_DEFAULT_URL = "https://gitlab.com"
+_DEFAULT_PROJECT = ""  # Must be configured via env or config
 
 
 class GitLabIssueProvider(IssueProvider):

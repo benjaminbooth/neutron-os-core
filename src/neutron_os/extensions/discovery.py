@@ -360,9 +360,9 @@ module = "providers.pptx_generation"
 
 # Sense extractors
 [[extractors]]
-name = "reactor_log"
-module = "extractors.reactor_log"
-file_patterns = ["*.rlog", "*.csv"]
+name = "data_log"
+module = "extractors.data_log"
+file_patterns = ["*.log", "*.csv"]
 
 # MCP servers (same schema as .mcp.json)
 [mcp_servers.my_server]
@@ -557,16 +557,16 @@ from pathlib import Path
 from neutron_os.extensions.builtins.eve_agent.extractors.base import BaseExtractor
 from neutron_os.extensions.builtins.eve_agent.models import Extraction, Signal
 
-class ReactorLogExtractor(BaseExtractor):
+class DataLogExtractor(BaseExtractor):
     @property
     def name(self) -> str:
-        return "reactor_log"
+        return "data_log"
 
     def can_handle(self, path: Path) -> bool:
-        return path.exists() and path.suffix in (".rlog", ".csv")
+        return path.exists() and path.suffix in (".log", ".csv")
 
     def extract(self, source: Path, **kwargs) -> Extraction:
-        # Parse reactor log file, create Signal objects
+        # Parse log file, create Signal objects
         signals = []
         # ... extraction logic ...
         return Extraction(
@@ -687,7 +687,7 @@ if ensure_available("redis"):
     providers/              # Docflow providers
         pptx_generation.py
     extractors/             # Sense extractors
-        reactor_log.py
+        data_log.py
 ```
 
 Extensions are hot-reloaded — no pip install, no restart needed.

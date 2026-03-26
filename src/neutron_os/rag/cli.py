@@ -206,17 +206,19 @@ def cmd_sync(args: argparse.Namespace) -> None:
     """Sync org corpus (v1: manual rsync instructions)."""
     target = getattr(args, "target", "org")
     if target == "org":
+        # Configure your org corpus source in runtime/config/rag.toml
+        # Example: org_corpus_source = "server.example.com:/shared/org-corpus/"
         print(
             "To sync the org corpus, run:\n"
             "\n"
             "  rsync -avz --progress \\\n"
-            "    rascal.tacc.utexas.edu:/shared/neutron-os/rag/org-corpus/ \\\n"
+            "    <your-server>:/path/to/org-corpus/ \\\n"
             "    runtime/knowledge/org-corpus/\n"
             "\n"
             "  neut rag index runtime/knowledge/org-corpus/ --corpus rag-org\n"
             "\n"
-            "Note: rascal requires UT VPN. Automated sync (neut rag sync org --auto)\n"
-            "will be available in v2 once the snapshot pipeline is in place."
+            "Configure your server path in runtime/config/rag.toml.\n"
+            "Automated sync (neut rag sync org --auto) will be available in v2."
         )
     else:
         print(f"Unknown sync target: {target}", file=sys.stderr)

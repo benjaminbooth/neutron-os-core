@@ -18,7 +18,7 @@ Extension developer quick-start:
     logger.info("Signal batch ingested", extra={"count": 42})
     logger.warning("VPN degraded", extra=neut_signal(
         "connections.vpn_degraded",
-        provider="qwen-tacc-ec",
+        provider="my-provider",
         attempts=3,
     ))
 
@@ -286,7 +286,7 @@ def neut_signal(event_type: str, **payload: Any) -> dict:
     Usage:
         logger.warning(
             "VPN degraded after %d attempts", n,
-            extra=neut_signal("connections.vpn_degraded", provider="qwen-tacc-ec", attempts=n),
+            extra=neut_signal("connections.vpn_degraded", provider="my-provider", attempts=n),
         )
 
     The SignalSink reads signal_event and signal_payload from the record dict

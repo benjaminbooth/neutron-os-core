@@ -1,8 +1,8 @@
 """Human-in-the-loop approval gate.
 
 Classifies actions as read-only (auto-approve) or write (require human
-confirmation). For safety-adjacent nuclear facility operations, all writes
-must be explicitly approved.
+confirmation). For safety-critical operations, all writes must be
+explicitly approved.
 
 Usage:
     gate = ApprovalGate()

@@ -10,9 +10,9 @@ Low-level:
 
 Tamper-evident:
 - TamperEvidentChain: HMAC-SHA256 chain over sequential records.  Shared by
-  the System Audit Log (routing decisions, EC events) and the Reactor Ops Log
-  (10 CFR 50.9 tamper-evident logbook).  Both use the same chain algorithm;
-  only the HMAC key source and PostgreSQL table differ.
+  the System Audit Log (routing decisions, EC events) and the Operations Log
+  (tamper-evident logbook for auditable operations).  Both use the same chain
+  algorithm; only the HMAC key source and PostgreSQL table differ.
 
 Hybrid backend (the primary API for consumers):
 - StateHandle / StateBackend: Protocols for backend-agnostic state access
@@ -233,7 +233,7 @@ def locked_append_jsonl(path: str | Path, record: Any) -> None:
 
 
 # ===========================================================================
-# Tamper-evident chain (shared by Audit Log and Reactor Ops Log)
+# Tamper-evident chain (shared by Audit Log and Operations Log)
 # ===========================================================================
 
 _CHAIN_GENESIS = "GENESIS"
@@ -254,10 +254,10 @@ class TamperEvidentChain:
 
     This class is **shared infrastructure** for:
 
-    * **System Audit Log** — routing decisions, EC events, VPN checks.
-      Key source: ``NEUT_AUDIT_HMAC_KEY`` env var (required in EC mode).
-    * **Reactor Ops Log** — 10 CFR 50.9 tamper-evident logbook.
-      Key source: ``NEUT_OPS_LOG_HMAC_KEY`` env var (required for NRC facilities).
+    * **System Audit Log** — routing decisions, sensitivity events, VPN checks.
+      Key source: ``NEUT_AUDIT_HMAC_KEY`` env var (required in controlled mode).
+    * **Operations Log** — tamper-evident logbook for auditable operations.
+      Key source: ``NEUT_OPS_LOG_HMAC_KEY`` env var (required for regulated facilities).
 
     Both use the identical chain algorithm.  The key source and PostgreSQL
     table are the only things that differ between the two consumers.

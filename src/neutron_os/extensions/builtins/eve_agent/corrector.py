@@ -54,63 +54,53 @@ class CorrectionResult:
 class TranscriptCorrector:
     """Corrects transcription errors using domain context and LangExtract."""
 
-    # Nuclear engineering domain glossary - common terms Whisper mishears
-    DOMAIN_GLOSSARY = {
-        # Technical terms
-        "new tronics": "neutronics",
-        "new tronic": "neutronic",
-        "nucular": "nuclear",
-        "flib": "FLiBe",
-        "flibe": "FLiBe",
-        "lif": "LiF",
-        "l i f": "LiF",
-        "b e f four": "BeF4",
-        "bef4": "BeF4",
-        "th f four": "ThF4",
-        "redox": "redox",
+    # Generic domain glossary - common STT mishearings (domain-agnostic)
+    # Domain-specific terms should be added to runtime/config/stt_glossary.json
+    _DEFAULT_GLOSSARY = {
+        # Common technical mishearings
         "cfd": "CFD",
-        "m dot": "ṁ (mass flow rate)",
-
-        # Programs/grants
-        "any u.p.": "NEUP",
-        "any up": "NEUP",
-        "n e u p": "NEUP",
-        "new up": "NEUP",
-        "doe": "DOE",
-        "d o e": "DOE",
-        "nrc": "NRC",
-        "n r c": "NRC",
-
-        # Codes/software
-        "gen foam": "Genfoam",
-        "genfoam": "Genfoam",
-        "sam": "SAM",
-        "s a m": "SAM",
-        "syth": "SyTH",
-        "sith": "SyTH",
-        "moscato": "Moscato",
-        "m p act": "MPACT",
-        "mpact": "MPACT",
-
-        # Universities/labs
-        "u c b": "UCB",
-        "ucb": "UC Berkeley",
-        "a and m": "A&M",
-        "a&m": "Texas A&M",
-        "idaho": "INL/Idaho",
-        "oak ridge": "ORNL",
-        "argon": "Argonne",
-
-        # Common mishearings
-        "the virus": "diverse",  # context-dependent
         "c of d": "CFD",
         "sea of dee": "CFD",
+        "m dot": "ṁ (mass flow rate)",
+        "redox": "redox",
+
+        # Generic mishearings
+        "the virus": "diverse",  # context-dependent
+
+        # Common acronym expansions
+        "doe": "DOE",
+        "d o e": "DOE",
     }
 
     # User glossary location
     from neutron_os import REPO_ROOT as _REPO_ROOT
     _RUNTIME_DIR = _REPO_ROOT / "runtime"
     USER_GLOSSARY_PATH = _RUNTIME_DIR / "inbox" / "corrections" / "user_glossary.json"
+    # Domain-specific glossary (e.g., nuclear engineering terms for neutron-os)
+    DOMAIN_GLOSSARY_PATH = _RUNTIME_DIR / "config" / "stt_glossary.json"
+
+    @classmethod
+    def _load_domain_glossary(cls) -> dict[str, str]:
+        """Load domain glossary from config file, falling back to defaults."""
+        glossary = dict(cls._DEFAULT_GLOSSARY)
+
+        # Load domain-specific glossary from config
+        if cls.DOMAIN_GLOSSARY_PATH.exists():
+            try:
+                import json
+                data = json.loads(cls.DOMAIN_GLOSSARY_PATH.read_text())
+                # Merge all sections
+                for section in data.values():
+                    if isinstance(section, dict):
+                        for mishearing, correct in section.items():
+                            glossary[mishearing.lower()] = correct
+            except (json.JSONDecodeError, KeyError):
+                pass  # Silently skip malformed glossary
+
+        return glossary
+
+    # Lazily loaded domain glossary
+    DOMAIN_GLOSSARY: dict[str, str] | None = None
 
     def __init__(self, config_dir: Path | None = None):
         """Initialize with config directory for people/initiatives."""
@@ -119,7 +109,10 @@ class TranscriptCorrector:
 
     def _build_glossary(self) -> dict[str, str]:
         """Build glossary from domain terms + user glossary + people + initiatives."""
-        glossary = dict(self.DOMAIN_GLOSSARY)
+        # Lazy-load domain glossary on first use
+        if TranscriptCorrector.DOMAIN_GLOSSARY is None:
+            TranscriptCorrector.DOMAIN_GLOSSARY = self._load_domain_glossary()
+        glossary = dict(TranscriptCorrector.DOMAIN_GLOSSARY)
 
         # Load user-defined glossary (highest priority)
         if self.USER_GLOSSARY_PATH.exists():
@@ -163,16 +156,14 @@ class TranscriptCorrector:
                 glossary["sha bazi"] = person.name
                 glossary["shab azi"] = person.name
 
-        # Add initiative names
+        # Add initiative names - common mishearings derived from initiative names
         for init in self.correlator.initiatives:
             name_lower = init.name.lower()
-            # Common mishearings
-            if "triga" in name_lower:
-                glossary["trigger"] = "TRIGA"
-                glossary["tree ga"] = "TRIGA"
+            # Add common phonetic mishearings for multi-word names
             if "digital twin" in name_lower:
                 glossary["digital twing"] = "Digital Twin"
                 glossary["digital twig"] = "Digital Twin"
+            # Additional initiative-specific phonetics can be added via stt_glossary.json
 
         return glossary
 

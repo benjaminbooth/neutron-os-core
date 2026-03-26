@@ -2,7 +2,7 @@
 
 Creates a complete extension directory with:
   - neut-extension.toml manifest
-  - Example chat tool (tools_ext/reactor_logs.py)
+  - Example chat tool (tools_ext/data_query.py)
   - SKILL.md for weekly-slides
   - Docflow GenerationProvider stub for .pptx
   - CLI command stub
@@ -55,7 +55,7 @@ def scaffold_extension(
 
     # Chat tool example
     (ext_dir / "tools_ext" / "__init__.py").write_text("", encoding="utf-8")
-    (ext_dir / "tools_ext" / "reactor_logs.py").write_text(
+    (ext_dir / "tools_ext" / "data_query.py").write_text(
         _chat_tool_template(name), encoding="utf-8"
     )
 
@@ -78,7 +78,7 @@ def scaffold_extension(
 
     # Extractor stub
     (ext_dir / "extractors" / "__init__.py").write_text("", encoding="utf-8")
-    (ext_dir / "extractors" / "reactor_log.py").write_text(
+    (ext_dir / "extractors" / "data_log.py").write_text(
         _extractor_template(), encoding="utf-8"
     )
 
@@ -109,7 +109,7 @@ dir = "skills"
 [[cli.commands]]
 noun = "logs"
 module = "cli.logs"
-description = "Query and analyze reactor operation logs"
+description = "Query and analyze operation logs"
 
 # Docflow providers
 [[providers]]
@@ -119,9 +119,9 @@ module = "providers.pptx_generation"
 
 # Sense extractors
 [[extractors]]
-name = "reactor_log"
-module = "extractors.reactor_log"
-file_patterns = ["*.rlog", "*.csv"]
+name = "data_log"
+module = "extractors.data_log"
+file_patterns = ["*.log", "*.csv"]
 
 # External connections — uncomment and customize
 # [[connections]]
@@ -137,7 +137,7 @@ file_patterns = ["*.rlog", "*.csv"]
 
 
 def _chat_tool_template(ext_name: str) -> str:
-    return f'''"""Reactor log query tool for {ext_name}.
+    return f'''"""Data query tool for {ext_name}.
 
 Example chat tool — modify this for your own data sources.
 """
@@ -147,15 +147,15 @@ from neutron_os.infra.orchestrator.actions import ActionCategory
 
 TOOLS = [
     ToolDef(
-        name="reactor_query",
-        description="Query reactor operation logs. Returns recent entries matching the query.",
+        name="data_query",
+        description="Query operation logs. Returns recent entries matching the query.",
         category=ActionCategory.READ,
         parameters={{
             "type": "object",
             "properties": {{
                 "query": {{
                     "type": "string",
-                    "description": "Search term or date range (e.g., 'power level', '2026-03-01').",
+                    "description": "Search term or date range (e.g., 'status', '2026-03-01').",
                 }},
                 "limit": {{
                     "type": "integer",
@@ -169,7 +169,7 @@ TOOLS = [
 
 def execute(name: str, params: dict) -> dict:
     """Execute tool. Always return a dict."""
-    if name == "reactor_query":
+    if name == "data_query":
         query = params.get("query", "")
         limit = params.get("limit", 10)
         # TODO: Replace with actual data source query
@@ -178,13 +178,13 @@ def execute(name: str, params: dict) -> dict:
             "results": [
                 {{
                     "timestamp": "2026-03-04T10:00:00Z",
-                    "parameter": "reactor_power",
-                    "value": "250 kW",
-                    "operator": "J. Seo",
+                    "parameter": "system_status",
+                    "value": "nominal",
+                    "operator": "J. Doe",
                 }},
             ],
             "count": 1,
-            "note": "Stub data — connect to your reactor log database.",
+            "note": "Stub data — connect to your log database.",
         }}
     return {{"error": f"Unknown tool: {{name}}"}}
 '''
@@ -193,7 +193,7 @@ def execute(name: str, params: dict) -> dict:
 def _skill_template() -> str:
     return '''---
 name: weekly-slides
-description: Generate weekly progress slides from NeutronOS sense data
+description: Generate weekly progress slides from sense data
 ---
 
 # Weekly Slides
@@ -203,7 +203,7 @@ Generate a PowerPoint deck summarizing this week's program activity.
 ## Instructions
 
 1. Query sense status for the current week's signals
-2. Group signals by initiative (TRIGA DT, NeutronOS, Cost Estimation, etc.)
+2. Group signals by initiative (Project A, Project B, Cost Estimation, etc.)
 3. Generate one slide per active initiative with:
    - Key accomplishments (from progress signals)
    - Blockers (from blocker signals)
@@ -288,7 +288,7 @@ class PptxGenerationProvider:
 
 
 def _cli_template(ext_name: str) -> str:
-    return '''"""CLI command for querying reactor logs.
+    return '''"""CLI command for querying operation logs.
 
 Registered as: neut logs
 """
@@ -301,7 +301,7 @@ import argparse
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="neut logs",
-        description="Query and analyze reactor operation logs",
+        description="Query and analyze operation logs",
     )
     sub = parser.add_subparsers(dest="action")
 
@@ -311,7 +311,7 @@ def get_parser() -> argparse.ArgumentParser:
     search.add_argument("--format", choices=["table", "json"], default="table")
 
     sub.add_parser("summary", help="Show summary of recent operations")
-    sub.add_parser("status", help="Current reactor status")
+    sub.add_parser("status", help="Current system status")
 
     return parser
 
@@ -322,23 +322,23 @@ def main():
 
     if args.action == "search":
         print(f"Searching logs for: {args.query or '(all)'}")
-        print("  (connect to your reactor log database)")
+        print("  (connect to your log database)")
     elif args.action == "summary":
-        print("Reactor Operations Summary")
+        print("Operations Summary")
         print("  Last 7 days: 12 entries")
-        print("  (connect to your reactor log database)")
+        print("  (connect to your log database)")
     elif args.action == "status":
-        print("Reactor Status: STANDBY")
-        print("  (connect to your reactor status feed)")
+        print("System Status: NOMINAL")
+        print("  (connect to your status feed)")
     else:
         parser.print_help()
 '''
 
 
 def _extractor_template() -> str:
-    return '''"""Reactor log extractor for the sense pipeline.
+    return '''"""Data log extractor for the sense pipeline.
 
-Extracts signals from reactor operation log files (.rlog, .csv).
+Extracts signals from operation log files (.log, .csv).
 """
 
 from __future__ import annotations
@@ -347,8 +347,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-class ReactorLogExtractor:
-    """Sense extractor for reactor operation logs.
+class DataLogExtractor:
+    """Sense extractor for operation logs.
 
     Implements the same contract as tools.extensions.builtins.eve_agent.extractors.base.BaseExtractor
     without importing it (keeps extension dependency-free).
@@ -356,13 +356,13 @@ class ReactorLogExtractor:
 
     @property
     def name(self) -> str:
-        return "reactor_log"
+        return "data_log"
 
     def can_handle(self, path: Path) -> bool:
-        return path.exists() and path.suffix in (".rlog", ".csv")
+        return path.exists() and path.suffix in (".log", ".csv")
 
     def extract(self, source: Path, **kwargs) -> dict:
-        """Extract signals from a reactor log file.
+        """Extract signals from an operation log file.
 
         Returns dict matching the Extraction dataclass shape:
             extractor, source_file, signals, errors, extracted_at
@@ -380,7 +380,7 @@ class ReactorLogExtractor:
                 "extracted_at": now,
             }
 
-        # TODO: Parse reactor log format and create signals
+        # TODO: Parse log format and create signals
         # Each signal should have: source, timestamp, raw_text,
         #   signal_type, detail, confidence, people, initiatives
 

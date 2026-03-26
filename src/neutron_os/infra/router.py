@@ -1,4 +1,4 @@
-"""Export Control Router — classifies LLM queries before dispatch.
+"""Sensitivity Router — classifies LLM queries before dispatch.
 
 Runs entirely locally. No cloud calls are made to determine routing.
 Classification result determines which provider tier handles the request:
@@ -21,14 +21,18 @@ Sensitivity (routing.sensitivity setting):
 Context Window (Option A):
   classify() accepts `context`: the last N conversation turns. Classifying
   the window (not just the current message) catches cases like "what's the
-  source definition?" after several turns about MCNP — no keyword, but clearly
-  in an export-controlled conversation.
+  API endpoint?" after several turns about a sensitive topic — no keyword,
+  but clearly in a controlled conversation.
 
 Ollama SLM Classifier (Option C):
   A small local model (e.g., llama3.2:1b via Ollama) provides semantic
   classification for queries that pass the keyword filter. Runs in <500ms on
   Apple Silicon, fully offline, zero new Python dependencies (plain HTTP).
   Falls back silently to "public" if Ollama is not running.
+
+Domain-specific Configuration:
+  The classifier prompt is loaded from runtime/config/classifier_prompt.txt
+  if present, allowing domain-specific sensitivity rules without code changes.
 """
 
 from __future__ import annotations
@@ -62,20 +66,35 @@ _OLLAMA_BASE = "http://localhost:11434"
 _OLLAMA_MODEL = "llama3.2:1b"
 _OLLAMA_TIMEOUT = 2.0  # seconds — must not block the chat loop
 
-_OLLAMA_SYSTEM = """\
-You are a nuclear export control classifier for a research facility.
-Your only job: determine if the text discusses export-controlled nuclear technology.
-
-Export-controlled topics include: nuclear simulation codes (MCNP, SCALE, RELAP, ORIGEN, etc.),
-reactor design parameters, enrichment calculations, weapons-usable materials, and content
-regulated under 10 CFR 810 or the Export Administration Regulations (EAR).
-
-General nuclear topics that are NOT export-controlled: reactor physics education, public
-safety discussions, published literature, operational procedures, administrative tasks,
-training, and software engineering unrelated to sensitive codes.
+# Default classifier prompt — domain-agnostic fallback.
+# Override with runtime/config/classifier_prompt.txt for domain-specific routing.
+_DEFAULT_CLASSIFIER_PROMPT = """\
+You are a sensitivity classifier for a data platform.
+Your only job: determine if the text discusses sensitive or restricted content.
 
 Answer with exactly one word: yes, no, or uncertain.
 Use "uncertain" only if you genuinely cannot tell. Prefer yes or no."""
+
+_CLASSIFIER_PROMPT_FILE = _RUNTIME_CONFIG / "classifier_prompt.txt"
+
+
+def _load_classifier_prompt() -> str:
+    """Load domain-specific classifier prompt from config, or use default."""
+    if _CLASSIFIER_PROMPT_FILE.exists():
+        return _CLASSIFIER_PROMPT_FILE.read_text(encoding="utf-8").strip()
+    return _DEFAULT_CLASSIFIER_PROMPT
+
+
+# Lazily loaded to allow config override
+_OLLAMA_SYSTEM: str | None = None
+
+
+def _get_classifier_prompt() -> str:
+    """Get the classifier prompt, loading from config on first call."""
+    global _OLLAMA_SYSTEM
+    if _OLLAMA_SYSTEM is None:
+        _OLLAMA_SYSTEM = _load_classifier_prompt()
+    return _OLLAMA_SYSTEM
 
 # Valid sensitivity values
 SENSITIVITY_STRICT = "strict"
@@ -100,14 +119,14 @@ class RoutingDecision:
     keyword_term: str | None = None  # first matched term (for audit)
     """Facility-policy tags carried forward to gateway._select_provider.
 
-    The router sets tier for legal/compliance (export-control law).
+    The router sets tier for legal/compliance (sensitivity rules).
     Tags express facility routing policy on top: which specific private-network
     LLM to use, workflow-level routing, etc.
 
     Examples:
-      {"mcnp"}               → route to a provider tagged "mcnp"
+      {"domain-sensitive"}   → route to a provider tagged "domain-sensitive"
       {"private_network"}    → any private-network provider
-      {"internal_compute"}   → facility intranet provider, not EC
+      {"internal_compute"}   → facility intranet provider
     Tags are populated by the caller (e.g. session mode, CLI --tags flag) or
     by future classifier extensions.  The base router sets them to empty set.
     """
@@ -203,7 +222,7 @@ class OllamaClassifier:
         try:
             payload = json.dumps({
                 "model": self._model,
-                "system": _OLLAMA_SYSTEM,
+                "system": _get_classifier_prompt(),
                 "prompt": text[:4000],  # cap to avoid long contexts
                 "stream": False,
                 "options": {"num_predict": 5, "temperature": 0},
@@ -234,7 +253,7 @@ class QueryRouter:
         router = QueryRouter()
 
         # Simple: current message only
-        decision = router.classify("How do I set up MCNP geometry?")
+        decision = router.classify("How do I access the restricted API?")
 
         # With conversation context (recommended):
         decision = router.classify(

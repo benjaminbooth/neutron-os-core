@@ -1,11 +1,11 @@
 """'The Silent Contributor' — 9-act guided demo scenario.
 
-Walks a new user (Jay) through the full NeutronOS pipeline:
+Walks a new user (Jay) through the full platform pipeline:
   sensing -> review -> publish -> publisher agent -> extensions
 
 Acts 1-7 cover the core sense/review/push pipeline.
-Acts 8-9 introduce the publisher agent using Jay's real work on the
-Triga DT documentation website — showing how Neut proactively
+Acts 8-9 introduce the publisher agent using Jay's real work on a
+project documentation wiki — showing how the platform proactively
 discovers that a GitLab wiki is out of date and proposes an update.
 
 Each act alternates between raw CLI and chat-assisted mode to prove
@@ -163,7 +163,7 @@ def build_scenario() -> Scenario:
                 title="Review (CLI)",
                 description=(
                     "Review the weekly draft section-by-section in the terminal. "
-                    "Notice the Reactor Log Digitization section is thin — just '55 commits. "
+                    "Notice the Data Log Digitization section is thin — just '55 commits. "
                     "Repos discovered.' This is where Jay's voice needs to be heard.\n\n"
                     "Press Q mid-review to test resume — re-running picks up where you left off."
                 ),
@@ -218,7 +218,7 @@ def build_scenario() -> Scenario:
                     "Publisher uses the Factory/Provider pattern — swap pandoc for LaTeX, pptx, etc.",
                     "neut pub endpoints shows all 19 built-in destinations with format support.",
                     "The link registry (.publisher-registry.json) maps doc_ids to pushed URLs.",
-                    "Next: Jay has a Triga DT wiki that's gotten out of date. Let's fix it.",
+                    "Next: Jay has a project wiki that's gotten out of date. Let's fix it.",
                 ],
                 validator=_check_doc_status,
             ),
@@ -226,15 +226,15 @@ def build_scenario() -> Scenario:
                 number=7,
                 title="Make It Yours",
                 description=(
-                    "Scaffold a personal extension with a reactor log query tool, "
+                    "Scaffold a personal extension with a data log query tool, "
                     "a weekly-slides SKILL.md, and a .pptx publisher provider stub. "
                     "Then verify it appears in chat immediately — no restart needed."
                 ),
                 mode="cli",
                 commands=[
-                    "neut ext init reactor-tools",
+                    "neut ext init data-tools",
                     "neut ext",
-                    "neut ext check reactor-tools",
+                    "neut ext check data-tools",
                 ],
                 hints=[
                     "The scaffold includes a SKILL.md compatible with Claude Code, Codex, and Copilot.",
@@ -244,15 +244,15 @@ def build_scenario() -> Scenario:
                 ],
                 validator=_check_extension_exists,
                 fallback_message=(
-                    "Extension not detected. Run 'neut ext init reactor-tools' to create it."
+                    "Extension not detected. Run 'neut ext init data-tools' to create it."
                 ),
             ),
             Act(
                 number=8,
-                title="Triga DT — Wiki Drift",
+                title="Project Docs — Wiki Drift",
                 description=(
-                    "Jay maintains the Triga Digital Twin documentation on a GitLab wiki. "
-                    "He hasn't updated it in months. Neut's publisher agent is about to "
+                    "Jay maintains the project documentation on a GitLab wiki. "
+                    "He hasn't updated it in months. The publisher agent is about to "
                     "notice that for him.\n\n"
                     "We'll pull the wiki source, declare that the repo is authoritative, "
                     "then let the agent scan for drift between what the wiki says and "
@@ -260,10 +260,10 @@ def build_scenario() -> Scenario:
                 ),
                 mode="cli",
                 commands=[
-                    # Pull the Triga DT wiki page into a local mirror
-                    "neut pub pull-source gitlab-wiki --doc triga-dt-overview",
+                    # Pull the project wiki page into a local mirror
+                    "neut pub pull-source gitlab-wiki --doc project-overview",
                     # Declare the authoritative source path
-                    "# > Authoritative source: src/neutron_os/extensions/ (Enter to confirm)",
+                    "# > Authoritative source: src/my_project/core/ (Enter to confirm)",
                     # Scan for drift
                     "neut pub agent scan --endpoint gitlab-wiki",
                 ],
@@ -280,10 +280,10 @@ def build_scenario() -> Scenario:
             ),
             Act(
                 number=9,
-                title="Triga DT — Approve & Push",
+                title="Project Docs — Approve & Push",
                 description=(
-                    "The agent found drift: the Triga DT overview page still references "
-                    "the old 'neut doc publish' command and an outdated sensor polling interval. "
+                    "The agent found drift: the project overview page still references "
+                    "the old 'neut doc publish' command and an outdated configuration option. "
                     "It has generated a targeted update proposal — not a full rewrite, just "
                     "the two specific corrections needed.\n\n"
                     "Jay reviews the diff, approves, and the agent pushes the update "
@@ -292,7 +292,7 @@ def build_scenario() -> Scenario:
                 ),
                 mode="chat",
                 commands=[
-                    "neut pub agent propose triga-dt-overview",
+                    "neut pub agent propose project-overview",
                     "# /review → Jay approves",
                     "neut pub push --provider gitlab-wiki",
                 ],

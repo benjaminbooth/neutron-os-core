@@ -70,7 +70,7 @@ class LLMProvider(ProviderIdentityMixin):
     priority: int = 99
     use_for: list[str] = field(default_factory=lambda: ["fallback"])
     routing_tier: str = "any"      # "public" | "export_controlled" | "any" (legacy; still respected)
-    routing_tags: list[str] = field(default_factory=list)  # facility policy tags e.g. ["mcnp", "private_network"]
+    routing_tags: list[str] = field(default_factory=list)  # facility policy tags e.g. ["domain-sensitive", "private_network"]
     requires_vpn: bool = False     # if True, TCP-check endpoint before calling
     verify_ssl: bool = True        # set False for private servers with self-signed certs
     max_tokens_default: int = 0    # 0 = use caller's value; set >0 for reasoning models that need headroom
@@ -283,7 +283,7 @@ class Gateway:
             routing_tier:  "public" | "export_controlled" | "any" (legacy binary)
             required_tags: Facility-policy tags that must ALL appear in the
                            provider's routing_tags list.  Empty set = no filter.
-                           Example: {"mcnp"} routes only to providers tagged "mcnp".
+                           Example: {"restricted"} routes only to providers tagged "restricted".
         """
         # CLI override: respect it unconditionally
         if self._provider_override:
@@ -624,7 +624,7 @@ class Gateway:
             task: Task type for provider selection.
             routing_tier:  "public" | "export_controlled" | "any"
             routing_tags:  Optional set of facility-policy tags that the selected
-                           provider must carry (e.g. {"mcnp"}, {"internal_compute"}).
+                           provider must carry (e.g. {"restricted"}, {"internal_compute"}).
                            None = no tag filter.
 
         Returns:

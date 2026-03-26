@@ -1,7 +1,7 @@
 # `builtins/` — Domain-Agnostic Builtin Extensions
 
-Each subdirectory is a self-contained extension that ships with Neutron OS.
-These are **domain-agnostic** — they work for any nuclear facility without
+Each subdirectory is a self-contained extension that ships with the platform.
+These are **domain-agnostic** — they work for any facility without
 customization.
 
 ## Naming Convention

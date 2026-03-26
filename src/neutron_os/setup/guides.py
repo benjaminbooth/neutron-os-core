@@ -109,12 +109,12 @@ CREDENTIAL_GUIDES: list[CredentialGuide] = [
         description="Lets Neut read your team's code repositories and track activity.",
         required=True,
         steps=[
-            "Go to your GitLab instance",
+            "Go to your GitLab instance (configure GITLAB_URL env var for self-hosted)",
             'Navigate to User Settings → Access Tokens (or "Personal Access Tokens")',
             "Create a new token with read_api and read_repository scopes",
             "Copy the token — it starts with glpat-",
         ],
-        url="https://rsicc-gitlab.tacc.utexas.edu/-/user_settings/personal_access_tokens",
+        url="https://gitlab.com/-/user_settings/personal_access_tokens",
         validator=_is_gitlab_token,
     ),
     CredentialGuide(
