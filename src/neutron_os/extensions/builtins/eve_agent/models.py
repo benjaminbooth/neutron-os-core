@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from neutron_os.infra.state import atomic_write
+
 # Standard date formats for consistency across the pipeline
 DATE_FORMAT_ISO = "%Y-%m-%d"  # User-facing filenames: changelog_2026-02-24.md
 DATETIME_FORMAT_COMPACT = "%Y%m%d_%H%M%S"  # Internal IDs: signal_20260224_143052
@@ -160,7 +162,6 @@ class SignalManifest:
 
     def _save(self) -> None:
         """Persist manifest to disk."""
-        import json
         data = {
             "reported": {
                 sig_id: {
@@ -174,7 +175,7 @@ class SignalManifest:
             "last_updated": datetime.now(UTC).isoformat(),
         }
         self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
-        self.manifest_path.write_text(json.dumps(data, indent=2))
+        atomic_write(self.manifest_path, data)
 
     def is_reported(self, signal: Signal) -> bool:
         """Check if a signal has already been reported."""

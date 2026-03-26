@@ -67,10 +67,10 @@ def _save_toml(path: Path, data: dict[str, Any]) -> None:
     except ImportError:
         path.parent.mkdir(parents=True, exist_ok=True)
         lines = _dict_to_toml(data)
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        path.write_text("\n".join(lines) + "\n")
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(tomli_w.dumps(data).encode())
+    path.write_text(tomli_w.dumps(data))
 
 
 def _dict_to_toml(data: dict[str, Any], prefix: str = "") -> list[str]:

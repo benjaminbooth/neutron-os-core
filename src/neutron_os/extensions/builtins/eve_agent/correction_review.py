@@ -40,7 +40,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
-from neutron_os.infra.state import locked_append_jsonl
+from neutron_os.infra.state import atomic_write, locked_append_jsonl
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CORRECTIONS_DIR = _RUNTIME_DIR / "inbox" / "corrections"
@@ -719,7 +719,7 @@ class CorrectionReviewSystem:
                      "status": j.status, "created_at": j.created_at, "completed_at": j.completed_at,
                      "error": j.error} for j in jobs],
         }
-        self.resynthesis_queue.write_text(json.dumps(data, indent=2))
+        atomic_write(self.resynthesis_queue, data)
 
     def get_pending_resynthesis(self) -> list[ResynthesisJob]:
         """Get pending re-synthesis jobs."""

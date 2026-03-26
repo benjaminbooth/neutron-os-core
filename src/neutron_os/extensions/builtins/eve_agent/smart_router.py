@@ -29,6 +29,7 @@ from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.gateway import Gateway
+from neutron_os.infra.state import atomic_write
 
 from .models import Signal
 
@@ -248,7 +249,7 @@ class SmartRouter:
     def _save_suggestions(self) -> None:
         """Persist suggestions to disk."""
         SUGGESTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        SUGGESTIONS_FILE.write_text(json.dumps(self.suggestions, indent=2))
+        atomic_write(SUGGESTIONS_FILE, self.suggestions)
 
     def match_to_prds(
         self,

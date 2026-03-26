@@ -30,6 +30,8 @@ from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 
+from neutron_os.infra.state import atomic_write
+
 from ..models import Signal
 
 
@@ -313,7 +315,7 @@ class DocFlowReviewExtractor:
     def _save_sync_state(self, state: dict) -> None:
         """Save sync state after successful sync."""
         self._sync_state_path.parent.mkdir(parents=True, exist_ok=True)
-        self._sync_state_path.write_text(json.dumps(state, indent=2))
+        atomic_write(self._sync_state_path, state)
 
     def _hash_content(self, content: str) -> str:
         """Compute content hash for change detection."""
@@ -787,4 +789,4 @@ def register_prd(
 
     # Save
     registry_path.parent.mkdir(parents=True, exist_ok=True)
-    registry_path.write_text(json.dumps(registry, indent=2))
+    atomic_write(registry_path, registry)

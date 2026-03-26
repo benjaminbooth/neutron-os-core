@@ -10,6 +10,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+from neutron_os.infra.state import atomic_write
+
 
 class LoopStage(Enum):
     """Stages in the product development loop."""
@@ -362,7 +364,7 @@ class LoopTracker:
             "subscriptions": [sub.to_dict() for sub in self.subscriptions.values()],
             "saved_at": datetime.now().isoformat(),
         }
-        self.store_path.write_text(json.dumps(data, indent=2))
+        atomic_write(self.store_path, data)
 
     def start_iteration(
         self,

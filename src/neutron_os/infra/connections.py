@@ -336,7 +336,7 @@ def store_credential(
     svc_dir.mkdir(parents=True, exist_ok=True)
 
     token_file = svc_dir / "token"
-    token_file.write_text(value, encoding="utf-8")
+    token_file.write_text(value)
     token_file.chmod(0o600)
     return token_file
 

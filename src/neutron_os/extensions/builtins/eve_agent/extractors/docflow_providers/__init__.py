@@ -52,6 +52,8 @@ from pathlib import Path
 from typing import TypeVar
 
 # Re-export core types for provider implementations
+from neutron_os.infra.state import atomic_write
+
 from ...models import Signal as Signal
 
 
@@ -311,9 +313,8 @@ class FolderSyncProvider(ABC):
                 del prev_state[remote_id]
 
         # Save updated state
-        import json
         self._local_root.mkdir(parents=True, exist_ok=True)
-        state_file.write_text(json.dumps(prev_state, indent=2))
+        atomic_write(state_file, prev_state)
 
         return changes
 

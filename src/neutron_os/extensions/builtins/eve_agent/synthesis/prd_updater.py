@@ -4,11 +4,12 @@ Generates PRD section updates from signal clusters, with citations
 and confidence scores.
 """
 
-import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+
+from neutron_os.infra.state import atomic_write
 
 
 class PRDSection(Enum):
@@ -342,7 +343,7 @@ class PRDUpdater:
             "drafts": [d.to_dict() for d in drafts],
         }
 
-        filepath.write_text(json.dumps(data, indent=2))
+        atomic_write(filepath, data)
         return filepath
 
     def apply_approved_drafts(self, drafts: list[PRDUpdateDraft]) -> dict[str, int]:

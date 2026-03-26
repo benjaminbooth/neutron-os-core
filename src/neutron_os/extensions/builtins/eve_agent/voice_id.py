@@ -36,6 +36,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from neutron_os.infra.state import atomic_write
+
 if TYPE_CHECKING:
     pass
 
@@ -122,7 +124,7 @@ class VoiceProfileStore:
         safe_name = profile.person_name.replace(" ", "_").lower()
         safe_name = "".join(c for c in safe_name if c.isalnum() or c == "_")
         path = self.profiles_dir / f"{safe_name}.json"
-        path.write_text(json.dumps(profile.to_dict(), indent=2))
+        atomic_write(path, profile.to_dict())
 
     def _get_embedding_model(self):
         """Lazy-load the embedding model."""

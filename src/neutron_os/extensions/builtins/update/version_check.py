@@ -16,6 +16,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from neutron_os import REPO_ROOT
+from neutron_os.infra.state import atomic_write
 
 NEUT_DIR = REPO_ROOT / ".neut"
 UPDATE_STATE_FILE = NEUT_DIR / "update-state.json"
@@ -268,10 +269,7 @@ class VersionChecker:
         try:
             NEUT_DIR.mkdir(parents=True, exist_ok=True)
             data = asdict(info)
-            UPDATE_STATE_FILE.write_text(
-                json.dumps(data, indent=2) + "\n",
-                encoding="utf-8",
-            )
+            atomic_write(UPDATE_STATE_FILE, data)
         except Exception:
             pass
 
@@ -295,10 +293,7 @@ def write_restart_state(
         "reason": reason,
         "restarted_at": datetime.now(UTC).isoformat(),
     }
-    RESTART_STATE_FILE.write_text(
-        json.dumps(state, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    atomic_write(RESTART_STATE_FILE, state)
 
 
 def read_restart_state(max_age_seconds: float = 60.0) -> dict | None:

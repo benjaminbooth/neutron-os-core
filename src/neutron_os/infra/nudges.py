@@ -10,12 +10,12 @@ Nudges are stored at ~/.neut/nudges.json. Each nudge has:
 
 Usage:
     store = NudgeStore()
-    store.add("ext-remote-triga-tools",
-              message="Add a git remote to your triga-tools extension",
-              hint="cd ~/.neut/extensions/triga-tools && git remote add origin <url>")
+    store.add("ext-remote-my-tools",
+              message="Add a git remote to your my-tools extension",
+              hint="cd ~/.neut/extensions/my-tools && git remote add origin <url>")
     store.pending()    # list of active nudges
-    store.snooze("ext-remote-triga-tools", days=7)
-    store.dismiss("ext-remote-triga-tools")
+    store.snooze("ext-remote-my-tools", days=7)
+    store.dismiss("ext-remote-my-tools")
 """
 
 from __future__ import annotations
@@ -23,6 +23,8 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+from neutron_os.infra.state import atomic_write
 
 _DEFAULT_PATH = Path.home() / ".neut" / "nudges.json"
 
@@ -93,10 +95,7 @@ class NudgeStore:
 
     def _save(self, nudges: list[Nudge]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
-            json.dumps([n.to_dict() for n in nudges], indent=2),
-            encoding="utf-8",
-        )
+        atomic_write(self.path, [n.to_dict() for n in nudges])
 
     def add(self, id: str, message: str, hint: str = "") -> None:
         """Add a nudge. No-op if already exists."""

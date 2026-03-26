@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import atomic_write
 
 from .models import Signal
 
@@ -178,11 +179,13 @@ class FeedbackCollector:
 
     def _save(self) -> None:
         """Persist state to disk."""
-        PENDING_REQUESTS.write_text(
-            json.dumps([r.to_dict() for r in self.pending.values()], indent=2)
+        atomic_write(
+            PENDING_REQUESTS,
+            json.dumps([r.to_dict() for r in self.pending.values()], indent=2),
         )
-        FEEDBACK_LOG.write_text(
-            json.dumps([f.to_dict() for f in self.feedback_log], indent=2)
+        atomic_write(
+            FEEDBACK_LOG,
+            json.dumps([f.to_dict() for f in self.feedback_log], indent=2),
         )
 
     def create_feedback_request(

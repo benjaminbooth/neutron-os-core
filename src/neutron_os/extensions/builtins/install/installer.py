@@ -17,7 +17,6 @@ already completed successfully in a prior run.  Pass --force to re-run all steps
 from __future__ import annotations
 
 import fnmatch
-import json
 import logging
 import os
 import socket
@@ -28,6 +27,7 @@ from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.config_loader import load_json
+from neutron_os.infra.state import atomic_write
 
 log = logging.getLogger(__name__)
 
@@ -221,7 +221,7 @@ def _load_state() -> dict[str, bool]:
 
 def _save_state(state: dict[str, bool]) -> None:
     _STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _STATE_PATH.write_text(json.dumps(state, indent=2))
+    atomic_write(_STATE_PATH, state)
 
 
 # ---------------------------------------------------------------------------

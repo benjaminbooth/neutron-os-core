@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import atomic_write
 
 from .models import DATE_FORMAT_ISO, Signal
 
@@ -79,7 +80,7 @@ class BlockerTracker:
             "last_updated": datetime.now(UTC).isoformat(),
         }
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        self.state_path.write_text(json.dumps(data, indent=2))
+        atomic_write(self.state_path, data)
 
     def update(self, blocker_signals: list[Signal]) -> None:
         """Update tracker with new blocker signals from the current cycle.

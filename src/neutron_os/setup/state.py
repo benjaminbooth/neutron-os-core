@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from neutron_os.infra.state import atomic_write
+
 # Stale threshold in seconds (30 days)
 _STALE_SECONDS = 30 * 24 * 60 * 60
 
@@ -108,10 +110,7 @@ def save_state(state: SetupState, root: Path | None = None) -> Path:
     """Persist setup state to disk."""
     state.updated_at = datetime.now(UTC).isoformat()
     path = _state_path(root)
-    path.write_text(
-        json.dumps(state.to_dict(), indent=2),
-        encoding="utf-8",
-    )
+    atomic_write(path, state.to_dict())
     return path
 
 

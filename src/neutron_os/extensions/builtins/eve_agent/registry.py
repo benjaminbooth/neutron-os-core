@@ -60,6 +60,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import atomic_write
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 INBOX_DIR = _RUNTIME_DIR / "inbox"
@@ -513,7 +514,7 @@ class SignalRegistry:
                 "publish_count": meta.publish_count,
             }
 
-        self._state_file.write_text(json.dumps(state, indent=2))
+        atomic_write(self._state_file, state)
 
     # ---------------------------------------------------------------------------
     # Status and diagnostics

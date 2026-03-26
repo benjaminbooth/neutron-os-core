@@ -12,6 +12,8 @@ import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from neutron_os.infra.state import atomic_write
+
 
 @dataclass
 class SourceConfig:
@@ -87,7 +89,7 @@ def save_config(sources: list[SourceConfig], root: Path | None = None) -> Path:
     path = _config_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = [s.to_dict() for s in sources]
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    atomic_write(path, data)
     return path
 
 

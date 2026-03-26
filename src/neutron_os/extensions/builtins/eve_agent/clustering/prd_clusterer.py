@@ -11,6 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from neutron_os.infra.state import atomic_write
+
 if TYPE_CHECKING:
     pass
 
@@ -255,7 +257,7 @@ class PRDClusterer:
             "clusters": [c.to_dict() for c in clusters],
         }
 
-        filepath.write_text(json.dumps(data, indent=2))
+        atomic_write(filepath, data)
         return filepath
 
     def load_clusters(self, filepath: Path, signals: list) -> list[SignalCluster]:

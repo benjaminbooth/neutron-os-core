@@ -34,6 +34,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import atomic_write
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 CONFIG_DIR = _RUNTIME_DIR / "config"
@@ -552,7 +553,7 @@ class OutlookCalendarProvider(CalendarProvider):
                     "refresh_token": result.get("refresh_token", refresh_token),
                     "expires_at": self._token_expiry.isoformat(),
                 }
-                self.token_path.write_text(json.dumps(token_data, indent=2))
+                atomic_write(self.token_path, token_data)
 
                 assert self._access_token is not None
                 return self._access_token
@@ -628,7 +629,7 @@ class OutlookCalendarProvider(CalendarProvider):
                         "expires_at": self._token_expiry.isoformat(),
                     }
                     self.token_path.parent.mkdir(parents=True, exist_ok=True)
-                    self.token_path.write_text(json.dumps(token_data, indent=2))
+                    atomic_write(self.token_path, token_data)
 
                     print("  ✓ Microsoft authentication successful\n")
                     assert self._access_token is not None
@@ -802,7 +803,7 @@ class CalendarContext:
         """Persist cache to disk."""
         CALENDAR_CACHE.parent.mkdir(parents=True, exist_ok=True)
         data = [e.to_dict() for e in self._cache.values()]
-        CALENDAR_CACHE.write_text(json.dumps(data, indent=2))
+        atomic_write(CALENDAR_CACHE, data)
 
     def find_event_at(
         self,

@@ -28,6 +28,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.state import atomic_write
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class WatchState:
             "last_check": self.last_check,
             "files": {k: {"name": v.name, "modified": v.modified, "editor": v.editor, "item_id": v.item_id, "size": v.size} for k, v in self.files.items()},
         }
-        path.write_text(json.dumps(data, indent=2))
+        atomic_write(path, data)
 
     @classmethod
     def load(cls, path: Path | None = None) -> WatchState:
