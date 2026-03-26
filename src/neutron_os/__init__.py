@@ -1,6 +1,9 @@
-"""NeutronOS — modular digital platform for nuclear facilities."""
+"""NeutronOS — nuclear facility digital operations platform.
 
-from pathlib import Path as _Path
+Extends the Axiom framework with nuclear-specific extensions,
+configurations, and domain knowledge.
+"""
 
-REPO_ROOT = _Path(__file__).resolve().parent.parent.parent
-"""Absolute path to the Neutron_OS/ repository root."""
+from axiom import REPO_ROOT  # noqa: F401 — re-export for backwards compat
+
+__all__ = ["REPO_ROOT"]

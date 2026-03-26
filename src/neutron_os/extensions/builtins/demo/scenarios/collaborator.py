@@ -29,7 +29,7 @@ def _fixture_exists(name: str) -> bool:
 def _check_sense_status() -> bool:
     """Validate that sense pipeline has some data."""
     try:
-        from neutron_os.extensions.builtins.eve_agent.cli import DRAFTS_DIR, INBOX_RAW
+        from axiom.extensions.builtins.eve_agent.cli import DRAFTS_DIR, INBOX_RAW
 
         has_inbox = INBOX_RAW.exists() and any(INBOX_RAW.rglob("*"))
         has_drafts = DRAFTS_DIR.exists() and any(DRAFTS_DIR.glob("*.md"))
@@ -41,7 +41,7 @@ def _check_sense_status() -> bool:
 def _check_doc_status() -> bool:
     """Validate publisher is accessible."""
     try:
-        from neutron_os.extensions.builtins.prt_agent.engine import PublisherEngine
+        from axiom.extensions.builtins.prt_agent.engine import PublisherEngine
 
         PublisherEngine()
         return True
@@ -52,7 +52,7 @@ def _check_doc_status() -> bool:
 def _check_extension_exists() -> bool:
     """Validate an extension was scaffolded."""
     try:
-        from neutron_os.extensions.discovery import discover_extensions
+        from axiom.extensions.discovery import discover_extensions
 
         exts = discover_extensions()
         return len(exts) > 0
