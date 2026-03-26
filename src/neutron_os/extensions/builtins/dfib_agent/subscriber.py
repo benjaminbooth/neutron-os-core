@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
+from neutron_os.infra.time_utils import parse_iso
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 _DOCTOR_DIR = _RUNTIME_DIR / "doctor"
@@ -80,7 +81,7 @@ def _recently_processed(fingerprint: str, cooldown: int = COOLDOWN_SECONDS) -> b
                     continue
                 ts = event.get("timestamp", "")
                 if ts:
-                    evt_time = datetime.fromisoformat(ts).timestamp()
+                    evt_time = parse_iso(ts).timestamp()
                     if evt_time > cutoff:
                         return True
             except (json.JSONDecodeError, ValueError):
@@ -108,7 +109,7 @@ def _hourly_patch_count() -> int:
                     continue
                 ts = event.get("timestamp", "")
                 if ts:
-                    evt_time = datetime.fromisoformat(ts).timestamp()
+                    evt_time = parse_iso(ts).timestamp()
                     if evt_time > cutoff:
                         count += 1
             except (json.JSONDecodeError, ValueError):

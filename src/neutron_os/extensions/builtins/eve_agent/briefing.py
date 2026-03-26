@@ -41,6 +41,7 @@ from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.state import LockedJsonFile
+from neutron_os.infra.time_utils import time_ago
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 BRIEFING_STATE_PATH = _RUNTIME_DIR / "inbox" / "state" / "briefing_state.json"
@@ -319,7 +320,7 @@ class BriefingService:
                 last_ack.timestamp,
                 now,
                 0.95,
-                f"Since last acknowledged briefing ({_relative_time(last_ack.timestamp)})"
+                f"Since last acknowledged briefing ({time_ago(last_ack.timestamp, compact=False)})"
             )
 
         # Check for manual marks (also high confidence)
@@ -333,7 +334,7 @@ class BriefingService:
                 last_mark.timestamp,
                 now,
                 0.90,
-                f"Since you marked as caught up ({_relative_time(last_mark.timestamp)})"
+                f"Since you marked as caught up ({time_ago(last_mark.timestamp, compact=False)})"
             )
 
         # Check last briefing delivered (medium confidence - user may not have read it)
@@ -346,7 +347,7 @@ class BriefingService:
                 window_start,
                 now,
                 0.7,
-                f"Since last briefing was generated ({_relative_time(last_briefing.generated_at)}) — assuming you reviewed it"
+                f"Since last briefing was generated ({time_ago(last_briefing.generated_at, compact=False)}) — assuming you reviewed it"
             )
 
         # Check other consumption events (lower confidence)
@@ -356,7 +357,7 @@ class BriefingService:
                 last_consumption.timestamp,
                 now,
                 0.6,
-                f"Since last activity ({last_consumption.event_type.value}, {_relative_time(last_consumption.timestamp)})"
+                f"Since last activity ({last_consumption.event_type.value}, {time_ago(last_consumption.timestamp, compact=False)})"
             )
 
         # No history — use default lookback
@@ -846,13 +847,13 @@ Generate the focused briefing:"""
             "last_consumption": {
                 "type": last_consumption.event_type.value if last_consumption else None,
                 "when": last_consumption.timestamp.isoformat() if last_consumption else None,
-                "relative": _relative_time(last_consumption.timestamp) if last_consumption else None,
+                "relative": time_ago(last_consumption.timestamp, compact=False) if last_consumption else None,
             } if last_consumption else None,
             "last_briefing": {
                 "id": last_briefing.briefing_id if last_briefing else None,
                 "when": last_briefing.generated_at.isoformat() if last_briefing else None,
                 "signal_count": last_briefing.signal_count if last_briefing else 0,
-                "relative": _relative_time(last_briefing.generated_at) if last_briefing else None,
+                "relative": time_ago(last_briefing.generated_at, compact=False) if last_briefing else None,
             } if last_briefing else None,
             "briefings_generated": len(self.state.briefing_history),
             "consumption_events": len(self.state.consumption_history),
@@ -924,27 +925,6 @@ def _unit_to_delta(n: int, unit: str) -> timedelta:
         return timedelta(days=30 * n)
     raise ValueError(f"Unknown time unit: {unit}")
 
-
-def _relative_time(dt: datetime) -> str:
-    """Convert datetime to human-readable relative time."""
-    now = datetime.now(UTC)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-
-    delta = now - dt
-    seconds = delta.total_seconds()
-
-    if seconds < 60:
-        return "just now"
-    elif seconds < 3600:
-        mins = int(seconds / 60)
-        return f"{mins} minute{'s' if mins != 1 else ''} ago"
-    elif seconds < 86400:
-        hours = int(seconds / 3600)
-        return f"{hours} hour{'s' if hours != 1 else ''} ago"
-    else:
-        days = int(seconds / 86400)
-        return f"{days} day{'s' if days != 1 else ''} ago"
 
 
 def get_briefing_service() -> BriefingService:

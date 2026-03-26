@@ -17,6 +17,8 @@ import json
 import sys
 from datetime import UTC, datetime
 
+from neutron_os.infra.time_utils import time_ago
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -166,7 +168,7 @@ def _cmd_status(args) -> int:
     now = datetime.now(UTC)
     for e in entries:
         etype = "dir" if e.is_dir else "file"
-        age = _fmt_age(e.created_at, now)
+        age = time_ago(e.created_at, now=now)
         from pathlib import Path
         size = _fmt_bytes(mgr._measure_size(Path(e.path), e.is_dir))
         print(f"  {e.owner:<20} {etype:<6} {e.retention:<10} {age:<9} {size:<10}")
@@ -192,7 +194,7 @@ def _cmd_ls(args) -> int:
     print("-" * 100)
     for e in entries:
         etype = "dir" if e.is_dir else "file"
-        age = _fmt_age(e.created_at, now)
+        age = time_ago(e.created_at, now=now)
         # Shorten path for display
         path = e.path
         if len(path) > 40:
@@ -528,20 +530,6 @@ def _fmt_bytes(n: int) -> str:
         n = int(n / 1024)
     return f"{n:.1f} TB"
 
-
-def _fmt_age(iso_str: str, now: datetime) -> str:
-    try:
-        created = datetime.fromisoformat(iso_str)
-        delta = (now - created).total_seconds()
-        if delta < 60:
-            return "<1m"
-        if delta < 3600:
-            return f"{int(delta / 60)}m"
-        if delta < 86400:
-            return f"{int(delta / 3600)}h"
-        return f"{int(delta / 86400)}d"
-    except (ValueError, TypeError):
-        return "?"
 
 
 if __name__ == "__main__":

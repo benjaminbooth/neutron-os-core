@@ -22,8 +22,9 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from datetime import UTC
 from pathlib import Path
+
+from neutron_os.infra.time_utils import time_ago
 
 logger = logging.getLogger(__name__)
 
@@ -134,34 +135,6 @@ def cmd_generate(args: argparse.Namespace) -> None:
     print(f"\nGenerated: {output}")
 
 
-def _format_time_ago(iso_timestamp: str) -> str:
-    """Convert ISO timestamp to human-readable 'time ago' format."""
-    from datetime import datetime
-
-    try:
-        pub_time = datetime.fromisoformat(iso_timestamp)
-        now = datetime.now(UTC)
-        delta = now - pub_time
-
-        days = delta.days
-        hours = delta.seconds // 3600
-
-        if days > 365:
-            years = days // 365
-            return f"{years}y ago"
-        elif days > 30:
-            months = days // 30
-            return f"{months}mo ago"
-        elif days > 0:
-            return f"{days}d ago"
-        elif hours > 0:
-            return f"{hours}h ago"
-        else:
-            minutes = delta.seconds // 60
-            return f"{minutes}m ago" if minutes > 0 else "just now"
-    except Exception:
-        return iso_timestamp[:10]
-
 
 def cmd_status(args: argparse.Namespace) -> None:
     """Show document status with detailed information."""
@@ -204,18 +177,18 @@ def cmd_status(args: argparse.Namespace) -> None:
         # Published version
         if doc.published:
             print(f"  Published: v{doc.published.version}")
-            time_ago = _format_time_ago(doc.published.published_at)
+            pub_ago = time_ago(doc.published.published_at)
             print(f"    • Version: {doc.published.version}")
-            print(f"    • Published: {doc.published.published_at[:10]} ({time_ago})")
+            print(f"    • Published: {doc.published.published_at[:10]} ({pub_ago})")
             print(f"    • Provider: {doc.published.storage_provider}")
             print(f"    • URL: {doc.published.url}")
 
         # Draft version
         if doc.active_draft:
-            time_ago = _format_time_ago(doc.active_draft.published_at)
+            draft_ago = time_ago(doc.active_draft.published_at)
             print(f"  Draft:     v{doc.active_draft.version}")
             print(f"    • Version: {doc.active_draft.version}")
-            print(f"    • Published: {doc.active_draft.published_at[:10]} ({time_ago})")
+            print(f"    • Published: {doc.active_draft.published_at[:10]} ({draft_ago})")
 
         # Manifest status
         in_manifest = doc.doc_id in manifests

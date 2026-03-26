@@ -35,7 +35,6 @@ import threading
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -68,6 +67,7 @@ from prompt_toolkit.styles import Style
 
 from neutron_os.extensions.builtins.mo_agent import acquire_dir
 from neutron_os.infra.hash_utils import MEDIUM, fingerprint
+from neutron_os.infra.time_utils import time_ago
 
 from .providers.base import RenderProvider
 from .pulse_spinner import (
@@ -1005,34 +1005,6 @@ class PickerState:
     saved_output: str = ""       # output buffer to restore on dismiss
     include_archived: bool = False
 
-
-def _relative_time(iso_str: str) -> str:
-    """Convert an ISO-8601 timestamp to a human-readable relative time."""
-    if not iso_str:
-        return ""
-    try:
-        dt = datetime.fromisoformat(iso_str)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC)
-        now = datetime.now(UTC)
-        delta = now - dt
-        secs = int(delta.total_seconds())
-        if secs < 60:
-            return "just now"
-        if secs < 3600:
-            m = secs // 60
-            return f"{m}m ago"
-        if secs < 86400:
-            h = secs // 3600
-            return f"{h}h ago"
-        if secs < 172800:
-            return "yesterday"
-        if secs < 604800:
-            d = secs // 86400
-            return f"{d}d ago"
-        return dt.strftime("%b %d")
-    except (ValueError, TypeError):
-        return iso_str[:10] if len(iso_str) >= 10 else iso_str
 
 
 # ---------------------------------------------------------------------------
@@ -2387,7 +2359,7 @@ class FullScreenChat:
             if len(title) > 30:
                 title = title[:27] + "..."
             msg_count = item.get("message_count", 0)
-            updated = _relative_time(item.get("updated_at", ""))
+            updated = time_ago(item.get("updated_at", ""))
             archived_tag = " (archived)" if item.get("archived") else ""
 
             pointer = " > " if i == p.cursor else "   "

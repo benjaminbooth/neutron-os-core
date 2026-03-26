@@ -37,6 +37,7 @@ from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.hash_utils import LONG, fingerprint
+from neutron_os.infra.time_utils import parse_iso
 
 from .models import Signal
 
@@ -332,12 +333,12 @@ class EchoSuppressor:
         """Check if content is still valid for echo detection."""
         # Check expiry
         if content.expires_at:
-            expires = datetime.fromisoformat(content.expires_at.replace("Z", "+00:00"))
+            expires = parse_iso(content.expires_at)
             if expires < datetime.now(UTC):
                 return False
 
         # Check lookback
-        published = datetime.fromisoformat(content.published_at.replace("Z", "+00:00"))
+        published = parse_iso(content.published_at)
         return published >= cutoff
 
     # ---------------------------------------------------------------------------

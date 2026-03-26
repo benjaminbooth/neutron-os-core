@@ -32,6 +32,7 @@ from pathlib import Path
 
 from neutron_os import REPO_ROOT as _REPO_ROOT
 from neutron_os.infra.state import atomic_write
+from neutron_os.infra.time_utils import parse_iso
 
 _RUNTIME_DIR = _REPO_ROOT / "runtime"
 INDEX_PATH = _RUNTIME_DIR / "inbox" / "cache" / "signal_index.json"
@@ -549,7 +550,7 @@ class SignalRAG:
             # Time filter
             if time_filter and chunk.timestamp:
                 try:
-                    ts = datetime.fromisoformat(chunk.timestamp.replace("Z", "+00:00"))
+                    ts = parse_iso(chunk.timestamp)
                     if ts < time_filter[0] or ts > time_filter[1]:
                         continue
                 except ValueError:
@@ -687,7 +688,7 @@ class SignalRAG:
             for c in chunks:
                 if c.timestamp:
                     try:
-                        ts = datetime.fromisoformat(c.timestamp.replace("Z", "+00:00"))
+                        ts = parse_iso(c.timestamp)
                         timestamps.append(ts)
                     except ValueError:
                         pass

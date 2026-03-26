@@ -13,6 +13,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
+from neutron_os.infra.time_utils import parse_iso
+
 # ---------------------------------------------------------------------------
 # Source-agnostic data models
 # ---------------------------------------------------------------------------
@@ -98,8 +100,7 @@ def parse_datetime(dt_str: str | None) -> datetime | None:
     if not dt_str:
         return None
     try:
-        dt_str = dt_str.replace("Z", "+00:00")
-        return datetime.fromisoformat(dt_str)
+        return parse_iso(dt_str)
     except (ValueError, TypeError):
         return None
 

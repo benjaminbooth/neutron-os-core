@@ -19,6 +19,8 @@ from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from neutron_os.infra.time_utils import parse_iso
+
 # ---------------------------------------------------------------------------
 # JSONL helpers
 # ---------------------------------------------------------------------------
@@ -69,7 +71,7 @@ def _parse_ts(record: dict) -> datetime | None:
     if not raw:
         return None
     try:
-        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        return parse_iso(str(raw))
     except ValueError:
         return None
 
