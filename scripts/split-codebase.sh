@@ -58,7 +58,6 @@ AXIOM_PATHS=(
     "src/neutron_os/extensions/discovery.py"
     "src/neutron_os/extensions/scaffold.py"
     # Note: builtins/demo stays in neutron-os (TRIGA-specific demo scenario)
-    # Note: builtins/cost_estimation stays in neutron-os (UT TRIGA-specific costing)
     "src/neutron_os/extensions/builtins/__init__.py"
     "src/neutron_os/extensions/builtins/README.md"
     "src/neutron_os/extensions/builtins/connect"

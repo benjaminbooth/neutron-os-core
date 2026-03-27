@@ -13,11 +13,6 @@
 
 ---
 
-> **This is the executive tech spec** — a concise overview of NeutronOS's
-> architecture, what's built, and where to find details. Each section links
-> to the authoritative spec. No content is duplicated; this document is an
-> index with context.
->
 > For strategic context, see the [Executive PRD](../requirements/prd-executive.md).
 
 ---
@@ -46,7 +41,7 @@ neut <noun> <verb> [args] [--flags]
 │                    Builtin Extensions (17)                            │
 │                                                                      │
 │  Agents:    signal  chat  mo  doctor  mirror                         │
-│  Tools:     pub  rag  db  demo  repo  cost_estimation                │
+│  Tools:     pub  rag  db  demo  repo                                 │
 │  Utilities: settings  status  test  update  note                     │
 │  Services:  serve (web API)                                          │
 └─────────────────────────────────────────────────────────────────────┘
@@ -61,68 +56,99 @@ neut <noun> <verb> [args] [--flags]
 
 ---
 
-## Component Specs & Implementation Status
+## Extension Primitives
+
+NeutronOS inherits the four extension kinds from Axiom (see [Axiom Executive Spec § Extension Primitives](https://github.com/…/axiom/docs/tech-specs/spec-executive.md#extension-primitives)). All shipped Axiom agents, tools, utilities, and services are available in NeutronOS. This section documents the NeutronOS-specific extensions and nuclear-domain specializations layered on top.
+
+### Axiom Agents — Shipped in NeutronOS
+
+| Archetype | Internal Name | CLI Noun | Spec | Status | Nuclear Specialization |
+|-----------|--------------|----------|------|--------|----------------------|
+| **Signal** | EVE | `neut signal` | [Agent Architecture](spec-agent-architecture.md) | ✅ Shipped | Nuclear signal sources (ops log events, reactor alarms, HP surveys) |
+| **Assistant** | Neut | `neut chat` | [Agent Architecture](spec-agent-architecture.md) | ✅ Shipped | Nuclear RAG corpus, reactor-aware context |
+| **Steward** | M-O | `neut mo` | [State Management Spec](spec-agent-state-management.md) | ✅ Shipped | NRC retention policies (7-year archive) |
+| **Diagnostics** | D-FIB | `neut doctor` | — | 🔲 Partial | Nuclear system health checks |
+| **Publisher** | PR-T | `neut pub` | [Publisher Spec](spec-publisher.md) | ✅ Shipped | NRC evidence packages, regulatory reports |
+
+### Axiom Agents — Planned for NeutronOS
+
+| Archetype | CLI Noun | Nuclear Specialization |
+|-----------|----------|----------------------|
+| **Analyst** | `neut analyze` | Reactor anomaly detection, fuel burnup trending, sensor drift analysis |
+| **Planner** | `neut plan` | Experiment scheduling, irradiation planning, isotope production coordination |
+| **Compliance** | `neut comply` | NRC 30-min check enforcement, training currency tracking, license condition monitoring |
+| **Reviewer** | `neut review` | Ops log review, experiment authorization workflow, shift handoff validation |
+| **Coach** | `neut coach` | Operator training, reactor procedure walkthroughs, competency assessment |
+
+### Axiom Tools — Shipped & Spec'd in NeutronOS
+
+| Tool | CLI Noun | Spec | Status | Nuclear Specialization |
+|------|----------|------|--------|----------------------|
+| **rag** | `neut rag` | [RAG Architecture](spec-rag-architecture.md) | ✅ Shipped | Nuclear knowledge corpus, EC-compliant |
+| **db** | `neut db` | — | ✅ Shipped | — |
+| **demo** | `neut demo` | — | ✅ Shipped | TRIGA-specific walkthrough ("Jay's Story") |
+| **model** | `neut model` | [Model Corral Spec](spec-model-corral.md) | 📋 Spec'd | MCNP/VERA/SAM decks, trained ROMs |
+| **simulate** | `neut sim` | [DT Hosting Spec](spec-digital-twin-architecture.md) | 📋 Spec'd | ROM execution, Shadow runs, SLURM job submission to TACC |
+
+### Axiom Tools — Planned for NeutronOS
+
+| Tool | CLI Noun | Nuclear Specialization |
+|------|----------|----------------------|
+| **data** | `neut data` | Nuclear Bronze/Silver/Gold schemas, reactor time-series queries |
+| **export** | `neut export` | NRC evidence packages, compliance reports, data extracts |
+| **audit** | `neut audit` | HMAC-chain verification for ops logs, NRC audit trail queries |
+| **eval** | `neut eval` | ROM accuracy benchmarking, sensor reconciliation validation |
+| **notify** | `neut notify` | 30-min check gap alerts, training expiry warnings, compliance notifications |
+
+### Utilities — Shipped in NeutronOS
+
+| Utility | CLI Noun | Status |
+|---------|----------|--------|
+| **settings** | `neut settings` | ✅ Shipped |
+| **status** | `neut status` | ✅ Shipped |
+| **connect** | `neut connect` | ✅ Shipped |
+| **update** | `neut update` | ✅ Shipped |
+| **test** | `neut test` | ✅ Shipped |
+| **mirror** | `neut mirror` | ✅ Shipped (GitHub sensitivity gate) |
 
 ### Core Infrastructure
 
-| Component | Spec | Status | Key Files |
-|-----------|------|--------|-----------|
-| **LLM Gateway** | [Model Routing Spec](spec-model-routing.md) | ✅ Phase 1+2a shipped | `infra/gateway.py`, `infra/router.py` |
-| **Export Control Router** | [Model Routing Spec §4](spec-model-routing.md) | ✅ Shipped | Keyword + Ollama SLM + sensitivity knobs |
-| **Hybrid State Store** | [State Management Spec](spec-agent-state-management.md) | ✅ Shipped | `infra/state.py` (file + PostgreSQL backends) |
-| **Routing Audit Log** | [Model Routing Spec §11](spec-model-routing.md) | ✅ Shipped | `infra/routing_audit.py` → JSONL |
-| **Connections** | [Connections Spec](spec-connections.md) | 📋 Spec'd | Credential resolution, `neut connect` |
-| **Settings** | [Model Routing Spec §6](spec-model-routing.md) | ✅ Shipped | `settings/store.py` (global + project scope) |
+| Component | Spec | Status |
+|-----------|------|--------|
+| **LLM Gateway** | [Model Routing Spec](spec-model-routing.md) | ✅ Shipped |
+| **Export Control Router** | [Model Routing Spec §4](spec-model-routing.md) | ✅ Shipped |
+| **Hybrid State Store** | [State Management Spec](spec-agent-state-management.md) | ✅ Shipped |
+| **Routing Audit Log** | [Model Routing Spec §11](spec-model-routing.md) | ✅ Shipped |
+| **Provider Framework** | [ADR-012: Provider Identity](../requirements/adr-012-provider-identity.md) | ✅ Shipped |
 
-### Agents
+---
 
-| Agent | CLI Noun | Spec | Status | Description |
-|-------|----------|------|--------|-------------|
-| **Signal** | `neut signal` | [Agent Architecture](spec-agent-architecture.md) | ✅ Shipped | Signal ingestion: voice, Teams, GitLab, GitHub, freetext → extractors → correlator → synthesizer |
-| **Chat** | `neut chat` | [Agent Architecture](spec-agent-architecture.md) | ✅ Shipped | Interactive LLM with tool use, RAG, per-turn routing, TUI + REPL |
-| **M-O** | `neut mo` | [State Management Spec](spec-agent-state-management.md) | ✅ Shipped | Resource steward: scratch lifecycle, retention enforcement, vitals |
-| **Doctor** | `neut doctor` | — | 🔲 Partial | LLM-powered diagnosis (Layer 3 built, security checks pending) |
-| **Mirror** | `neut mirror` | — | ✅ Shipped | Public GitHub mirror sensitivity gate |
+## Infrastructure (Axiom Platform)
 
-### Tools
+NeutronOS consumes the [Axiom platform](https://github.com/…/axiom/) for all infrastructure services. See [Axiom Executive Spec § Infrastructure Services](https://github.com/…/axiom/docs/tech-specs/spec-executive.md) for the full service inventory including:
 
-| Tool | CLI Noun | Spec | Status | Description |
-|------|----------|------|--------|-------------|
-| **Publisher** | `neut pub` | [Publisher Spec](spec-publisher.md) | ✅ Shipped | Document lifecycle: markdown → generate → publish to 19 endpoints |
-| **RAG** | `neut rag` | [RAG Architecture](spec-rag-architecture.md) | ✅ Shipped | Three-tier corpus (community/org/personal), pgvector, EC-compliant |
-| **Database** | `neut db` | — | ✅ Shipped | PostgreSQL lifecycle (up/down/migrate/status) |
-| **Demo** | `neut demo` | — | ✅ Shipped | 9-act guided walkthrough ("Jay's Story") |
-| **Model Corral** | `neut model` | [Model Corral Spec](spec-model-corral.md) | 📋 Spec'd | Physics model registry: MCNP/VERA/SAM decks, ROMs, validation datasets |
-| **Digital Twin** | `neut twin` | [DT Hosting Spec](spec-digital-twin-architecture.md) | 📋 Spec'd | Run ROMs, Shadow simulations, validation, comparison |
+- **Identity & Auth** (Ory Kratos, OpenFGA)
+- **Object Storage** (S3-compatible, Ceph/Rook recommended)
+- **Databases** (PostgreSQL 16, pgvector)
+- **Streaming** (Redpanda + Flink)
+- **Observability** (OpenTelemetry → Prometheus + Grafana)
+- **Container Platform** (K3D local, Kubernetes production)
+- **Backup, Retention & Archive** ([Axiom Data Architecture Spec § 9](https://github.com/…/axiom/docs/tech-specs/spec-data-architecture.md#9-backup-retention--archive-policy))
 
-### Utilities
-
-| Utility | CLI Noun | Status | Description |
-|---------|----------|--------|-------------|
-| **Settings** | `neut settings` | ✅ Shipped | get/set/reset/edit, global + project scope |
-| **Status** | `neut status` | ✅ Shipped | System health: LLM providers, Ollama, routing, DB, services |
-| **Update** | `neut update` | ✅ Shipped | Self-update with restart preservation |
-| **Test** | `neut test` | ✅ Shipped | Test orchestration wrapper |
+NeutronOS extends the base Axiom retention policy with NRC-mandatory 7-year Cold tier and indefinite Archive for safety basis documents. See [NeutronOS Data Platform PRD](../requirements/prd-data-platform.md) for nuclear-specific operational policies.
 
 ---
 
 ## Data Architecture
 
-**Authoritative spec:** [Data Architecture Spec](spec-data-architecture.md)
+**Authoritative specs:**
+- [Axiom Data Architecture Spec](https://github.com/…/axiom/docs/tech-specs/spec-data-architecture.md) — Generic medallion framework, Iceberg config, operational policies
+- [NeutronOS Data Architecture Spec](spec-data-architecture.md) — Nuclear-specific schemas and transforms
+- [NeutronOS Data Platform PRD](../requirements/prd-data-platform.md) — Nuclear Bronze/Silver/Gold table inventories
 
-| Layer | Technology | Status |
-|-------|-----------|--------|
-| **Object storage** | MinIO (S3-compatible, on-premise) | 📋 Spec'd |
-| **Operational DB** | PostgreSQL 16 (K3D local, K8S production) | ✅ Running |
-| **Vector store** | pgvector 0.8.2 (same PostgreSQL) | ✅ Running |
-| **Data lakehouse** | Apache Iceberg + DuckDB | 📋 Spec'd |
-| **Orchestration** | Dagster | 📋 Spec'd |
-| **Transformation** | dbt | 📋 Spec'd |
-| **State management** | Hybrid store (flat file + PostgreSQL) | ✅ Shipped |
+**Medallion pattern:** Bronze (raw append-only) → Silver (cleaned, validated) → Gold (aggregated, business-ready). Axiom provides the generic framework; NeutronOS defines nuclear-domain schemas (reactor time-series, ops log entries, experiments, fuel burnup, xenon dynamics, compliance summaries).
 
-**Medallion pattern:** Bronze (raw append-only) → Silver (cleaned, validated) → Gold (aggregated, business-ready). Detailed in the Data Architecture Spec.
-
-**Retention:** Configurable via `runtime/config/retention.yaml`. M-O enforces automatically. See [State Management PRD](../requirements/prd-agent-state-management.md).
+**Retention:** NRC-regulated deployments use `policy = "regulatory"` (7-year Cold + indefinite Archive). Configurable via `runtime/config/retention.yaml`. M-O enforces automatically.
 
 ---
 
@@ -152,11 +178,11 @@ neut <noun> <verb> [args] [--flags]
 
 ## Infrastructure & Deployment
 
+See § Infrastructure (Axiom Platform) above for the full service inventory. NeutronOS-specific deployment targets:
+
 | Environment | Stack | Status |
 |-------------|-------|--------|
-| **Local dev** | K3D + Helm (PostgreSQL, pgvector) | ✅ Running |
-| **Production** | Kubernetes + Terraform + Helm | 📋 Spec'd |
-| **Private endpoint** | vLLM on rascal (UT VPN) | ✅ Running |
+| **Private endpoint** | vLLM on Rascal (UT VPN) | ✅ Running |
 | **TACC endpoint** | vLLM on TACC (Apptainer) | 📋 Proposed ([Routing Spec §9](spec-model-routing.md)) |
 
 **Helm chart:** `infra/helm/charts/neutron-os/` — deploys PostgreSQL, Signal server, web API.

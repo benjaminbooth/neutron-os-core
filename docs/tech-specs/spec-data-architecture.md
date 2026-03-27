@@ -346,55 +346,37 @@ All events follow a common envelope:
 
 ---
 
-## 9. Backup & Retention Policy
+## 9. Backup, Retention & Archive Policy
 
-All data in the lakehouse must support regulatory retention requirements and disaster recovery. This section defines the backup strategy and retention tiers.
+NeutronOS inherits the base operational policies from [Axiom Data Architecture Spec § 9](https://github.com/…/axiom/docs/tech-specs/spec-data-architecture.md#9-backup-retention--archive-policy). This section documents NRC-specific extensions.
 
-> **See also:** [Master Tech Spec § 9.2: Backup & Archive Strategy](spec-executive.md)
+> **Canonical policy definition:** [Axiom Data Architecture Spec § 9: Backup, Retention & Archive Policy](https://github.com/…/axiom/docs/tech-specs/spec-data-architecture.md#9-backup-retention--archive-policy)
 
-### 9.1 Retention Tiers
+### 9.1 NRC Retention Requirements
 
-| Tier | Retention | Data Types |
-|------|-----------|------------|
-| **Hot** | 90 days | Live sensor data, recent logs |
-| **Warm** | 2 years | Historical operations, NRC window |
-| **Cold** | 7 years | Audit trails, regulatory records |
-| **Archive** | Indefinite | Safety basis, licensing documents |
+NeutronOS deploys with `[retention] policy = "regulatory"` at all NRC-licensed facilities. This activates:
 
-### 9.2 Backup Strategy
+| Tier | Retention | NRC Requirement |
+|------|-----------|-----------------|
+| **Hot** | 90 days | Operational convenience (not NRC-mandated) |
+| **Warm** | 2 years | NRC inspection window for operational records |
+| **Cold** | 7 years | 10 CFR 50.71 — audit trails, compliance records, training records |
+| **Archive** | Indefinite | Safety basis documents, licensing records, FSAR amendments |
 
-| Component | Frequency | Destination | Retention |
-|-----------|-----------|-------------|-----------|
-| PostgreSQL | Daily | S3 + offsite | 90 days |
-| Iceberg metadata | Continuous | S3 | With data |
-| Iceberg data | Via Iceberg | S3 | Per tier |
-| Configuration | On change | Git + S3 | Indefinite |
+### 9.2 NRC-Specific Backup Extensions
 
-### 9.3 Disaster Recovery
+In addition to the Axiom base backup strategy:
 
-| Scenario | RTO | RPO | Recovery Method |
-|----------|-----|-----|-----------------|
-| Single node failure | <1 hour | 0 | K8s pod restart |
-| Database corruption | <4 hours | <1 hour | Restore from backup |
-| Full site loss | <24 hours | <1 day | Offsite restore |
+| Component | Frequency | Destination | NRC Rationale |
+|-----------|-----------|-------------|---------------|
+| Ops log entries | Daily | S3 + offsite + printed archive | NRC requires paper backup for ops logs |
+| Training records | Weekly | S3 + offsite | 10 CFR 55 certification records |
+| Compliance evidence | On generation | S3 + Glacier | NRC inspection evidence packages |
+| HMAC chain verification | Daily | Logged to audit trail | Tamper detection for ops log integrity |
 
-### 9.4 Regulatory Compliance
+### 9.3 Encryption
 
-- **2-year retention minimum:** Live data kept in Iceberg for NRC inspection window
-- **7-year archive:** Regulatory requirement for audit trails and critical records
-- **Immutability:** All backups are append-only; no modification or deletion allowed
-- **Versioning:** Iceberg time-travel enables recovery of any point-in-time data
-- **Audit trail:** All backup operations logged in immutable Hyperledger blockchain
-
-### 9.5 Encryption
-
-| Layer | Encryption | Key Management |
-|-------|------------|----------------|
-| At rest | AES-256 | AWS KMS / HashiCorp Vault |
-| In transit | TLS 1.3 | Auto-renewed certificates |
-| Backups | AES-256 | Separate backup keys |
-
-**Key Rotation:** Quarterly for active encryption keys; archived keys retained indefinitely per regulatory requirement.
+Inherits Axiom encryption policy (AES-256 at rest, TLS 1.3 in transit, separate backup keys managed via HashiCorp Vault). Key rotation quarterly; archived keys retained for the lifetime of NRC-required records.
 
 ---
 

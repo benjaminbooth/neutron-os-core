@@ -37,19 +37,19 @@ Neutron_OS/
     cli_registry.py            #   Command discovery
     infra/                     #   Shared infra (gateway, orchestrator, auth)
     extensions/                #   Extension system
-      builtins/                #   Domain-agnostic builtin extensions
-        eve_agent/           #     Signal ingestion agent
-        neut_agent/            #     Interactive LLM assistant agent
-        mo_agent/              #     M-O resource steward agent
-        doctor_agent/          #     AI diagnostics agent
-        publisher/               #     Document lifecycle tool
-        db/                    #     Database management tool
-        demo/                  #     Guided walkthroughs
-        repo/                  #     Repository analytics
-        cost_estimation/       #     Cost modeling
-        status/                #     System health utility
-        test/                  #     Test orchestration utility
-        update/                #     Dependency updates utility
+      builtins/                #   Builtin extensions (four kinds: agent, tool, utility, service)
+        eve_agent/             #     Signal agent — event ingestion & extraction
+        neut_agent/            #     Assistant agent — interactive LLM
+        mo_agent/              #     Steward agent — resource lifecycle & hygiene
+        dfib_agent/            #     Diagnostics agent — platform health
+        prt_agent/             #     Publisher agent — document lifecycle
+        mirror_agent/          #     Mirror utility — GitHub sensitivity gate
+        db/                    #     Database tool — PostgreSQL lifecycle
+        demo/                  #     Demo tool — guided walkthroughs
+        repo/                  #     Repo tool — repository analytics
+        status/                #     Status utility — system health
+        test/                  #     Test utility — test orchestration
+        update/                #     Update utility — self-update
     setup/                     #   Config wizard and onboarding
     review/                    #   Review workflow engine
     exports/                   #   Data export utilities
@@ -109,10 +109,11 @@ separate repo, installed to `.neut/extensions/`).
 
 ### Extension Kinds
 
-- `agent` — Has LLM autonomy. **Directory name MUST end with `_agent`.**
-  Examples: `eve_agent`, `neut_agent`, `mo_agent`, `doctor_agent`
-- `tool` — Capability invoked by agents or CLI (publisher, db, demo)
-- `utility` — Platform plumbing (status, test, update)
+- `agent` — Has LLM autonomy, persistent identity, state across sessions. **Directory name MUST end with `_agent`.**
+  Shipped: `eve_agent` (Signal), `neut_agent` (Assistant), `mo_agent` (Steward), `dfib_agent` (Diagnostics), `prt_agent` (Publisher)
+- `tool` — Stateless capability invoked by agents or CLI (db, demo, repo, rag)
+- `utility` — Platform plumbing, operates on config/connectivity/infra state (status, test, update, connect, mirror_agent)
+- `service` — Long-running daemon (serve, daemon, worker, scheduler, stream)
 
 ### Extension Layout
 
@@ -123,7 +124,7 @@ name = "my-extension"
 version = "0.1.0"
 description = "What it does"
 builtin = true
-kind = "tool"        # agent | tool | utility
+kind = "tool"        # agent | tool | utility | service
 module = "platform"  # PRD-level grouping
 
 [[cli.commands]]
