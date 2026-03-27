@@ -425,8 +425,7 @@ rule:
 Data retention policies are defined at the system level in the master specification. This module implements compliance-specific retention tracking:
 
 **See also:** 
-- [Master Tech Spec § 9.2: Backup & Archive Strategy](../tech-specs/spec-executive.md#92-backup--archive-strategy)
-- [Data Architecture § 9: Backup & Retention Policy](../tech-specs/spec-data-architecture.md#9-backup--retention-policy)
+- [Data Architecture Spec § 9: Backup, Retention & Archive Policy](../tech-specs/spec-data-architecture.md#9-backup-retention--archive-policy)
 
 **Compliance-Specific Retention Windows:**
 - **Operational data**: 2 years minimum per NRC inspection window

@@ -63,7 +63,6 @@ PUBLIC_PATHS=(
 # These are subtracted after the allowlist is applied.
 EXCLUDE_FROM_SRC=(
     src/neutron_os/extensions/builtins/web_api
-    src/neutron_os/extensions/builtins/cost_estimation
     src/neutron_os/extensions/builtins/sense_agent/infra
     src/neutron_os/infra/subscribers
 )
