@@ -29,7 +29,7 @@ def main() -> None:
 def _neut_banner() -> None:
     """Print the Neut mascot banner."""
     try:
-        from axiom.setup.renderer import _NEUT_BANNER, _Colors, _c
+        from axiom.setup.renderer import _NEUT_BANNER, _c, _Colors
         for line in _NEUT_BANNER.strip("\n").splitlines():
             print(_c(_Colors.BOLD + _Colors.ACCENT_BLUE, line))
         print()
