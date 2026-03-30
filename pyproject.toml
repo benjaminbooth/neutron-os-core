@@ -5,7 +5,7 @@ description = "Nuclear facility digital operations platform — extends Axiom"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
-    "axiom @ git+https://github.com/benjaminbooth/axiom.git@v0.1.3",
+    "axiom @ git+https://github.com/benjaminbooth/axiom.git@v0.1.4",
 ]
 
 [project.optional-dependencies]
