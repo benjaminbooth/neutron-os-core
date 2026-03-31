@@ -32,18 +32,28 @@ def main() -> None:
         shell_comment="Neutron OS CLI shortcut",
     ))
 
-    from axiom.neut_cli import main as axiom_main
+    from axiom.axiom_cli import main as axiom_main
     axiom_main()
 
 
+_NEUT_ART = r"""
+      ╭────────────╮
+      │  ◕      ◕  │   \│/
+      │   ╮────╭   ═══════
+      ╰───┬────┬───╯   /│\
+          ┘    └
+    N  E  U  T  R  O  N     O  S
+"""
+
+
 def _neut_banner() -> None:
-    """Print the Neut mascot banner."""
+    """Print the Neut mascot banner — art owned by NeutronOS, not Axiom."""
     try:
-        from axiom.setup.renderer import _NEUT_BANNER, _c, _Colors
-        for line in _NEUT_BANNER.strip("\n").splitlines():
+        from axiom.setup.renderer import _c, _Colors  # pylint: disable=import-outside-toplevel
+        for line in _NEUT_ART.strip("\n").splitlines():
             print(_c(_Colors.BOLD + _Colors.ACCENT_BLUE, line))
         print()
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         print("\n  Neutron OS\n")
 
 
