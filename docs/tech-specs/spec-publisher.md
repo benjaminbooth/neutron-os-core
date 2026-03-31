@@ -283,7 +283,7 @@ The default implementation of `supported_formats` returns only `docx`, preservin
 
 ### 3.4 Wildcard Format (`"*"`) for Pass-Through Endpoints
 
-Some storage targets are agnostic to file format — they store whatever artifact they receive without serving or transforming it. Examples: S3 / MinIO for archival use, local filesystem, HPC tape stores, Box enterprise storage. For these endpoints it would be both misleading and maintenance-burdening to enumerate every possible format.
+Some storage targets are agnostic to file format — they store whatever artifact they receive without serving or transforming it. Examples: S3 / SeaweedFS for archival use, local filesystem, HPC tape stores, Box enterprise storage. For these endpoints it would be both misleading and maintenance-burdening to enumerate every possible format.
 
 When `supported_formats` contains `"*"`, the endpoint declares format-agnosticism:
 
@@ -540,7 +540,7 @@ Auth for all GCP endpoints uses Application Default Credentials (ADC): `gcloud a
 
 | Name | Kind | Formats | Auth | VPN | Pull | Description |
 |------|------|---------|------|-----|------|-------------|
-| `s3` | cloud | `*` | Yes | No | — | AWS S3 or S3-compatible (MinIO); byte-passthrough object storage |
+| `s3` | cloud | `*` | Yes | No | — | AWS S3 or S3-compatible (SeaweedFS); byte-passthrough object storage |
 | `s3-static` | cloud | html, txt | Yes | No | — | AWS S3 static website hosting; renders HTML — wildcard not appropriate |
 
 #### Git Platforms

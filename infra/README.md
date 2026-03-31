@@ -172,7 +172,7 @@ externalDatabase:
 ## Pending Decisions
 
 1. **Cloud Hosting** - TACC? AWS? Azure? Hybrid?
-2. **Storage Backend** - SeaweedFS? MinIO? S3?
+2. **Storage Backend** - SeaweedFS? SeaweedFS? S3?
 3. **Auth** - Keycloak? Auth0? Internal?
 
 ## Related Documentation

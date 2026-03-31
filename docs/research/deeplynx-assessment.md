@@ -1032,7 +1032,7 @@ private async Task<DuckDBConnection> GetDuckDBConnection(long dataSourceId)
 public async Task<string> UploadFile(long userId, long orgId, long projectId, 
     long dataSourceId, IFormFile file)
 {
-    // Stores file in ObjectStorage (MinIO/S3)
+    // Stores file in ObjectStorage (SeaweedFS/S3)
     var objectStoragePath = await _objectStorageService.Upload(file, ...);
     
     // Creates DuckDB table from file

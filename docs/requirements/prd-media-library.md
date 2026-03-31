@@ -156,7 +156,7 @@ neut media delete <id>             Remove (with confirmation)
 
 ### Phase 3 — Shared Storage & Sync
 
-9. **S3-compatible backend** — MinIO or cloud S3 for multi-user environments
+9. **S3-compatible backend** — SeaweedFS or cloud S3 for multi-user environments
 10. **Access control** — RBAC/ReBAC/ABAC unified policy engine (see Conversation Boundaries section)
 11. **Sync** — Offline-first: local buffer with background sync to shared service on network restore
 12. **Storage management** — Configurable retention policies, LRU eviction for local cache, quota alerts
@@ -326,7 +326,7 @@ flat JSON files. No PostgreSQL, no external services.
 ### Local Buffer & Sync Strategy
 
 The Media Library always works locally first. When a shared storage backend
-(MinIO, S3) becomes available, local media syncs automatically:
+(SeaweedFS, S3) becomes available, local media syncs automatically:
 
 1. **Ingest always succeeds locally** — files land in the content-addressed store immediately, never blocked by network
 2. **Sync queue** — `pending_sync/` tracks items that need upload; processed FIFO on network restore
@@ -340,7 +340,7 @@ use the same CLI — only the storage backend configuration changes.
 ### Phase 2+: PostgreSQL + Object Storage
 
 When a database is available, the flat-file index migrates to PostgreSQL with
-pgvector for embedding search. Object storage migrates to MinIO/S3. The CLI
+pgvector for embedding search. Object storage migrates to SeaweedFS/S3. The CLI
 interface is identical — only the backend changes.
 
 ---

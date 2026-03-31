@@ -226,7 +226,7 @@ Use `extra={"llm_provider": provider.name}` for routine events, or `extra=provid
 | Package | `neutron_os` (src layout) | `pip install -e ".[all]"` |
 | Extensions | Python + `neut-extension.toml` | 3-tier discovery |
 | Data platform | Apache Iceberg + DuckDB + Dagster + dbt | Medallion architecture |
-| Object storage | MinIO | S3-compatible, on-premise |
+| Object storage | SeaweedFS | S3-compatible, on-premise |
 | Database | PostgreSQL | All environments (never SQLite) |
 | Infrastructure | Terraform | AWS/Azure/GCP |
 | Compute | HPC cluster | A100 GPU nodes |

@@ -5,6 +5,20 @@
 repos:
   - repo: local
     hooks:
+      - id: ruff-check
+        name: Ruff Lint
+        entry: ruff check --force-exclude
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      - id: ruff-format-check
+        name: Ruff Format Check
+        entry: ruff format --check --force-exclude
+        language: system
+        types: [python]
+        pass_filenames: true
+
       - id: lint-mermaid
         name: Lint Mermaid Diagrams
         entry: python scripts/lint_mermaid.py

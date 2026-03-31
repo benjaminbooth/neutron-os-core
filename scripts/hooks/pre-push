@@ -20,9 +20,18 @@ if [ -z "${VIRTUAL_ENV:-}" ]; then
   fi
 fi
 
-echo "▶ pre-push: running test suite (unit only, no integration)..."
+echo "▶ pre-push: ruff lint (fast gate)..."
+if ! ruff check src/ --force-exclude -q; then
+  echo ""
+  echo "✗ pre-push: lint failed — push blocked"
+  echo "  Run 'ruff check src/ --fix' to auto-fix, or --no-verify to bypass"
+  exit 1
+fi
+
+echo "▶ pre-push: unit tests (no integration)..."
 
 if python -m pytest tests/ src/neutron_os/extensions/builtins/ \
+    -n auto \
     -m "not integration" \
     --tb=short -q \
     --no-header \

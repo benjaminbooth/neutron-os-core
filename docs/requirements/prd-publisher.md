@@ -135,7 +135,7 @@ Uploads the generated artifact to a configured destination and returns a durable
 
 | Endpoint | Status | Pull | Notes |
 |----------|--------|------|-------|
-| `s3` | 🔲 | — | AWS S3 or S3-compatible (MinIO) |
+| `s3` | 🔲 | — | AWS S3 or S3-compatible (SeaweedFS) |
 | `s3-static` | 🔲 | — | S3 static website hosting |
 
 **Git Platforms**

@@ -230,7 +230,7 @@ CREATE TABLE gold.models (
     target_variables JSONB,            -- What the model predicts
     
     -- Model storage
-    model_artifact_path VARCHAR(500),  -- S3/MinIO path to pickle/ONNX
+    model_artifact_path VARCHAR(500),  -- S3/SeaweedFS path to pickle/ONNX
     model_version VARCHAR(20),
     
     -- Metadata

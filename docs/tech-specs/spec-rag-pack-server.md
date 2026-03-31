@@ -16,7 +16,7 @@
 | `pack_id` | Stable, lowercase hyphen-separated identifier for a pack (e.g., `netl-triga`) | `neut glossary pack_id` |
 | `domain_tag` | Free-form tag linking chunks to a facility domain (e.g., `netl-triga`) | `neut glossary domain_tag` |
 | `access_tier` | Sensitivity axis: `public · restricted · export_controlled` | `spec-rag-architecture.md §2` |
-| `pack server` | MinIO instance (or compatible S3 endpoint) hosting `.neutpack` files and a registry | `neut glossary pack_server` |
+| `pack server` | SeaweedFS instance (or compatible S3 endpoint) hosting `.neutpack` files and a registry | `neut glossary pack_server` |
 | `rag-org` | The live DuckDB corpus from which packs are generated | `spec-rag-architecture.md §3a` |
 | EC pack | A `.neutpack` with `access_tier = "export_controlled"` — never installable locally | `neut glossary ec_pack` |
 
@@ -42,15 +42,15 @@ This spec owns the server-side hosting infrastructure and the generation pipelin
 
 ### 2.1 Deployment Profiles
 
-Three deployment profiles are defined. Each resolves to a MinIO (or compatible) endpoint registered as a `pack-server` connection.
+Three deployment profiles are defined. Each resolves to a SeaweedFS (or compatible) endpoint registered as a `pack-server` connection.
 
 **Profile A — Rascal (facility, restricted)**
 
-MinIO in k3d, port 9000, VPN-gated. Bucket: `neut-packs`. Packs have `access_tier = "restricted"`. Credentials supplied via `PACK_SERVER_KEY` environment variable. Helm values addition to `values-rascal.yaml` shown in §8.
+SeaweedFS in k3d, port 9000, VPN-gated. Bucket: `neut-packs`. Packs have `access_tier = "restricted"`. Credentials supplied via `PACK_SERVER_KEY` environment variable. Helm values addition to `values-rascal.yaml` shown in §8.
 
 **Profile B — TACC (export-controlled)**
 
-Identical MinIO deployment inside the TACC allocation. Never reachable from outside the allocation boundary. Packs in this instance carry `access_tier = "export_controlled"`. The `neut rag pack install` command refuses to download EC packs to a local DuckDB — it exits non-zero with a legal constraint message (§7). EC packs are query-time remote only: they are retrieved at query time via the fan-out client (see `spec-rag-architecture.md §3b`) and never persisted outside the TACC boundary.
+Identical SeaweedFS deployment inside the TACC allocation. Never reachable from outside the allocation boundary. Packs in this instance carry `access_tier = "export_controlled"`. The `neut rag pack install` command refuses to download EC packs to a local DuckDB — it exits non-zero with a legal constraint message (§7). EC packs are query-time remote only: they are retrieved at query time via the fan-out client (see `spec-rag-architecture.md §3b`) and never persisted outside the TACC boundary.
 
 **Profile C — Community CDN (future)**
 
@@ -67,15 +67,15 @@ graph TB
     end
 
     subgraph Rascal["Rascal k3d (VPN)"]
-        RS_MINIO["MinIO :9000\nbucket: neut-packs"]
+        RS_SEAWEEDFS["SeaweedFS :9000\nbucket: neut-packs"]
         RS_REG["registry.json\naccess_tier: restricted"]
-        RS_MINIO --> RS_REG
+        RS_SEAWEEDFS --> RS_REG
     end
 
     subgraph TACC["TACC Allocation"]
-        TC_MINIO["MinIO\nbucket: neut-packs"]
+        TC_SEAWEEDFS["SeaweedFS\nbucket: neut-packs"]
         TC_REG["registry.json\naccess_tier: export_controlled"]
-        TC_MINIO --> TC_REG
+        TC_SEAWEEDFS --> TC_REG
     end
 
     subgraph CDN["Community CDN (future)"]
@@ -84,8 +84,8 @@ graph TB
         S3 --> CDN_REG
     end
 
-    CLI -- "download (restricted)" --> RS_MINIO
-    CLI -- "remote query only\nno local install" --> TC_MINIO
+    CLI -- "download (restricted)" --> RS_SEAWEEDFS
+    CLI -- "remote query only\nno local install" --> TC_SEAWEEDFS
     CLI -- "download (public)" --> S3
 
     style Client fill:#e3f2fd,color:#000000
@@ -95,9 +95,9 @@ graph TB
 
     style CLI      fill:#1565c0,color:#ffffff
     style DDB      fill:#1565c0,color:#ffffff
-    style RS_MINIO fill:#2e7d32,color:#ffffff
+    style RS_SEAWEEDFS fill:#2e7d32,color:#ffffff
     style RS_REG   fill:#2e7d32,color:#ffffff
-    style TC_MINIO fill:#e65100,color:#ffffff
+    style TC_SEAWEEDFS fill:#e65100,color:#ffffff
     style TC_REG   fill:#e65100,color:#ffffff
     style S3       fill:#6a1b9a,color:#ffffff
     style CDN_REG  fill:#6a1b9a,color:#ffffff
@@ -123,7 +123,7 @@ Each pack server exposes a lightweight registry at a well-known path. The regist
 GET /packs/registry.json
 ```
 
-No authentication required for listing (MinIO anonymous read on the registry object). Pack download requires credentials.
+No authentication required for listing (SeaweedFS anonymous read on the registry object). Pack download requires credentials.
 
 Response schema:
 
@@ -148,7 +148,7 @@ Response schema:
 }
 ```
 
-`server_id` is set once at MinIO configuration time and persisted in the registry object. `access_tier` at the server level is the minimum tier for all packs hosted; individual packs may be more restrictive but never less.
+`server_id` is set once at SeaweedFS configuration time and persisted in the registry object. `access_tier` at the server level is the minimum tier for all packs hosted; individual packs may be more restrictive but never less.
 
 ### 3.2 Download Pack
 
@@ -156,7 +156,7 @@ Response schema:
 GET /packs/{pack_id}/{version}.neutpack
 ```
 
-Authenticated download. MinIO presigned URL (time-limited, 1 hour) or direct download with `Authorization: Bearer {PACK_SERVER_KEY}` header, depending on MinIO policy configuration.
+Authenticated download. SeaweedFS presigned URL (time-limited, 1 hour) or direct download with `Authorization: Bearer {PACK_SERVER_KEY}` header, depending on SeaweedFS policy configuration.
 
 ### 3.3 Convenience Redirect
 
@@ -164,7 +164,7 @@ Authenticated download. MinIO presigned URL (time-limited, 1 hour) or direct dow
 GET /packs/{pack_id}/latest.neutpack
 ```
 
-Server-side redirect (HTTP 302) to the latest version object. Implemented as a MinIO lifecycle rule or a thin nginx/Traefik rewrite in the k3d ingress.
+Server-side redirect (HTTP 302) to the latest version object. Implemented as a SeaweedFS lifecycle rule or a thin nginx/Traefik rewrite in the k3d ingress.
 
 ---
 
@@ -200,7 +200,7 @@ Steps:
 
 1. Read `manifest.json` from archive to extract `pack_id`, `version`, `access_tier`.
 2. Verify SHA256SUMS before uploading.
-3. Upload `.neutpack` to `{pack_server_url}/neut-packs/{pack_id}-v{version}.neutpack` using MinIO client (`mc`) or `boto3`.
+3. Upload `.neutpack` to `{pack_server_url}/neut-packs/{pack_id}-v{version}.neutpack` using SeaweedFS client (`mc`) or `boto3`.
 4. Download current `registry.json` (or create empty), merge new pack entry (upsert by `pack_id` + `version`), re-upload.
 5. Print: uploaded URL, updated registry pack count.
 
@@ -318,12 +318,12 @@ The guard is implemented in `neutron_os.extensions.builtins.rag.cli` in the `pac
 
 ---
 
-## 8. MinIO Helm Values
+## 8. SeaweedFS Helm Values
 
 Addition to `infra/helm/values-rascal.yaml`:
 
 ```yaml
-minio:
+seaweedfs:
   enabled: true
   mode: standalone
   persistence:
@@ -338,7 +338,7 @@ minio:
       cpu: 250m
 ```
 
-`policy: none` disables anonymous download. Registry JSON (`registry.json`) is granted anonymous read via a separate MinIO bucket policy applied at setup time, so `neut rag pack list --remote` works without credentials.
+`policy: none` disables anonymous download. Registry JSON (`registry.json`) is granted anonymous read via a separate SeaweedFS bucket policy applied at setup time, so `neut rag pack list --remote` works without credentials.
 
 For TACC, an identical block is added to `values-tacc.yaml` with `persistence.size: 200Gi` to accommodate larger export-controlled corpora.
 
@@ -377,12 +377,12 @@ neut rag pack remove <pack-id>                  # uninstall pack from local Duck
 
 | Phase | Deliverables | Blocks |
 |-------|-------------|--------|
-| A | MinIO on Rascal k3d; `generate`, `publish`, `list --remote`, `install`; `netl-triga` as first pack | Local + Rascal Qwen+RAG pipeline |
-| B | MinIO on TACC; EC pack generation; EC safety guard (§7) | TACC developer-researcher RAG |
+| A | SeaweedFS on Rascal k3d; `generate`, `publish`, `list --remote`, `install`; `netl-triga` as first pack | Local + Rascal Qwen+RAG pipeline |
+| B | SeaweedFS on TACC; EC pack generation; EC safety guard (§7) | TACC developer-researcher RAG |
 | C | `pack_install` step type in `installer.py`; Rascal + TACC install.toml steps (§6) | `neut install` automation |
 | D | Community CDN integration; `public` tier packs from `community_facts` | Community corpus distribution |
 
-Phase A is the minimum viable pack distribution path. Phase B requires a TACC allocation with MinIO storage quota approved. Phase C requires Phase A and B registry endpoints to be stable. Phase D is governed by `spec-rag-community.md §7` and is out of scope for the initial implementation sprints.
+Phase A is the minimum viable pack distribution path. Phase B requires a TACC allocation with SeaweedFS storage quota approved. Phase C requires Phase A and B registry endpoints to be stable. Phase D is governed by `spec-rag-community.md §7` and is out of scope for the initial implementation sprints.
 
 ---
 

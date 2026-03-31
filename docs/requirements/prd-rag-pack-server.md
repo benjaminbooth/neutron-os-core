@@ -19,7 +19,7 @@ authorized clients discover and download them.
 Without a distribution service, packs move as manual file transfers — an email
 attachment, a shared drive link, a USB drive in a server room. That model does not
 scale beyond a single pilot user. This PRD defines the Pack Registry and Distribution
-Service: a thin MinIO-backed server that unblocks three environments —
+Service: a thin SeaweedFS-backed server that unblocks three environments —
 local laptop, Rascal GPU server, and TACC export-controlled allocation — with the
 minimum infrastructure needed for each trust boundary.
 
@@ -69,7 +69,7 @@ boundaries between them.
 Generates packs from the facility's ingested `rag-org` corpus and publishes them to
 the pack server. For Phase A this is a single UT operator; for Phase B, a TACC
 allocation admin. Needs: `neut rag pack generate`, `neut rag pack publish`, a
-MinIO endpoint to publish to.
+SeaweedFS endpoint to publish to.
 
 **Developer-researcher (pack consumer)**
 Installs packs to get facility-aware AI on their laptop or within their TACC session.
@@ -79,7 +79,7 @@ update notification. Should not need to know where the pack physically lives.
 **Ondrej Chvala (NETL TRIGA, external stakeholder)**
 Represents the external facility perspective. Needs: the NETL TRIGA domain pack
 (`netl-triga-v1.neutpack`) to be discoverable and installable without requiring
-direct access to UT infrastructure. The VPN-gated MinIO endpoint on Rascal satisfies
+direct access to UT infrastructure. The VPN-gated SeaweedFS endpoint on Rascal satisfies
 this for the pilot.
 
 **Ben Booth (system owner)**
@@ -129,7 +129,7 @@ require a running pack server.
 
 **FR-3: Pack publish**
 `neut rag pack publish <file> --server <alias>` uploads a `.neutpack` to a registered
-pack server. The server stores the file in MinIO and updates the registry index.
+pack server. The server stores the file in SeaweedFS and updates the registry index.
 The server alias is resolved from the connection registered via `neut connect pack-server`.
 
 **FR-4: Pack install from URL**
@@ -187,16 +187,16 @@ informational message, not an error.
 
 The minimum that unblocks all three deployment environments:
 
-1. MinIO Helm chart deployed in Rascal's k3d cluster with a single bucket (`neutpacks`).
-2. A lightweight registry API (can be a static JSON file served from MinIO initially)
+1. SeaweedFS Helm chart deployed in Rascal's k3d cluster with a single bucket (`neutpacks`).
+2. A lightweight registry API (can be a static JSON file served from SeaweedFS initially)
    that lists available packs by name, version, and download URL.
 3. `neut connect pack-server` storing endpoint config in `runtime/config/pack-servers.toml`.
 4. `neut rag pack generate` producing a valid `.neutpack` from the ingested corpus.
-5. `neut rag pack publish` uploading to MinIO via the S3 API.
+5. `neut rag pack publish` uploading to SeaweedFS via the S3 API.
 6. `neut rag pack install <url>` downloading, verifying, and indexing.
 7. `neut rag pack list --remote` querying the registry JSON.
 8. The first pack: `netl-triga-v1.neutpack` generated from the Box knowledge dump.
-9. The TACC MinIO instance (same setup, isolated allocation) serving `simulation-codes-v1.neutpack`.
+9. The TACC SeaweedFS instance (same setup, isolated allocation) serving `simulation-codes-v1.neutpack`.
 10. `install.toml` environment profiles for Rascal and TACC that include the
     `connect pack-server` and `pack install` steps.
 
@@ -216,19 +216,19 @@ flowchart TB
 
     subgraph Rascal["Rascal (UT GPU server / k3d)"]
         direction TB
-        MinIO_R["MinIO\nport 9000"]
+        SeaweedFS_R["SeaweedFS\nport 9000"]
         Qwen["Qwen\nLLM API"]
         CorpusR["rag-org corpus\n(NETL TRIGA + Box)"]
-        style MinIO_R fill:#e3f2fd,color:#000000
+        style SeaweedFS_R fill:#e3f2fd,color:#000000
         style Qwen fill:#e3f2fd,color:#000000
         style CorpusR fill:#c8e6c9,color:#000000
     end
 
     subgraph TACC["TACC Allocation (never public)"]
         direction TB
-        MinIO_T["MinIO\nEC bucket"]
+        SeaweedFS_T["SeaweedFS\nEC bucket"]
         CorpusT["EC corpus\n(MCNP, SCALE, ORIGEN,\nSerpent, OpenMC)"]
-        style MinIO_T fill:#fff3e0,color:#000000
+        style SeaweedFS_T fill:#fff3e0,color:#000000
         style CorpusT fill:#fff3e0,color:#000000
     end
 
@@ -237,12 +237,12 @@ flowchart TB
         style S3 fill:#e3f2fd,color:#000000
     end
 
-    CLI -->|"VPN + port-forward\nneut rag pack install URL"| MinIO_R
-    CLI -->|"TACC network only\nquery-time remote"| MinIO_T
+    CLI -->|"VPN + port-forward\nneut rag pack install URL"| SeaweedFS_R
+    CLI -->|"TACC network only\nquery-time remote"| SeaweedFS_T
     CLI -.->|"Phase C\npublic HTTPS"| S3
     CLI --> DDB
-    CorpusR -->|"neut rag pack generate\n+ publish"| MinIO_R
-    CorpusT -->|"neut rag pack generate\n+ publish"| MinIO_T
+    CorpusR -->|"neut rag pack generate\n+ publish"| SeaweedFS_R
+    CorpusT -->|"neut rag pack generate\n+ publish"| SeaweedFS_T
 ```
 
 ### Profile 1 — Rascal Facility Pack Server
@@ -250,11 +250,11 @@ flowchart TB
 **Purpose:** Serve `rag-org` content (NETL TRIGA procedures, Box knowledge dump)
 as a versioned domain pack accessible to UT VPN users.
 
-**Infrastructure:** MinIO deployed via Helm chart in Rascal's existing k3d cluster.
+**Infrastructure:** SeaweedFS deployed via Helm chart in Rascal's existing k3d cluster.
 Single bucket `neutpacks`. Exposed via `kubectl port-forward` on port 9000 — same
 pattern as Rascal's Qwen API key access. No public IP, no load balancer.
 
-**Auth:** Single MinIO API key stored in `runtime/config/pack-servers.toml` (gitignored).
+**Auth:** Single SeaweedFS API key stored in `runtime/config/pack-servers.toml` (gitignored).
 No IAM, no per-user keys in Phase A.
 
 **First pack:** `netl-triga-v1.neutpack`
@@ -275,8 +275,8 @@ The Qwen queries fail gracefully when offline; the RAG retrieval does not.
 **Purpose:** Serve export-controlled simulation code documentation within the TACC
 allocation perimeter. EC content never leaves TACC.
 
-**Infrastructure:** MinIO deployed in the TACC allocation. Same Helm chart as
-Profile 1. Network-level isolation enforced by TACC: the MinIO endpoint is not
+**Infrastructure:** SeaweedFS deployed in the TACC allocation. Same Helm chart as
+Profile 1. Network-level isolation enforced by TACC: the SeaweedFS endpoint is not
 reachable from outside the allocation. No port-forward workaround is permissible
 for EC content.
 
@@ -289,7 +289,7 @@ and OpenMC reference material, Fortran/C++ code examples from simulation workflo
 Access tier: `export_controlled`. Scope: `facility`.
 
 **Query-time remote only:** Unlike Profile 1 packs, the EC pack is never downloaded
-to a local laptop. Retrieval queries are proxied to the TACC MinIO endpoint at
+to a local laptop. Retrieval queries are proxied to the TACC SeaweedFS endpoint at
 query time and results are returned inline — no chunks are written to the local
 DuckDB store. This behavior is governed by adr-014-rag-tiered-local-cache.md.
 
@@ -332,7 +332,7 @@ neut rag pack publish <file.neutpack> [--server <alias>]
 ```
 
 Uploads the pack to a registered pack server via S3 API. Updates the registry
-index JSON in the MinIO bucket. Requires the server to be reachable and the API
+index JSON in the SeaweedFS bucket. Requires the server to be reachable and the API
 key to be valid.
 
 ### `neut rag pack install`
@@ -385,11 +385,11 @@ Example:
 neut connect pack-server \
   --alias rascal \
   --url http://localhost:9000 \
-  --api-key <minio-key>
+  --api-key <seaweedfs-key>
 
 neut connect pack-server \
   --alias tacc-ec \
-  --url https://minio.tacc.utexas.edu \
+  --url https://seaweedfs.tacc.utexas.edu \
   --api-key <tacc-key>
 ```
 
@@ -407,8 +407,8 @@ The pack server adds two step types: `connect.pack-server` and `rag.pack.install
 type = "connect.pack-server"
 alias = "rascal"
 url = "http://localhost:9000"
-api_key_env = "NEUT_RASCAL_MINIO_KEY"
-note = "Requires UT VPN + kubectl port-forward svc/minio 9000:9000"
+api_key_env = "NEUT_RASCAL_SEAWEEDFS_KEY"
+note = "Requires UT VPN + kubectl port-forward svc/seaweedfs 9000:9000"
 
 [[steps]]
 type = "rag.pack.install"
@@ -423,8 +423,8 @@ note = "NETL TRIGA facility knowledge pack (restricted)"
 [[steps]]
 type = "connect.pack-server"
 alias = "tacc-ec"
-url = "https://minio.tacc.utexas.edu"
-api_key_env = "NEUT_TACC_MINIO_KEY"
+url = "https://seaweedfs.tacc.utexas.edu"
+api_key_env = "NEUT_TACC_SEAWEEDFS_KEY"
 note = "Accessible only from within TACC allocation"
 
 [[steps]]
@@ -438,18 +438,18 @@ note = "EC simulation codes pack — query-time remote only, never cached locall
 
 ## Implementation Phases
 
-### Phase A — Rascal MinIO + NETL TRIGA Pack
+### Phase A — Rascal SeaweedFS + NETL TRIGA Pack
 
 **Goal:** Unblock local laptop and Rascal users with facility-aware RAG.
 
 Deliverables:
-- MinIO Helm chart deployed in Rascal k3d, bucket `neutpacks` created
+- SeaweedFS Helm chart deployed in Rascal k3d, bucket `neutpacks` created
 - `neut connect pack-server` command implemented, stores config in
   `runtime/config/pack-servers.toml`
 - `neut rag pack generate` command implemented
 - `neut rag pack publish` command implemented
-- `neut rag pack install <url>` accepting MinIO presigned URLs
-- `neut rag pack list --remote` querying registry JSON from MinIO
+- `neut rag pack install <url>` accepting SeaweedFS presigned URLs
+- `neut rag pack list --remote` querying registry JSON from SeaweedFS
 - `netl-triga-v1.neutpack` generated from the Box knowledge dump and published
 - `install.toml` Rascal profile updated with pack server steps
 - Offline degradation verified: install a pack, disconnect VPN, confirm RAG
@@ -458,16 +458,16 @@ Deliverables:
 Dependencies: Phase 0 DuckDB RAG store (already specced), Rascal k3d cluster
 (already exists), Box knowledge dump ingestion (already completed).
 
-### Phase B — TACC MinIO + EC Simulation Codes Pack
+### Phase B — TACC SeaweedFS + EC Simulation Codes Pack
 
 **Goal:** Unblock Fortran/C++ developer-researchers with code-aware AI inside TACC.
 
 Deliverables:
-- MinIO deployed in TACC allocation, EC bucket created with appropriate ACLs
+- SeaweedFS deployed in TACC allocation, EC bucket created with appropriate ACLs
 - `neut rag pack install` EC-tier path: registers remote retrieval target, no
   local chunk write
 - Query-time EC retrieval proxy implemented per adr-014-rag-tiered-local-cache.md
-- `simulation-codes-v1.neutpack` generated from EC corpus and published to TACC MinIO
+- `simulation-codes-v1.neutpack` generated from EC corpus and published to TACC SeaweedFS
 - `install.toml` TACC EC profile updated with pack server steps
 - Verified: no EC content written to local DuckDB in any code path
 

@@ -26,6 +26,7 @@ stages:
   - publish
   - ai
   - mirror
+  - notify
 
 # =============================================================================
 # Variables
@@ -62,13 +63,17 @@ variables:
 # Templates
 # =============================================================================
 
-.python-setup:
+# Full setup — used only by preflight:dependencies to build the venv once.
+.python-full-setup:
   image: python:${PYTHON_VERSION}-slim
   cache:
-    key: pip-${CI_COMMIT_REF_SLUG}
+    key:
+      prefix: "pip-py${PYTHON_VERSION}"
+      files: [pyproject.toml]
     paths:
       - .pip-cache/
-      - .venv/
+    fallback_keys:
+      - "pip-py${PYTHON_VERSION}-default"
   before_script:
     - python3 -m venv --without-pip "$VENV_DIR" || python3 -m venv "$VENV_DIR"
     - export PATH="$VENV_DIR/bin:$PATH"
@@ -77,6 +82,13 @@ variables:
     # Configure git to use GITHUB_TOKEN for axiom dependency clone
     - git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
     - pip install --quiet -e ".[all]"
+
+# Lightweight setup — reuses the venv artifact from preflight:dependencies.
+# Jobs extending this MUST declare `needs: [preflight:dependencies]`.
+.python-setup:
+  image: python:${PYTHON_VERSION}-slim
+  before_script:
+    - export PATH="$VENV_DIR/bin:$PATH"
 
 # =============================================================================
 # Preflight Stage
@@ -144,6 +156,22 @@ preflight:connections:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_TAG
 
+preflight:dependencies:
+  stage: preflight
+  extends: .python-full-setup
+  script:
+    - python -c "import neutron_os; from importlib.metadata import version; print(f'neutron-os {version(\"neutron-os\")} — all dependencies resolved')"
+    - python -c "import axiom; from importlib.metadata import version; print(f'axiom {version(\"axiom\")} — upstream dependency OK')"
+  artifacts:
+    paths:
+      - .venv/
+    expire_in: 1 hour
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes: *changes-code
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_TAG
+
 # =============================================================================
 # Test Stage
 # =============================================================================
@@ -151,8 +179,9 @@ preflight:connections:
 test:unit:
   extends: .python-setup
   stage: test
+  needs: [preflight:dependencies]
   script:
-    - pytest -v --tb=short -m "not integration"
+    - pytest -n auto -v --tb=short -m "not integration"
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_TAG
@@ -160,11 +189,17 @@ test:unit:
       changes: *changes-code
 
 lint:
-  extends: .python-setup
   stage: test
+  image: python:${PYTHON_VERSION}-slim
+  needs: []
+  cache:
+    key: ruff
+    paths:
+      - .ruff-cache/
   script:
-    - ruff check src/ --select E,F,W --ignore E501
-  allow_failure: true
+    - pip install --quiet --break-system-packages ruff
+    - ruff check src/ --select E,F,W --ignore E501 --cache-dir .ruff-cache
+  allow_failure: false
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_TAG
@@ -180,10 +215,15 @@ lint:
 build:wheel:
   extends: .python-setup
   stage: build
+  needs: [test:unit, lint, preflight:dependencies]
   script:
     - pip install --quiet build
     - python -m build
     - ls -lh dist/
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 hour
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH == "main"
@@ -198,12 +238,8 @@ build:wheel:
 publish:dev:
   extends: .python-setup
   stage: publish
-  before_script:
-    - python3 -m venv --without-pip "$VENV_DIR" || python3 -m venv "$VENV_DIR"
-    - export PATH="$VENV_DIR/bin:$PATH"
-    - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
-    - pip install --quiet --upgrade pip
-    - git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+  needs: [build:wheel, preflight:dependencies]
+  script:
     - pip install --quiet build twine
     - |
       python3 -c "
@@ -215,7 +251,6 @@ publish:dev:
       p.write_text(text)
       print(f'Stamped dev version')
       "
-  script:
     - rm -rf dist/
     - python -m build
     - |
@@ -230,9 +265,9 @@ publish:dev:
 publish:release:
   extends: .python-setup
   stage: publish
+  needs: [build:wheel, preflight:dependencies]
   script:
-    - pip install --quiet build twine
-    - python -m build
+    - pip install --quiet twine
     - |
       TWINE_PASSWORD=${CI_JOB_TOKEN} \
       TWINE_USERNAME=gitlab-ci-token \
@@ -248,6 +283,7 @@ publish:release:
 
 claude:review:
   stage: ai
+  needs: []
   image: node:24-alpine3.21
   before_script:
     - apk update
@@ -287,3 +323,70 @@ mirror:github:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *changes-mirror
   allow_failure: true
+
+# =============================================================================
+# Notify Stage — Auto-create issue on pipeline failure
+# =============================================================================
+
+notify:failure-issue:
+  stage: notify
+  image: python:3.12-slim
+  when: on_failure
+  before_script:
+    - pip install --quiet --break-system-packages requests
+  script:
+    - |
+      python3 << 'PYEOF'
+      import os, requests
+
+      api = "https://rsicc-gitlab.tacc.utexas.edu/api/v4"
+      token = os.environ["GITLAB_TOKEN"]
+      project_id = os.environ["CI_PROJECT_ID"]
+      pipeline_id = os.environ["CI_PIPELINE_ID"]
+      pipeline_url = os.environ["CI_PIPELINE_URL"]
+      branch = os.environ.get("CI_COMMIT_BRANCH", os.environ.get("CI_MERGE_REQUEST_SOURCE_BRANCH_NAME", "unknown"))
+      commit_sha = os.environ["CI_COMMIT_SHORT_SHA"]
+      commit_msg = os.environ.get("CI_COMMIT_MESSAGE", "").split("\n")[0][:80]
+
+      headers = {"PRIVATE-TOKEN": token}
+
+      # Check for existing open issue for this pipeline to avoid duplicates
+      search = requests.get(
+          f"{api}/projects/{project_id}/issues",
+          headers=headers,
+          params={"state": "opened", "labels": "ci-failure", "per_page": 5, "search": f"Pipeline #{pipeline_id}"},
+          timeout=10
+      )
+      if search.ok and any(f"Pipeline #{pipeline_id}" in i.get("title", "") for i in search.json()):
+          print("Issue already exists for this pipeline, skipping.")
+      else:
+          body = (
+              f"## CI Pipeline Failure\n\n"
+              f"| Field | Value |\n|---|---|\n"
+              f"| **Pipeline** | [#{pipeline_id}]({pipeline_url}) |\n"
+              f"| **Branch** | `{branch}` |\n"
+              f"| **Commit** | `{commit_sha}` — {commit_msg} |\n\n"
+              f"### Action Required\n\n"
+              f"Investigate the failed jobs in the pipeline link above and push a fix. "
+              f"Close this issue only after the root cause is resolved and the pipeline passes.\n\n"
+              f"---\n*Auto-created by CI*"
+          )
+          resp = requests.post(
+              f"{api}/projects/{project_id}/issues",
+              headers=headers,
+              json={
+                  "title": f"🔴 Pipeline #{pipeline_id} failed on `{branch}` ({commit_sha})",
+                  "description": body,
+                  "labels": "ci-failure,priority::high",
+              },
+              timeout=10
+          )
+          if resp.ok:
+              print(f"Created issue: {resp.json()['web_url']}")
+          else:
+              print(f"Failed to create issue: {resp.status_code} {resp.text}")
+      PYEOF
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_TAG

@@ -66,7 +66,7 @@ flowchart TB
     end
     
     subgraph STORAGE["STORAGE LAYER"]
-        S3["S3-Compatible Object Storage<br/>(SeaweedFS / MinIO / Local FS / S3)"]
+        S3["S3-Compatible Object Storage<br/>(SeaweedFS / SeaweedFS / Local FS / S3)"]
     end
     
     subgraph INGESTION["INGESTION LAYER"]

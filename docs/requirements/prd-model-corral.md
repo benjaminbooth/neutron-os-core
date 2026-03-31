@@ -89,7 +89,7 @@ Model Corral uses NeutronOS as the **primary system of record**, with Git as an 
 │   │                     NeutronOS Model Registry                         │   │
 │   │                                                                      │   │
 │   │  • PostgreSQL metadata (model.yaml contents)                        │   │
-│   │  • Object storage for model files (S3/MinIO)                        │   │
+│   │  • Object storage for model files (S3/SeaweedFS)                        │   │
 │   │  • Version history managed by NeutronOS                             │   │
 │   │  • Search, validation, provenance — all NeutronOS                   │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │

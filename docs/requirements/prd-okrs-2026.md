@@ -6,7 +6,7 @@
 >
 > **Upstream:** [Axiom 2026 OKRs](https://github.com/…/axiom/docs/requirements/prd-okrs-2026.md) — Platform-level objectives (DT infrastructure, Model Corral, Data Platform, Intelligence Platform, Security) are owned by Axiom. This document covers NeutronOS nuclear-domain objectives and nuclear-specific key results within shared platform objectives.
 >
-> **Major update (2026-03-26):** Split from combined OKRs. Platform objectives moved to Axiom OKRs. Nuclear-domain objectives (Reactor Ops, Medical Isotope, NRC compliance) retained here. INL federation partnership milestones retained. MinIO replaced with S3-compatible object storage (Ceph/Rook recommended).
+> **Major update (2026-03-26):** Split from combined OKRs. Platform objectives moved to Axiom OKRs. Nuclear-domain objectives (Reactor Ops, Medical Isotope, NRC compliance) retained here. INL federation partnership milestones retained. SeaweedFS replaced with S3-compatible object storage (Ceph/Rook recommended).
 
 ---
 

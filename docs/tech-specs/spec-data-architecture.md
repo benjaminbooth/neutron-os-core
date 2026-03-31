@@ -235,7 +235,7 @@ Single table with `entry_type` discriminator for all log types.
 | Setting | Value | Rationale |
 |---------|-------|-----------|
 | Catalog type | REST | Standard API for multi-engine access |
-| Metadata location | S3/MinIO | Durable, shared storage |
+| Metadata location | S3/SeaweedFS | Durable, shared storage |
 | Warehouse | `s3://neutron-lakehouse/` | All Iceberg data |
 
 ### 6.2 Partitioning Strategy

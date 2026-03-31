@@ -470,7 +470,7 @@ See: [Superset Scenarios](../tech-specs/superset-scenarios/)
 - Apache Superset (BI)
 - dbt-core (transforms)
 - Dagster (orchestration)
-- MinIO (S3-compatible object storage)
+- SeaweedFS (S3-compatible object storage)
 - Redpanda (streaming) + Flink (stream processing) — see [ADR-007](adr-007-streaming-first-architecture.md)
 - pgvector (semantic search / embeddings)
 - OpenFGA (authorization / row-level security)
@@ -482,7 +482,7 @@ See: [Superset Scenarios](../tech-specs/superset-scenarios/)
 
 ## Open Questions
 
-1. ~~Where will the data lake be hosted?~~ **Resolved:** MinIO on-premise (TACC); cloud S3 for managed deployments.
+1. ~~Where will the data lake be hosted?~~ **Resolved:** SeaweedFS on-premise (TACC); cloud S3 for managed deployments.
 2. What time resolution for Gold tables? (hourly, daily) — Currently hourly for reactor metrics; daily for compliance/utilization.
 3. How much historical data to backfill? — Facility-specific decision at deployment time.
 4. ~~Should MPACT shadow predictions be included in dashboards?~~ **Resolved:** Yes — see NAN-009 (Model vs. Measurement).

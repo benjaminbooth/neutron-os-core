@@ -74,7 +74,7 @@ Model Corral is NeutronOS's unified registry for computational models:
 │                                    │                                         │
 │                                    ▼                                         │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                  Object Storage (MinIO/S3)                           │   │
+│   │                  Object Storage (SeaweedFS/S3)                           │   │
 │   │                                                                      │   │
 │   │  • Input files (MCNP decks, XML geometries, material libraries)     │   │
 │   │  • ROM artifacts (WASM modules, ONNX files)                         │   │
