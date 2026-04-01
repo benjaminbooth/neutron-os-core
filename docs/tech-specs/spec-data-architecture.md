@@ -11,6 +11,7 @@
 | Version | 0.2 |
 | Last Updated | 2026-03-17 |
 | Status | Draft |
+| Related | [DOE Data Management & Sharing PRD](../requirements/prd-doe-data-management.md) |
 
 ---
 
@@ -377,6 +378,18 @@ In addition to the Axiom base backup strategy:
 ### 9.3 Encryption
 
 Inherits Axiom encryption policy (AES-256 at rest, TLS 1.3 in transit, separate backup keys managed via HashiCorp Vault). Key rotation quarterly; archived keys retained for the lifetime of NRC-required records.
+
+---
+
+## DOE Data Management Extensions
+
+Gold-tier datasets designated for publication under DOE DMSP requirements receive the following extensions:
+
+- **Nuclear metadata extension columns:** `funding_source` (DOE award number), `dmsp_project_id` (links dataset to its DMSP project record), and `publication_status` (enum: `internal` | `embargoed` | `published`).
+- **DataCite metadata layer:** Published Gold datasets carry a DataCite-compliant metadata record (title, creators, DOI, rights, funding references) stored alongside the Iceberg table metadata. This enables DOI minting and OSTI deposit without duplicating the underlying data.
+- **DMSP project attribution:** A `dmsp_project_id` column on Bronze/Silver/Gold tables traces data lineage back to the originating DOE-funded project for audit and reporting purposes.
+
+See [prd-doe-data-management.md](../requirements/prd-doe-data-management.md) for full requirements.
 
 ---
 

@@ -12,7 +12,7 @@
 | Last Updated | 2026-03-17 |
 | Status | Draft |
 | PRD | [Model Corral PRD](../requirements/prd-model-corral.md) |
-| Related | [Digital Twin Hosting Spec](spec-digital-twin-hosting.md), [Data Architecture Spec](spec-data-architecture.md) |
+| Related | [Digital Twin Hosting Spec](spec-digital-twin-hosting.md), [Data Architecture Spec](spec-data-architecture.md), [DOE Data Management & Sharing PRD](../requirements/prd-doe-data-management.md) |
 
 ---
 
@@ -658,6 +658,12 @@ Follow existing website patterns:
 - Same card/grid layouts as `/core`
 - Plotly for any visualizations
 - MathJax for equations in descriptions
+
+---
+
+## DMSP Manifest Extensions
+
+For DOE DMSP compliance, the `model.yaml` manifest schema extends with three fields: `license` (required, SPDX identifier), `funding_source` (optional, DOE award number), and `doi` (assigned when the model is published to a public repository). These fields enable automated OSTI reporting and DataCite DOI minting for models produced under DOE-funded research. See [prd-doe-data-management.md](../requirements/prd-doe-data-management.md).
 
 ---
 

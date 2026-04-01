@@ -6,7 +6,7 @@
 **Status:** Draft  
 **Last Updated:** 2026-03-20  
 **Parent:** [Executive PRD](prd-executive.md)  
-**Related:** [Digital Twin Hosting PRD](prd-digital-twin-hosting.md), [Data Platform PRD](prd-data-platform.md)
+**Related:** [Digital Twin Hosting PRD](prd-digital-twin-hosting.md), [Data Platform PRD](prd-data-platform.md), [DOE Data Management & Sharing PRD](prd-doe-data-management.md)
 
 ---
 
@@ -409,6 +409,8 @@ tags:
   - control_rod_worth
   - benchmark
 ```
+
+**DOE DMSP manifest extensions:** The `model.yaml` manifest will be extended with: `license` (required — SPDX identifier), `funding_source` (optional — DOE award number when applicable), and `doi` (assigned on publication to a public repository). ROM training provenance must link training data sources by PID when those sources have been published with DOIs. See [prd-doe-data-management.md](prd-doe-data-management.md).
 
 ### ROM Extension Schema
 

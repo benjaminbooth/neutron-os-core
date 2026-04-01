@@ -7,12 +7,17 @@
 **Last Updated:** 2026-03-26
 **Parent:** [Executive PRD](prd-executive.md)
 **Upstream:** [Axiom Data Platform PRD](https://github.com/…/axiom/docs/requirements/prd-data-platform.md) — this PRD is self-contained but extends the domain-agnostic Axiom Data Platform with nuclear-specific schemas, transforms, dashboards, and compliance requirements.
+**Related:** [DOE Data Management & Sharing PRD](prd-doe-data-management.md)
 
 ---
 
 ## Overview
 
 The Neutron OS Data Platform provides a unified data foundation for nuclear research and operations, replacing fragmented CSV/JSON files with a modern lakehouse architecture. It builds on the [Axiom Data Platform](https://github.com/…/axiom/docs/requirements/prd-data-platform.md) for generic infrastructure (Iceberg, DuckDB, Dagster, dbt, Superset, streaming, multi-tenancy) and layers on nuclear-domain schemas, regulatory compliance, and facility-specific data sources.
+
+### DOE Data Management Alignment
+
+The nuclear data platform extends Axiom's federal data management infrastructure with NRC-specific retention tiers, nuclear metadata schemas, and export control integration. Gaps being addressed by [prd-doe-data-management.md](prd-doe-data-management.md): dataset publication lifecycle (Bronze/Silver/Gold datasets lack a "published" state), persistent identifiers (DOIs) on Gold-tier datasets designated for publication, and a DataCite metadata layer for published datasets shared with the broader research community.
 
 ---
 
