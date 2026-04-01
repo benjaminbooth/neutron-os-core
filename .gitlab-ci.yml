@@ -64,6 +64,8 @@ variables:
 # =============================================================================
 
 # Full setup — used only by preflight:dependencies to build the venv once.
+# Recreates venv from scratch every time to avoid stale symlink issues
+# when the runner's Python version changes.
 .python-full-setup:
   image: python:${PYTHON_VERSION}-slim
   cache:
@@ -75,9 +77,10 @@ variables:
     fallback_keys:
       - "pip-py${PYTHON_VERSION}-default"
   before_script:
-    - python3 -m venv --without-pip "$VENV_DIR" || python3 -m venv "$VENV_DIR"
+    # Always recreate venv — stale symlinks are the #1 CI failure cause
+    - rm -rf "$VENV_DIR"
+    - python3 -m venv "$VENV_DIR"
     - export PATH="$VENV_DIR/bin:$PATH"
-    - curl -sS https://bootstrap.pypa.io/get-pip.py | python3
     - pip install --quiet --upgrade pip
     # Configure git to use GITHUB_TOKEN for axiom dependency clone
     - git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
@@ -85,10 +88,13 @@ variables:
 
 # Lightweight setup — reuses the venv artifact from preflight:dependencies.
 # Jobs extending this MUST declare `needs: [preflight:dependencies]`.
+# Validates venv is usable before proceeding.
 .python-setup:
   image: python:${PYTHON_VERSION}-slim
   before_script:
     - export PATH="$VENV_DIR/bin:$PATH"
+    # Fail fast if venv is broken (stale symlinks, missing Python)
+    - python3 -c "import sys; print(f'venv OK — Python {sys.version}')" || { echo "ERROR: venv broken — preflight:dependencies may have been skipped"; exit 1; }
 
 # =============================================================================
 # Preflight Stage
@@ -162,15 +168,21 @@ preflight:dependencies:
   script:
     - python -c "import neutron_os; from importlib.metadata import version; print(f'neutron-os {version(\"neutron-os\")} — all dependencies resolved')"
     - python -c "import axiom; from importlib.metadata import version; print(f'axiom {version(\"axiom\")} — upstream dependency OK')"
+    # Verify venv binaries are executable (catches broken symlinks)
+    - test -x "$VENV_DIR/bin/python" || { echo "ERROR: venv python not executable"; exit 1; }
+    - test -x "$VENV_DIR/bin/pip" || { echo "ERROR: venv pip not executable"; exit 1; }
+    - test -x "$VENV_DIR/bin/pytest" || { echo "ERROR: venv pytest not executable"; exit 1; }
   artifacts:
     paths:
       - .venv/
     expire_in: 1 hour
   rules:
+    # Always run when downstream jobs might need the venv — not just on code changes
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_ID
     - if: $CI_PIPELINE_SOURCE == "push"
       changes: *changes-code
-    - if: $CI_MERGE_REQUEST_ID
-    - if: $CI_COMMIT_TAG
 
 # =============================================================================
 # Test Stage
