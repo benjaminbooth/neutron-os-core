@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../schemas/material-schema.json
+
+- name: "H2O"
+  description: "Light water (liquid, room temperature)"
+  density: 0.998
+  category: moderator
+  fraction_type: atom
+  temperature_k: 293.6
+  source: "Standard"
+  data_library: "ENDF/B-VII.1"
+  sab: "lwtr.20t"
+  isotopes:
+    - zaid: "1001.80c"
+      fraction: 6.67e-2
+      name: "H-1"
+    - zaid: "8016.80c"
+      fraction: 3.33e-2
+      name: "O-16"
+
+- name: "graphite"
+  description: "Nuclear-grade graphite (density 1.70 g/cm³)"
+  density: 1.70
+  category: moderator
+  fraction_type: atom
+  temperature_k: 293.6
+  source: "ORNL/TM-2005/272"
+  data_library: "ENDF/B-VII.1"
+  sab: "grph.20t"
+  isotopes:
+    - zaid: "6000.80c"
+      fraction: 8.52e-2
+      name: "C-nat"

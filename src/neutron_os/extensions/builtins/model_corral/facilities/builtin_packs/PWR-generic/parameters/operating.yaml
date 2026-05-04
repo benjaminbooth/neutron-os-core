@@ -1,0 +1,19 @@
+facility: generic
+reactor_type: PWR
+reactor_model: generic
+
+rated_power_mw: 3400
+
+coolant:
+  type: light-water
+  pressure_mpa: 15.5
+  inlet_temperature_c: 292
+  outlet_temperature_c: 326
+  flow_rate_kg_s: 17400
+
+core:
+  fuel_assemblies: 193
+  fuel_type: UO2
+  typical_enrichment_percent: 4.0
+  cladding: Zircaloy-4
+  assembly_type: "17x17"

@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Model Corral Manifest",
+  "description": "Schema for model.yaml — physics simulation model manifest",
+  "type": "object",
+  "required": [
+    "model_id",
+    "name",
+    "version",
+    "status",
+    "reactor_type",
+    "facility",
+    "physics_domain",
+    "physics_code",
+    "created_by",
+    "created_at",
+    "access_tier"
+  ],
+  "properties": {
+    "model_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "description": "Unique identifier (lowercase, hyphens only)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable display name"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (X.Y.Z)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "production", "deprecated", "archived"],
+      "description": "Lifecycle status. Transitions: draft → review → production → deprecated → archived"
+    },
+    "reactor_type": {
+      "type": "string",
+      "enum": ["TRIGA", "MSR", "PWR", "BWR", "HTGR", "VHTR", "SFR", "custom"],
+      "description": "Reactor type classification"
+    },
+    "facility": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Facility identifier (e.g., NETL, MIT, generic)"
+    },
+    "physics_domain": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Physics domains covered (e.g., neutronics, thermal_hydraulics, depletion)"
+    },
+    "physics_code": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Physics simulation code (MCNP, VERA, MPACT, SAM, Griffin, OpenMC, RELAP, BISON, etc.)"
+    },
+    "code_version": {
+      "type": "string",
+      "description": "Minimum compatible version of the physics code"
+    },
+    "created_by": {
+      "type": "string",
+      "format": "email",
+      "description": "Creator's email address"
+    },
+    "created_at": {
+      "type": "string",
+      "description": "Creation timestamp (ISO 8601)"
+    },
+    "access_tier": {
+      "type": "string",
+      "enum": ["public", "facility"],
+      "description": "Access control tier. public = open; facility = campus/VPN only"
+    },
+    "input_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "type"],
+        "properties": {
+          "path": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["main_input", "geometry", "materials", "cross_sections", "mesh", "restart", "auxiliary"]
+          }
+        }
+      }
+    },
+    "parent_model": {
+      "type": "string",
+      "description": "model_id of the parent model (for forks or ROM training sources)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the model (supports markdown)"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Searchable tags (e.g., transient, xenon, benchmark, thesis)"
+    },
+    "publications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "doi": { "type": "string" },
+          "title": { "type": "string" }
+        }
+      }
+    },
+    "validation_status": {
+      "type": "string",
+      "enum": ["unvalidated", "in_progress", "validated", "failed"]
+    },
+    "validation_dataset": {
+      "type": "string"
+    },
+    "validation_metrics": {
+      "type": "object"
+    },
+    "rom_tier": {
+      "type": "string",
+      "enum": ["ROM-1", "ROM-2", "ROM-3", "ROM-4"],
+      "description": "ROM fidelity tier. ROM-1: <100ms, ROM-2: 5-20s, ROM-3: <5min, ROM-4: minutes"
+    },
+    "model_type": {
+      "type": "string",
+      "enum": ["surrogate", "physics_informed_nn", "gaussian_process"],
+      "description": "ML model architecture (ROMs only)"
+    },
+    "training": {
+      "type": "object",
+      "properties": {
+        "source_model": { "type": "string" },
+        "training_runs": { "type": "array", "items": { "type": "string" } },
+        "training_hash": { "type": "string" },
+        "framework": { "type": "string" }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["onnx", "wasm", "pytorch", "tensorflow"]
+        },
+        "wasm_module": { "type": "string" },
+        "input_schema": { "type": "string" }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "inference_latency_ms": { "type": "number" },
+        "throughput_per_sec": { "type": "number" },
+        "valid_input_ranges": { "type": "object" }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "cross_sections": { "type": "string" },
+        "mesh_generator": { "type": "string" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "properties": {
+        "mpi_ranks": { "type": "integer" },
+        "memory_gb": { "type": "number" },
+        "runtime_estimate": { "type": "string" }
+      }
+    },
+    "coupling": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["loose", "tight", "monolithic"] },
+        "codes": { "type": "array" },
+        "coupling_frequency": { "type": "string" },
+        "data_exchange_format": { "type": "string" }
+      }
+    },
+    "license": {
+      "type": "string"
+    },
+    "funding_source": {
+      "type": "string"
+    },
+    "doi": {
+      "type": "string"
+    },
+    "federation": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "framework": { "type": "string" },
+        "federation_round": { "type": "integer" },
+        "participating_facilities": { "type": "array", "items": { "type": "string" } },
+        "aggregation_method": { "type": "string" },
+        "differential_privacy": { "type": "boolean" },
+        "privacy_budget": { "type": "number" }
+      }
+    },
+    "coreforge_config": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""
+neut-doctor — Emergency environment diagnostics
+
+This is a STANDALONE diagnostic script that works even when:
+- pip entry points are broken
+- neut CLI doesn't work
+- the venv is misconfigured
+
+Run directly: python scripts/neut-doctor
+Or: ./scripts/neut-doctor
+
+No external dependencies required.
+"""
+
+import os
+import sys
+import subprocess
+import shutil
+from pathlib import Path
+
+
+def main():
+    print("🩺 neut-doctor — Emergency Diagnostics")
+    print("=" * 50)
+    print("(Standalone script — no dependencies required)")
+    print()
+    
+    # Find repo root
+    script_dir = Path(__file__).parent.resolve()
+    repo_root = script_dir.parent
+    
+    issues = []
+    fixes = []
+    
+    # 1. Python version
+    print(f"1. Python: {sys.version.split()[0]}")
+    if sys.version_info < (3, 11):
+        issues.append("Python 3.11+ required")
+        print("   ✗ Need Python 3.11+")
+    else:
+        print("   ✓ OK")
+    
+    # 2. Virtual environment
+    print(f"\n2. Virtual Environment:")
+    venv_path = os.environ.get("VIRTUAL_ENV", "")
+    expected_venv = repo_root.parent / ".venv"
+    
+    if venv_path:
+        print(f"   ✓ Active: {venv_path}")
+    else:
+        issues.append("venv not active")
+        print(f"   ✗ Not active")
+        fixes.append(f"source {expected_venv}/bin/activate")
+    
+    # 3. Check venv exists
+    print(f"\n3. Venv Location:")
+    if expected_venv.exists():
+        print(f"   ✓ Found: {expected_venv}")
+    else:
+        issues.append("venv doesn't exist")
+        print(f"   ✗ Not found at {expected_venv}")
+        fixes.append(f"python3 -m venv {expected_venv}")
+    
+    # 4. neut script
+    print(f"\n4. neut Command:")
+    neut_script = shutil.which("neut")
+    if neut_script:
+        neut_path = Path(neut_script)
+        content = neut_path.read_text()
+        
+        # Check if it's our shell wrapper or pip entry point
+        if "-m neutron_os.neut_cli" in content:
+            print(f"   ✓ Shell wrapper at {neut_script}")
+        elif "from neutron_os.neut_cli import main" in content:
+            print(f"   ✓ Pip entry point at {neut_script}")
+        else:
+            issues.append("neut entry point is stale")
+            print(f"   ✗ STALE entry point at {neut_script}")
+            print(f"   Content preview: {content[:100]}...")
+            fixes.append(f"cd {repo_root} && ./scripts/bootstrap.sh")
+    else:
+        issues.append("neut not found")
+        print(f"   ✗ Not in PATH")
+        fixes.append(f"cd {repo_root} && ./scripts/bootstrap.sh")
+    
+    # 5. Package installation
+    print(f"\n5. Package Installation:")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "show", "neutron-os"],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            for line in result.stdout.split("\n"):
+                if line.startswith("Location:"):
+                    print(f"   ✓ {line}")
+                elif line.startswith("Editable"):
+                    print(f"   ✓ {line}")
+        else:
+            issues.append("neutron-os not installed")
+            print(f"   ✗ Not installed")
+            fixes.append(f"cd {repo_root} && pip install -e '.[all]'")
+    except Exception as e:
+        print(f"   ⚠ Check failed: {e}")
+    
+    # 6. Module import test
+    print(f"\n6. Import Test:")
+    try:
+        # Add repo root to path temporarily
+        sys.path.insert(0, str(repo_root))
+        from neutron_os.neut_cli import main as neut_main
+        print(f"   ✓ neutron_os.neut_cli imports successfully")
+    except ImportError as e:
+        issues.append(f"Import failed: {e}")
+        print(f"   ✗ {e}")
+        fixes.append(f"cd {repo_root} && pip install -e '.[all]'")
+    
+    # 7. Shell hash
+    print(f"\n7. Shell Hash:")
+    print(f"   Run 'hash -r' if neut was recently reinstalled")
+    
+    # Summary
+    print("\n" + "=" * 50)
+    if issues:
+        print(f"❌ Found {len(issues)} issue(s):\n")
+        for issue in issues:
+            print(f"   • {issue}")
+        
+        print(f"\n🔧 Fix commands (run in order):\n")
+        for i, fix in enumerate(fixes, 1):
+            print(f"   {i}. {fix}")
+        
+        print(f"\n💡 Or run the bootstrap script:")
+        print(f"   cd {repo_root} && ./scripts/bootstrap.sh")
+        return 1
+    else:
+        print("✅ Environment looks healthy!")
+        print(f"\n💡 If you're still having issues, try:")
+        print(f"   hash -r                    # Clear shell cache")
+        print(f"   neut doctor 'your error'   # AI-powered diagnosis")
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

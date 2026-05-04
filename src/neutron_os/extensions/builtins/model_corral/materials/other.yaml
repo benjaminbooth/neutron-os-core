@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../schemas/material-schema.json
+
+- name: "air"
+  description: "Dry air (standard composition)"
+  density: 0.001225
+  category: other
+  fraction_type: atom
+  temperature_k: 293.6
+  source: "US Standard Atmosphere 1976"
+  data_library: "ENDF/B-VII.1"
+  isotopes:
+    - zaid: "7014.80c"
+      fraction: 3.90e-5
+      name: "N-14"
+    - zaid: "8016.80c"
+      fraction: 1.05e-5
+      name: "O-16"

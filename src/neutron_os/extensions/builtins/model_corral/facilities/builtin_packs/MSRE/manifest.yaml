@@ -1,0 +1,15 @@
+name: MSRE
+display_name: Molten Salt Reactor Experiment
+reactor_type: MSR
+version: "1.0.0"
+maintainer: "UT Austin (Cole Gentry PhD)"
+description: >-
+  Materials and parameters for the Oak Ridge MSRE. Includes LiF-BeF2-ZrF4-UF4
+  fuel salt, graphite moderator, and INOR-8 structural material compositions
+  with data from ORNL technical reports.
+license: CC-BY-4.0
+tags:
+  - msr
+  - molten-salt
+  - ornl
+  - msre

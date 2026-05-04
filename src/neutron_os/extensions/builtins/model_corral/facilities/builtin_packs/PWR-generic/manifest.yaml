@@ -1,0 +1,14 @@
+name: PWR-generic
+display_name: Generic PWR
+reactor_type: PWR
+version: "1.0.0"
+maintainer: "Community"
+description: >-
+  Generic pressurized water reactor materials for community use.
+  Standard UO2 fuel compositions at typical enrichments, hot and cold
+  water, Zircaloy-4 cladding, and stainless steel structural materials.
+license: CC-BY-4.0
+tags:
+  - pwr
+  - lwr
+  - community

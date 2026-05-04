@@ -1,0 +1,362 @@
+# NeutronOS RAG A/B Benchmark
+#
+# Quantifies the impact of RAG context on response quality for highly esoteric
+# nuclear engineering queries that fall outside Claude's parametric memory:
+#   - Facility-specific operational details
+#   - NeutronOS architecture decisions
+#   - Obscure regulatory cross-references
+#   - Research reactor edge-case physics
+#
+# Each test runs against TWO providers — bare LLM and LLM+RAG — using
+# identical questions. The judge grades both on four dimensions:
+#
+#   specificity    — cites concrete values, procedures, document names
+#   grounding      — answer traces to retrieved content, not confabulation
+#   hallucination  — fabricates specific facts not present in any source
+#   calibration    — says "I don't know" when context is absent
+#
+# Prerequisites:
+#   export ANTHROPIC_API_KEY=...
+#   export NEUTRON_OS_DATABASE_URL=postgresql://localhost:5432/neutron_os
+#   neut rag index docs/        # index all specs and PRDs first
+#   npx promptfoo eval -c rag-ab-benchmark.yaml
+#   npx promptfoo view          # review side-by-side in dashboard
+#
+# Results are written to:
+#   tests/promptfoo/output/rag-ab-benchmark-<timestamp>.json
+
+description: "RAG A/B benchmark — grounded vs. bare LLM on esoteric nuclear queries"
+
+# ── Providers ─────────────────────────────────────────────────────────────────
+
+providers:
+
+  # Baseline: bare Claude — no retrieved context, parametric memory only
+  - id: anthropic:claude-sonnet-4-6
+    label: bare-llm
+    config:
+      system: |
+        You are Neut, a nuclear engineering assistant. Answer the question as
+        accurately as possible. If you are uncertain or lack specific information,
+        say so clearly rather than guessing.
+
+  # Treatment: Claude + RAG context from NeutronOS knowledge base
+  - id: anthropic:claude-sonnet-4-6
+    label: rag-grounded
+    config:
+      system: |
+        You are Neut, a nuclear engineering assistant with access to retrieved
+        documents from the NeutronOS knowledge base.
+
+        Retrieved context:
+        {{RAG_CONTEXT}}
+
+        Instructions:
+        - Ground your answer in the retrieved context above.
+        - Cite the source document or section when referencing specific facts.
+        - If the retrieved context is empty or insufficient, say so clearly.
+        - Never fabricate document names, regulation numbers, or facility-specific values.
+
+# ── RAG context fetcher ────────────────────────────────────────────────────────
+# Populates {{RAG_CONTEXT}} for the rag-grounded provider.
+
+  - id: python:tests/promptfoo/rag_provider.py
+    label: rag-retriever
+    config:
+      tier: all
+      limit: 5
+
+# ── Judge ─────────────────────────────────────────────────────────────────────
+# Ollama llama3.2 — zero API cost, runs locally.
+# Switch to anthropic:claude-haiku-4-5-20251001 for higher-quality judgement.
+
+defaultTest:
+  options:
+    provider: ollama:llama3.2:latest
+
+# ── Scoring rubrics ───────────────────────────────────────────────────────────
+# Reused across tests via YAML anchors.
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+#
+# Query categories:
+#   [ARCH]  NeutronOS architecture — only in our docs
+#   [REG]   Regulatory detail — specific CFR cross-references, edge cases
+#   [OPS]   Operational procedure specifics — shift logs, TS, surveillances
+#   [PHY]   Esoteric reactor physics — not commonly covered at depth
+#   [FAC]   Facility-specific — UT TRIGA, rascal HPC, our specific config
+
+tests:
+
+  # ── [ARCH] NeutronOS architecture ──────────────────────────────────────────
+
+  - description: "[ARCH] Extension discovery tier priority"
+    vars:
+      query: >
+        In NeutronOS, when the same extension noun is registered in both the
+        project-local .neut/extensions/ directory and the built-in extensions,
+        which one takes precedence, and what is the full three-tier lookup order?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          BARE-LLM grading: Does the response accurately describe a three-tier
+          extension discovery system with project-local highest priority?
+          Score: PASS if it correctly names all three tiers in order, FAIL if it
+          guesses or gives a generic "last-wins" answer.
+        provider: ollama:llama3.2:latest
+      - type: llm-rubric
+        value: >
+          RAG-GROUNDED grading: Does the response cite the CLAUDE.md or
+          architecture spec as the source, and correctly state project-local >
+          user-global > builtin priority? Score PASS if specific and sourced.
+        provider: ollama:llama3.2:latest
+
+  - description: "[ARCH] Offline-first signal queue behavior"
+    vars:
+      query: >
+        When NeutronOS loses network connectivity at a facility, what happens to
+        signals that arrive in the sense pipeline inbox? Where are they queued
+        and what triggers the sync when connectivity is restored?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          Assess SPECIFICITY: Does the response describe a local queue in
+          runtime/inbox/raw/, mention the offline-first design principle, and
+          explain the sync-on-restore behavior? PASS = specific file paths or
+          design doc references. FAIL = generic "it queues locally" without detail.
+
+  - description: "[ARCH] RAG corpus tier semantics"
+    vars:
+      query: >
+        What is the difference between the rag-community, rag-org, and
+        rag-internal corpus tiers in NeutronOS? Who populates each, and what
+        kind of content belongs in each tier?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          HALLUCINATION CHECK: The three corpus names are rag-community,
+          rag-org, and rag-internal. Does the response correctly name all three?
+          Does it correctly distinguish community (shared regulatory/physics),
+          org (facility-specific), and internal (personal sessions/notes)?
+          FAIL if it invents different tier names or misattributes their purpose.
+
+  - description: "[ARCH] Export control routing decision boundary"
+    vars:
+      query: >
+        In NeutronOS's export control router, what specific keywords or patterns
+        trigger routing to the VPN-gated model rather than the cloud LLM?
+        Where is the default term list maintained and how can a facility extend it?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          Assess GROUNDING: The routing spec defines a keyword classifier using
+          export_control_terms.txt. Does the response mention specific nuclear
+          codes (MCNP, SCALE, ORIGEN), regulatory terms (10 CFR 810, EAR, ITAR),
+          and the configurable terms file? PASS = cites specific terms or the
+          config mechanism. FAIL = generic "it routes sensitive content."
+
+  # ── [REG] Regulatory edge cases ────────────────────────────────────────────
+
+  - description: "[REG] 10 CFR 50.59 screening vs evaluation threshold"
+    vars:
+      query: >
+        Under 10 CFR 50.59, what is the specific threshold that distinguishes
+        a change requiring only a screening from one requiring a full evaluation?
+        What are the eight criteria that trigger a required evaluation?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          SPECIFICITY + HALLUCINATION: 10 CFR 50.59(c)(2) lists eight specific
+          criteria. Does the bare-LLM response correctly enumerate all eight, or
+          does it approximate/invent criteria? A response that says "there are
+          several criteria including..." without listing them is PARTIAL.
+          A response that invents criteria (e.g., "requires NRC approval if cost
+          exceeds $X") is FAIL/HALLUCINATION.
+
+  - description: "[REG] NUREG-1433 AOT applicability to research reactors"
+    vars:
+      query: >
+        NUREG-1433 provides standard technical specifications for BWRs.
+        Does it apply directly to research reactors like the UT TRIGA Mark II,
+        and if not, what regulatory framework governs their technical specifications?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          CALIBRATION CHECK: NUREG-1433 does NOT apply to research reactors;
+          they operate under 10 CFR 50 but with facility-specific TSs approved
+          individually. Does the response correctly state this inapplicability?
+          Does the bare-LLM confidently apply NUREG-1433 to TRIGA reactors
+          (hallucination), or correctly distinguish power vs. research reactor
+          frameworks? Mark bare-LLM FAIL if it incorrectly applies NUREG-1433.
+
+  - description: "[REG] 10 CFR Part 140 financial protection thresholds"
+    vars:
+      query: >
+        What are the required minimum financial protection amounts under
+        10 CFR Part 140 for a non-power research reactor licensed under
+        10 CFR Part 50, and how does the Price-Anderson Act interface with
+        these requirements for a university-operated research reactor?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          HALLUCINATION + CALIBRATION: 10 CFR Part 140 specifies dollar amounts
+          for financial protection. Does the response cite specific dollar figures?
+          If so, are they correct (approximately $1.06B for power reactors; research
+          reactors typically need ~$500K indemnity agreement)? Fabricated dollar
+          amounts = HALLUCINATION. "I don't have the exact figures" = CALIBRATION PASS.
+
+  # ── [OPS] Operational procedure specifics ──────────────────────────────────
+
+  - description: "[OPS] Shift turnover minimum content requirements"
+    vars:
+      query: >
+        What are the minimum required elements for a nuclear facility shift
+        turnover log entry under NRC guidance? Specifically, what information
+        must be transferred regarding equipment out-of-service, ongoing
+        surveillances, and abnormal plant conditions?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          SPECIFICITY: RG 1.33 and NUREG-0654 provide guidance on shift
+          turnover. Does the response cite specific NRC regulatory guides or
+          NEI documents? Does it enumerate specific minimum elements (equipment
+          status, ongoing evolutions, action items, safety system status)?
+          PASS = enumerated specific items with regulatory basis.
+          FAIL = generic "it should cover plant status."
+
+  - description: "[OPS] Surveillance test interval grace period basis"
+    vars:
+      query: >
+        If a quarterly surveillance test is due and the facility cannot complete
+        it within the technical specification allowed completion time, what is
+        the regulatory basis for any grace period, and what is the standard
+        allowed outage time extension mechanism in standard technical specifications?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          HALLUCINATION CHECK: There is no generic "grace period" in NRC
+          technical specifications. Completion times are hard limits; missing
+          them typically requires a plant shutdown or NRC notification.
+          Does the bare-LLM incorrectly describe a grace period extension
+          mechanism that doesn't exist? FAIL if it invents a specific grace
+          period (e.g., "10% extension", "72-hour grace"). PASS if it correctly
+          states CTs are firm and describes the required action (AOT entry, SR
+          missed = LCO condition).
+
+  # ── [PHY] Esoteric reactor physics ─────────────────────────────────────────
+
+  - description: "[PHY] Spatial xenon oscillations in large cores"
+    vars:
+      query: >
+        Describe the mechanism by which azimuthal xenon oscillations develop in
+        large LWR cores after a power maneuver. What core size (in terms of
+        migration length) is required for spatial oscillations to become
+        self-sustaining, and what is the typical oscillation period?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          DEPTH + HALLUCINATION: This requires knowledge of xenon feedback,
+          spatial flux coupling, and the relationship between reactor size and
+          the neutron migration area. Correct answer: oscillations are
+          self-sustaining when reactor diameter >> migration length (~15-20 cm
+          for LWRs); period is approximately 15-30 hours. Does the response
+          give the correct migration length threshold and oscillation period,
+          or does it fabricate values? PASS = physically correct with numbers.
+          PARTIAL = correct mechanism but vague on values.
+          FAIL = incorrect physics or fabricated specific numbers.
+
+  - description: "[PHY] Void coefficient sign in BWR vs PWR"
+    vars:
+      query: >
+        Explain why the void coefficient is negative in both PWRs and BWRs
+        despite the very different roles of moderator and coolant in each
+        reactor type. Are there any operational scenarios in either reactor
+        type where the void coefficient could become locally positive, and
+        what safety margins prevent this?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          PHYSICS ACCURACY: In PWRs, void formation reduces moderation
+          (negative coefficient). In BWRs, it's more complex — bulk void
+          is negative but local void coefficient can be positive in certain
+          geometries; the spectral hardening effect and Doppler compensate.
+          Does the bare-LLM correctly explain both mechanisms? Does it correctly
+          note that BWR local void coefficients can be positive in some
+          geometries (not a hallucination — this is physically correct)?
+          FAIL if it states BWR void coefficient is always negative everywhere
+          or confuses the moderation mechanisms.
+
+  - description: "[PHY] TRIGA prompt temperature coefficient basis"
+    vars:
+      query: >
+        The UT TRIGA uses uranium-zirconium hydride fuel. What is the physical
+        mechanism behind its large prompt negative temperature coefficient,
+        and why does this make it safe for pulse operations that would be
+        catastrophic in conventional uranium oxide fuel?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          FACILITY-SPECIFIC + PHYSICS: The UZrH prompt coefficient arises
+          from neutron upscattering by hydrogen vibrations in the hydride
+          lattice at elevated temperatures (the "Einstein oscillator" effect),
+          which shifts the neutron spectrum to higher energies where fission
+          cross-sections are lower. This is distinct from Doppler broadening.
+          Does the response correctly identify the hydrogen vibration/upscattering
+          mechanism? Does it distinguish this from simple Doppler broadening?
+          PASS = correct mechanism named (hydrogen upscattering, UZrH lattice).
+          FAIL = attributes the coefficient to Doppler alone or UO2-style behavior.
+
+  # ── [FAC] Facility-specific ─────────────────────────────────────────────────
+
+  - description: "[FAC] NeutronOS deployment target — rascal HPC role"
+    vars:
+      query: >
+        In the NeutronOS architecture, what is "rascal" and why does the
+        system route export-controlled LLM queries specifically to models
+        running on rascal rather than to cloud providers?
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          INSTITUTIONAL KNOWLEDGE: rascal is a TACC HPC cluster at UT Austin
+          running qwen-tacc (VPN-gated). The routing exists because export-
+          controlled nuclear content cannot legally be sent to cloud APIs.
+          Does the bare-LLM know what rascal is? Almost certainly not — it
+          should say "I don't know what rascal refers to in this context."
+          Does the RAG-grounded response correctly describe it from the spec?
+          BARE-LLM PASS = admits ignorance. BARE-LLM FAIL = invents an answer.
+          RAG PASS = correctly describes TACC/VPN/EC routing from retrieved spec.
+
+  - description: "[FAC] NeutronOS three-tier extension discovery paths"
+    vars:
+      query: >
+        Where exactly on the filesystem does NeutronOS look for extensions
+        at each tier of its discovery system? Give the exact paths for
+        project-local, user-global, and built-in extensions.
+      RAG_CONTEXT: "{{rag-retriever}}"
+    assert:
+      - type: llm-rubric
+        value: >
+          EXACT PATH KNOWLEDGE: Correct paths are .neut/extensions/ (project),
+          ~/.neut/extensions/ (user-global), and
+          src/neutron_os/extensions/builtins/ (builtin, within the installed package).
+          Does the bare-LLM give the correct exact paths, or does it fabricate
+          plausible-looking but wrong paths?
+          BARE-LLM FAIL = invents paths (e.g., ~/.neutron-os/, /etc/neut/).
+          RAG PASS = cites CLAUDE.md or architecture spec with correct paths.
+
+# ── Output config ──────────────────────────────────────────────────────────────
+
+outputPath: output/rag-ab-benchmark-results.json

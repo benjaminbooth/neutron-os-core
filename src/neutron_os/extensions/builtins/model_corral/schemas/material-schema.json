@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://neutron-os.dev/schemas/material-schema.json",
+  "title": "NeutronOS Material Definition",
+  "description": "Schema for nuclear material composition YAML files used by Model Corral.",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/material"
+  },
+  "minItems": 1,
+  "definitions": {
+    "isotope": {
+      "type": "object",
+      "required": ["zaid", "fraction"],
+      "properties": {
+        "zaid": {
+          "type": "string",
+          "description": "ZAID identifier, e.g. 92235.80c",
+          "pattern": "^[0-9]+\\.[0-9]+[a-z]$"
+        },
+        "fraction": {
+          "type": "number",
+          "description": "Atom fraction or weight fraction"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable isotope name, e.g. U-235"
+        }
+      },
+      "additionalProperties": false
+    },
+    "material": {
+      "type": "object",
+      "required": ["name", "description", "density", "isotopes"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique material identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the material"
+        },
+        "density": {
+          "type": "number",
+          "description": "Density in g/cm³"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["fuel", "moderator", "coolant", "structural", "absorber", "other"],
+          "description": "Material category"
+        },
+        "fraction_type": {
+          "type": "string",
+          "enum": ["atom", "weight"],
+          "default": "atom",
+          "description": "Whether isotope fractions are atom or weight fractions"
+        },
+        "temperature_k": {
+          "type": "number",
+          "default": 293.6,
+          "description": "Material temperature in Kelvin"
+        },
+        "source": {
+          "type": "string",
+          "description": "Reference for composition data"
+        },
+        "sab": {
+          "type": "string",
+          "description": "S(alpha,beta) thermal scattering library identifier"
+        },
+        "data_library": {
+          "type": "string",
+          "description": "Nuclear data library name, e.g. ENDF/B-VII.1"
+        },
+        "data_library_version": {
+          "type": "string",
+          "description": "Nuclear data library version string"
+        },
+        "composition_hash": {
+          "type": "string",
+          "description": "SHA-256 hash of isotope data for change detection"
+        },
+        "license": {
+          "type": "string",
+          "description": "License identifier, e.g. CC-BY-4.0"
+        },
+        "pid": {
+          "type": "string",
+          "description": "Persistent identifier (DOI, etc.)"
+        },
+        "isotopes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/isotope"
+          },
+          "minItems": 1,
+          "description": "List of isotopes with their fractions"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,37 @@
+- name: "UO2-3.1"
+  description: "Uranium dioxide fuel (3.1% enriched, typical PWR)"
+  density: 10.42
+  category: fuel
+  fraction_type: atom
+  temperature_k: 900.0
+  source: "NUREG/CR-6698"
+  data_library: "ENDF/B-VII.1"
+  isotopes:
+    - zaid: "92235.80c"
+      fraction: 7.18e-4
+      name: "U-235"
+    - zaid: "92238.80c"
+      fraction: 2.22e-2
+      name: "U-238"
+    - zaid: "8016.80c"
+      fraction: 4.58e-2
+      name: "O-16"
+
+- name: "UO2-4.95"
+  description: "Uranium dioxide fuel (4.95% enriched, high-burnup PWR)"
+  density: 10.42
+  category: fuel
+  fraction_type: atom
+  temperature_k: 900.0
+  source: "NUREG/CR-6698"
+  data_library: "ENDF/B-VII.1"
+  isotopes:
+    - zaid: "92235.80c"
+      fraction: 1.15e-3
+      name: "U-235"
+    - zaid: "92238.80c"
+      fraction: 2.17e-2
+      name: "U-238"
+    - zaid: "8016.80c"
+      fraction: 4.58e-2
+      name: "O-16"

@@ -1,0 +1,13 @@
+- name: "graphite-msre"
+  description: "MSRE nuclear-grade graphite (CGB grade, 1.86 g/cm³)"
+  density: 1.86
+  category: moderator
+  fraction_type: atom
+  temperature_k: 922.0
+  source: "ORNL-4541"
+  data_library: "ENDF/B-VII.1"
+  sab: "grph.22t"
+  isotopes:
+    - zaid: "6000.80c"
+      fraction: 9.33e-2
+      name: "C-nat"

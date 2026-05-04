@@ -1,0 +1,160 @@
+# Personal learning space (not shared)
+
+# Bazel
+bazel-*
+.bazelrc.user
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+
+# TypeScript/Node
+node_modules/
+*.tsbuildinfo
+.npm
+.eslintcache
+.parcel-cache
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+
+# Helm
+charts/*/charts/
+*.tgz
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# Secrets (never commit)
+*.pem
+*.key
+secrets/
+.env
+.env.*
+!.env.example
+
+# Data files (too large for git)
+*.parquet
+*.h5
+*.hdf5
+*.csv
+!data/iceberg/schemas/**/*.avsc
+
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# DuckDB
+*.duckdb
+*.duckdb.wal
+
+# Superset
+superset_home/
+
+# Meeting intake
+meeting_recordings/
+transcripts/
+
+# GitLab tracker exports
+gitlab_export_*.json
+src/neutron_os/exports/*
+!src/neutron_os/exports/.gitkeep
+
+# Generated documentation
+docs/_tools/generated/
+docs/_tools/test/
+docs/**/*.docx
+!docs/proposals/NEUP_2026/**/*.docx
+
+# Analysis scratch (agent-managed, not source-controlled)
+docs/analysis/
+
+# Personal AI assistant context (contributor-specific)
+.claude/
+
+# NeutronOS runtime state
+.neut/
+
+# Runtime data (facility-specific config, inbox, drafts)
+runtime/config/
+!runtime/config.example/
+runtime/inbox/
+runtime/sessions/
+runtime/drafts/
+runtime/approved/
+runtime/subscribers/
+runtime/logs/
+runtime/doctor/
+
+# Voice memo and meeting recording files
+*.m4a
+*.mp4
+*.webm
+*.wav
+
+# Speaker profiles (voice identification data)
+speaker_profiles.json
+
+# DocFlow state files (inside .neut/)
+# .neut/ is already gitignored above; workflow.yaml.example is force-tracked
+# Legacy root-level publisher files (now under .neut/publisher/)
+.publisher.yaml
+.publisher.json
+
+# Mermaid diagram cache
+docs/_tools/.diagram_cache.json
+src/runtime
+
+# Launchd export logs (local runtime artifact)
+tools/
+.gitmessage
+coverage.json
+runtime/knowledge/
+ben-learning/
+.neut/generated/
+.ruff_cache/
+*.pyc

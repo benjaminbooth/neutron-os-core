@@ -1,0 +1,32 @@
+facility: NETL
+reactor_type: TRIGA
+reactor_model: Mark II
+
+rated_power_kw: 1100
+max_pulse_power_mw: 1600
+
+coolant:
+  type: light-water
+  inlet_temperature_c: 25.0
+  flow_type: natural-convection
+
+core:
+  fuel_elements: 90
+  fuel_type: UZrH
+  enrichment_percent: 19.75
+  reflector: graphite
+  moderator: ZrH + H2O
+
+control_rods:
+  - name: transient
+    type: pneumatic
+    material: B4C
+  - name: regulating
+    type: servo
+    material: B4C
+  - name: shim-1
+    type: standard
+    material: B4C
+  - name: shim-2
+    type: standard
+    material: B4C

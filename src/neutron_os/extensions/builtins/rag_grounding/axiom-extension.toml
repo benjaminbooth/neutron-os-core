@@ -1,0 +1,81 @@
+# Copyright (c) 2026 The University of Texas at Austin
+# SPDX-License-Identifier: Apache-2.0
+
+[extension]
+name = "rag_grounding"
+version = "0.1.0"
+description = "NeutronOS-side hardening for axiom's RAG primitives — grounding gate, corpus health checks, low-confidence audit, and connect presets for the two distinct rascal services."
+license = "Apache-2.0"
+owner = "ut-austin"
+aeos_version = "0.1.0"
+builtin = true
+
+[extension.compatibility]
+python = ">= 3.11"
+axiom = ">= 0.10.11"
+
+# ---------------------------------------------------------------------------
+# Connect presets — two distinct rascal services
+# ---------------------------------------------------------------------------
+#
+# Today the user-facing `axi connect` surface treats "rascal" as one thing.
+# Architecturally there are two services:
+#
+#   :41883 — bare Qwen behind llama-server with API-key auth.
+#            EC-safe, no RAG, no domain knowledge. Use when the answer must
+#            never leave the local model + the question is general technical.
+#
+#   :8766  — NeutronOS gateway with RAG corpus over Qwen.
+#            Better answers (corpus-grounded), but cloud-routes through the
+#            gateway and is currently unauthenticated. NOT EC-safe.
+#
+# Both presets follow the `[[connect.preset]]` shape proposed by the
+# in-flight axi-connect framework (axiom/src/axiom/cli/connect.py); when
+# that framework lands they will be discovered automatically.
+# ---------------------------------------------------------------------------
+
+[[connect.preset]]
+name = "rascal-qwen-ec"
+description = "Bare Qwen on rascal:41883 — EC-safe, no RAG. Use when the answer must stay on a local model and the question is general technical."
+discovery_hint = "Reachable when on UT VPN. EC-safe (no domain corpus, no cloud egress)."
+
+[[connect.preset.providers]]
+kind = "llm"
+provider_name = "rascal-qwen-ec"
+endpoint = "https://10.159.142.118:41883/v1"
+model = "unsloth/Qwen3.5-122B-A10B-GGUF:Q4_K_M"
+api_key_env = "QWEN_API_KEY"
+routing_tier = "any"
+routing_tags = ["private_network", "ut_vpn", "ec_safe"]
+probe_path = "/v1/models"
+requires_vpn = true
+verify_ssl = false
+
+# ---------------------------------------------------------------------------
+
+[[connect.preset]]
+name = "rascal-neutronos-rag"
+description = "NeutronOS gateway on rascal:8766 — RAG corpus over Qwen. Better answers but cloud-routed and currently unauthenticated. NOT EC-safe."
+discovery_hint = "Reachable when on UT VPN. Cloud-routes through NeutronOS gateway; NOT EC-safe."
+
+[[connect.preset.providers]]
+kind = "llm"
+provider_name = "rascal-neutronos-rag"
+endpoint = "https://10.159.142.118:8766/v1"
+model = "unsloth/Qwen3.5-122B-A10B-GGUF:Q4_K_M"
+# api_key_env is intentionally empty — gateway is unauthenticated today.
+# Once auth lands, set api_key_env = "NEUTRONOS_GATEWAY_KEY" and add the
+# corresponding [[connections]] entry below.
+api_key_env = ""
+routing_tier = "private"
+routing_tags = ["private_network", "ut_vpn", "rag_grounded", "not_ec_safe"]
+probe_path = "/v1/info"
+requires_vpn = true
+verify_ssl = false
+
+[[connect.preset.providers]]
+kind = "rag"
+endpoint = "https://10.159.142.118:8766/rag"
+probe_path = "/v1/info"
+requires_vpn = true
+verify_ssl = false

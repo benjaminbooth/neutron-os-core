@@ -1,0 +1,42 @@
+- name: "MSRE-salt"
+  description: "MSRE fuel salt (LiF-BeF2-ZrF4-UF4, 65-29-5-1 mol%)"
+  density: 2.32
+  category: fuel
+  fraction_type: atom
+  temperature_k: 922.0
+  source: "ORNL-4541, MSRE Design & Operations Report Part I"
+  data_library: "ENDF/B-VII.1"
+  isotopes:
+    - zaid: "3007.80c"
+      fraction: 4.62e-2
+      name: "Li-7"
+    - zaid: "3006.80c"
+      fraction: 5.08e-5
+      name: "Li-6"
+    - zaid: "4009.80c"
+      fraction: 2.06e-2
+      name: "Be-9"
+    - zaid: "40090.80c"
+      fraction: 2.65e-3
+      name: "Zr-90"
+    - zaid: "40091.80c"
+      fraction: 5.78e-4
+      name: "Zr-91"
+    - zaid: "40092.80c"
+      fraction: 8.83e-4
+      name: "Zr-92"
+    - zaid: "40094.80c"
+      fraction: 8.95e-4
+      name: "Zr-94"
+    - zaid: "40096.80c"
+      fraction: 1.44e-4
+      name: "Zr-96"
+    - zaid: "92235.80c"
+      fraction: 5.43e-4
+      name: "U-235"
+    - zaid: "92238.80c"
+      fraction: 1.63e-4
+      name: "U-238"
+    - zaid: "9019.80c"
+      fraction: 1.39e-1
+      name: "F-19"

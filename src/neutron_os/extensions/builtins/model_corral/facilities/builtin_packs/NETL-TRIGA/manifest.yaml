@@ -1,0 +1,15 @@
+name: NETL-TRIGA
+display_name: UT Austin NETL TRIGA Mark II
+reactor_type: TRIGA
+version: "1.0.0"
+maintainer: "UT Austin Nuclear Engineering Teaching Lab"
+description: >-
+  Materials, templates, and operating parameters for the UT Austin NETL
+  TRIGA Mark II research reactor. Includes standard fuel (UZrH-20),
+  moderator, structural, and control materials with ENDF/B-VII.1 cross sections.
+license: CC-BY-4.0
+tags:
+  - triga
+  - research-reactor
+  - ut-austin
+  - netl

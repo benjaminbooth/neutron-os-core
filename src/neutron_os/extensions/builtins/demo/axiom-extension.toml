@@ -1,0 +1,21 @@
+# Copyright (c) 2026 The University of Texas at Austin
+# SPDX-License-Identifier: Apache-2.0
+
+[extension]
+name = "demo"
+version = "0.3.0"
+description = "Guided demonstrations and walkthroughs"
+license = "Apache-2.0"
+owner = "ut-austin"
+aeos_version = "0.1.0"
+builtin = true
+
+[extension.compatibility]
+python = ">= 3.11"
+axiom = ">= 0.10"
+
+[[extension.provides]]
+kind = "cmd"
+noun = "demo"
+entry = "neutron_os.extensions.builtins.demo.cli:main"
+description = "Guided demonstrations and walkthroughs"

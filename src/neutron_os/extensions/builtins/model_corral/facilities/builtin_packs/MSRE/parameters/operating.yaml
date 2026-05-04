@@ -1,0 +1,20 @@
+facility: ORNL
+reactor_type: MSR
+reactor_model: MSRE
+
+rated_power_mw: 7.4
+
+coolant:
+  type: molten-salt
+  composition: "LiF-BeF2-ZrF4-UF4 (65-29-5-1 mol%)"
+  inlet_temperature_c: 632
+  outlet_temperature_c: 654
+  flow_rate_gpm: 1200
+
+core:
+  moderator: graphite
+  fuel_form: dissolved-in-salt
+  enrichment_percent: 33.0
+  geometry: cylindrical
+  diameter_cm: 140
+  height_cm: 163

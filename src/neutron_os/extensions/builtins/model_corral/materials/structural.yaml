@@ -1,0 +1,90 @@
+# yaml-language-server: $schema=../schemas/material-schema.json
+
+- name: "SS304"
+  description: "Stainless steel 304 (standard composition)"
+  density: 7.94
+  category: structural
+  fraction_type: weight
+  temperature_k: 293.6
+  source: "PNNL-15870 Rev. 2"
+  data_library: "ENDF/B-VII.1"
+  isotopes:
+    - zaid: "26054.80c"
+      fraction: 0.0342
+      name: "Fe-54"
+    - zaid: "26056.80c"
+      fraction: 0.5370
+      name: "Fe-56"
+    - zaid: "26057.80c"
+      fraction: 0.0124
+      name: "Fe-57"
+    - zaid: "26058.80c"
+      fraction: 0.0017
+      name: "Fe-58"
+    - zaid: "24050.80c"
+      fraction: 0.0077
+      name: "Cr-50"
+    - zaid: "24052.80c"
+      fraction: 0.1490
+      name: "Cr-52"
+    - zaid: "24053.80c"
+      fraction: 0.0169
+      name: "Cr-53"
+    - zaid: "24054.80c"
+      fraction: 0.0042
+      name: "Cr-54"
+    - zaid: "28058.80c"
+      fraction: 0.0659
+      name: "Ni-58"
+    - zaid: "28060.80c"
+      fraction: 0.0254
+      name: "Ni-60"
+    - zaid: "28061.80c"
+      fraction: 0.0011
+      name: "Ni-61"
+    - zaid: "28062.80c"
+      fraction: 0.0035
+      name: "Ni-62"
+    - zaid: "28064.80c"
+      fraction: 0.0009
+      name: "Ni-64"
+    - zaid: "25055.80c"
+      fraction: 0.0200
+      name: "Mn-55"
+    - zaid: "14028.80c"
+      fraction: 0.0092
+      name: "Si-28"
+    - zaid: "14029.80c"
+      fraction: 0.0005
+      name: "Si-29"
+    - zaid: "14030.80c"
+      fraction: 0.0003
+      name: "Si-30"
+
+- name: "Zircaloy-4"
+  description: "Zircaloy-4 cladding (Zr-Sn-Fe-Cr)"
+  density: 6.56
+  category: structural
+  fraction_type: weight
+  temperature_k: 293.6
+  source: "PNNL-15870 Rev. 2"
+  data_library: "ENDF/B-VII.1"
+  isotopes:
+    - zaid: "40090.80c"
+      fraction: 0.5079
+      name: "Zr-90"
+    - zaid: "40091.80c"
+      fraction: 0.1108
+      name: "Zr-91"
+    - zaid: "40092.80c"
+      fraction: 0.1694
+      name: "Zr-92"
+    - zaid: "40094.80c"
+      fraction: 0.1717
+      name: "Zr-94"
+    - zaid: "40096.80c"
+      fraction: 0.0277
+      name: "Zr-96"
+    - zaid: "50120.80c"
+      fraction: 0.0125
+      name: "Sn-120"

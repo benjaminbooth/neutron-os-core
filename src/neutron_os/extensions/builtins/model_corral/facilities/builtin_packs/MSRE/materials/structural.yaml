@@ -1,0 +1,51 @@
+- name: "INOR-8"
+  description: "INOR-8 (Hastelloy-N) — MSRE primary structural alloy"
+  density: 8.86
+  category: structural
+  fraction_type: weight
+  temperature_k: 922.0
+  source: "ORNL-4541, Table 2.1"
+  data_library: "ENDF/B-VII.1"
+  isotopes:
+    - zaid: "28058.80c"
+      fraction: 0.4857
+      name: "Ni-58"
+    - zaid: "28060.80c"
+      fraction: 0.1871
+      name: "Ni-60"
+    - zaid: "28061.80c"
+      fraction: 0.0081
+      name: "Ni-61"
+    - zaid: "28062.80c"
+      fraction: 0.0259
+      name: "Ni-62"
+    - zaid: "28064.80c"
+      fraction: 0.0066
+      name: "Ni-64"
+    - zaid: "42092.80c"
+      fraction: 0.0229
+      name: "Mo-92"
+    - zaid: "42094.80c"
+      fraction: 0.0143
+      name: "Mo-94"
+    - zaid: "42095.80c"
+      fraction: 0.0247
+      name: "Mo-95"
+    - zaid: "42096.80c"
+      fraction: 0.0259
+      name: "Mo-96"
+    - zaid: "42097.80c"
+      fraction: 0.0148
+      name: "Mo-97"
+    - zaid: "42098.80c"
+      fraction: 0.0375
+      name: "Mo-98"
+    - zaid: "42100.80c"
+      fraction: 0.0150
+      name: "Mo-100"
+    - zaid: "24052.80c"
+      fraction: 0.0700
+      name: "Cr-52"
+    - zaid: "26056.80c"
+      fraction: 0.0500
+      name: "Fe-56"

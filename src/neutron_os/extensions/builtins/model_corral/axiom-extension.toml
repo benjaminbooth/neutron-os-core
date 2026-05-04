@@ -1,0 +1,44 @@
+# Copyright (c) 2026 The University of Texas at Austin
+# SPDX-License-Identifier: Apache-2.0
+
+[extension]
+name = "model_corral"
+version = "0.1.0"
+description = "Physics model registry — versioning, validation, and provenance"
+license = "Apache-2.0"
+owner = "ut-austin"
+aeos_version = "0.1.0"
+builtin = true
+
+[extension.compatibility]
+python = ">= 3.11"
+axiom = ">= 0.10"
+
+[[extension.provides]]
+kind = "cmd"
+noun = "model"
+entry = "neutron_os.extensions.builtins.model_corral.cli:main"
+description = "Manage physics simulation models"
+
+[[extension.provides]]
+kind = "cmd"
+noun = "facility"
+entry = "neutron_os.extensions.builtins.model_corral.facilities.cli:main"
+description = "Manage facility packs (reactor-specific accelerators)"
+
+# Agent-driven sync: EVE-style watcher that auto-pushes models to Git.
+# Kept in the transitional [agent] / [[agent.watchers]] shape (rather than
+# `kind = "hook"` with `cadence.tick` events) until the scheduled-hook
+# surface lands per spec-hooks.md follow-up #1. Migrate to a
+# [[extension.provides]] kind = "hook" block with events = ["cadence.tick"]
+# when that lands.
+[agent]
+heartbeat_interval = 60
+startup = "lazy"     # activates when MODEL_CORRAL_REMOTE is set
+
+[[agent.watchers]]
+name = "model_sync"
+enabled = true
+interval = 60        # check for unsync'd models every 60s
+module = "neutron_os.extensions.builtins.model_corral.sync"
+function = "run_watcher_cycle"

@@ -1,0 +1,81 @@
+[project]
+name = "neutron-os"
+version = "0.13.0"
+description = "Nuclear facility digital operations platform — extends Axiom"
+requires-python = ">=3.11"
+license = "MIT"
+readme = "README.md"
+authors = [{name = "Benjamin Booth", email = "bbooth@utexas.edu"}]
+keywords = ["nuclear", "reactor", "mcnp", "physics", "simulation", "model-registry"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "axiom-os-lm>=0.14.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "pytest-xdist>=3.5",
+    "ruff>=0.4",
+]
+all = [
+    "neutron-os[dev]",
+]
+
+[project.scripts]
+neut = "neutron_os.cli:main"
+
+[project.urls]
+Homepage = "https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core"
+Repository = "https://rsicc-gitlab.tacc.utexas.edu/ut-computational-ne/neutron-os-core"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/neutron_os"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/neutron_os/extensions"]
+pythonpath = ["src"]
+markers = [
+    "integration: marks tests that hit external services",
+    "slow: marks tests as slow",
+]
+filterwarnings = [
+    "ignore::pytest.PytestUnknownMarkWarning",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = [
+    "E501", "SIM108", "SIM105", "SIM102", "SIM117", "SIM115",
+    "UP042", "B904", "B027", "B007", "B905", "B023", "SIM103",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["neutron_os", "axiom"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+typeCheckingMode = "standard"
+reportMissingImports = "warning"
+reportMissingModuleSource = false

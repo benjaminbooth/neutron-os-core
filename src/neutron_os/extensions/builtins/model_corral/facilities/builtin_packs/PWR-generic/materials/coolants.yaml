@@ -1,0 +1,16 @@
+- name: "H2O-hot"
+  description: "Light water (liquid, 600K PWR conditions)"
+  density: 0.700
+  category: coolant
+  fraction_type: atom
+  temperature_k: 600.0
+  source: "IAPWS-IF97"
+  data_library: "ENDF/B-VII.1"
+  sab: "lwtr.22t"
+  isotopes:
+    - zaid: "1001.80c"
+      fraction: 4.67e-2
+      name: "H-1"
+    - zaid: "8016.80c"
+      fraction: 2.33e-2
+      name: "O-16"

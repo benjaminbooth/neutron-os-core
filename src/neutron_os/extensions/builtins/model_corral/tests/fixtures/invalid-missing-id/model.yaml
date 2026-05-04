@@ -1,0 +1,12 @@
+# Missing model_id — should fail validation
+name: Bad Model
+version: 1.0.0
+status: draft
+reactor_type: TRIGA
+facility: NETL
+physics_code: MCNP
+physics_domain:
+  - neutronics
+created_by: test@example.com
+created_at: "2026-01-01T00:00:00Z"
+access_tier: public
